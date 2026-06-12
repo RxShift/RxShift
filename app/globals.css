@@ -54,6 +54,17 @@
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-navy);
+
+  /* Brand utilities: bg-navy, text-steel, border-line, bg-amber, etc. */
+  --color-navy:       #1C2F5E;
+  --color-amber:      #F07C30;
+  --color-amber-dark: #D96A22; /* primary button hover */
+  --color-steel:      #4A5B7A;
+  --color-cloud:      #F2F5FA;
+  --color-line:       #DDE5EF;
+  --color-page:       #F8FAFC;
+  --color-alert:      #D4860A;
+
   --font-brand: var(--font-space-grotesk), 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif;
   --font-body:  var(--font-inter), -apple-system, 'Helvetica Neue', sans-serif;
 }

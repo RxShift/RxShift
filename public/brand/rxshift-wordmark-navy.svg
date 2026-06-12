@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 44" width="240" height="44"
+     role="img" aria-label="RxShift Wordmark">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&amp;display=swap');
+      text { font-family: 'Space Grotesk', 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif; }
+    </style>
+  </defs>
+  <!-- Wordmark only — for plain-text contexts where the mark cannot appear -->
+  <!-- Convert to outlines before print production -->
+  <text x="0" y="34" font-size="36" letter-spacing="-0.3">
+    <tspan font-weight="800" fill="#1C2F5E">Rx</tspan>
+    <tspan font-weight="700" fill="#F07C30"> · </tspan>
+    <tspan font-weight="500" fill="#1C2F5E">Shift</tspan>
+  </text>
+</svg>

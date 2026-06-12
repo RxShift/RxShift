@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 109 80" width="109" height="80"
+     role="img" aria-label="RxShift Schedule Grid Mark">
+  <!-- RxShift Schedule Grid Mark — light background variant -->
+  <!-- 4 columns × 3 rows. Column 3 = Shift Amber (#F07C30). 100% geometric vector. -->
+  <!-- Col x offsets: 0, 29, 58, 87  |  Row y offsets: 0, 29, 58  |  Cell: 22×22 rx=4 -->
+
+  <!-- Row 1 -->
+  <rect x="0"  y="0"  width="22" height="22" rx="4" fill="#C4D2E2"/>
+  <rect x="29" y="0"  width="22" height="22" rx="4" fill="#8FAABB"/>
+  <rect x="58" y="0"  width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="0"  width="22" height="22" rx="4" fill="#C4D2E2"/>
+  <!-- Row 2 -->
+  <rect x="0"  y="29" width="22" height="22" rx="4" fill="#C4D2E2"/>
+  <rect x="29" y="29" width="22" height="22" rx="4" fill="#8FAABB"/>
+  <rect x="58" y="29" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="29" width="22" height="22" rx="4" fill="#C4D2E2"/>
+  <!-- Row 3 -->
+  <rect x="0"  y="58" width="22" height="22" rx="4" fill="#C4D2E2"/>
+  <rect x="29" y="58" width="22" height="22" rx="4" fill="#8FAABB"/>
+  <rect x="58" y="58" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="58" width="22" height="22" rx="4" fill="#C4D2E2"/>
+</svg>

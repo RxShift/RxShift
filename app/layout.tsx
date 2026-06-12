@@ -15,9 +15,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://rxshift.io"),
   title: "RxShift — Compliance-ready pharmacy scheduling",
   description:
-    "Retail pharmacy scheduling with built-in state ratio compliance and hourly documentation.",
+    "RxShift generates compliant pharmacy schedules automatically — tracking pharmacist-to-tech ratios and producing the hourly documentation regulators require.",
+  openGraph: {
+    title: "RxShift — Compliance-ready pharmacy scheduling",
+    description:
+      "Ratio-aware schedules and automated hourly compliance logs for pharmacies with 1–25 locations.",
+    url: "https://rxshift.io",
+    siteName: "RxShift",
+  },
 };
 
 export default function RootLayout({

@@ -1,0 +1,42 @@
+const FEATURES = [
+  {
+    eyebrow: "Scheduling",
+    heading: "Ratio-aware schedule generation",
+    body: "Configure your state's pharmacist-to-tech rules once. RxShift applies them to every shift — accounting for certified, non-certified, trainee, and intern staffing in real time. When volume or composition changes, coverage recalculates automatically.",
+  },
+  {
+    eyebrow: "Compliance",
+    heading: "Automated hourly compliance logs",
+    body: "Every published schedule produces a timestamped record: pharmacist and tech names per hour, deficiency flags, and automatic board-report triggers after 3 consecutive deficient days. Retained for two years, exportable on demand.",
+  },
+  {
+    eyebrow: "Built for your size",
+    heading: "Designed for 1–25 locations",
+    body: "Not enterprise software. Not a generic scheduling tool with compliance bolted on. RxShift is built for independent pharmacies and regional chains — up and running in under an hour, with no implementation fee and no six-month onboarding.",
+  },
+];
+
+export default function Features() {
+  return (
+    <section className="bg-white px-6 py-12 sm:py-20">
+      <div className="mx-auto grid max-w-[1040px] gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {FEATURES.map((f) => (
+          <div
+            key={f.eyebrow}
+            className="rounded-[10px] border border-line bg-white p-7 shadow-[0_1px_3px_rgba(28,47,94,0.08)]"
+          >
+            <p className="font-brand text-[10px] font-bold uppercase tracking-[1.8px] text-amber">
+              {f.eyebrow}
+            </p>
+            <h3 className="mb-2 mt-3 font-brand text-lg font-bold text-navy">
+              {f.heading}
+            </h3>
+            <p className="font-body text-sm leading-[1.65] text-steel">
+              {f.body}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160" width="220" height="160"
+     role="img" aria-label="RxShift — Stacked Lockup, Dark">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&amp;display=swap');
+      text { font-family: 'Space Grotesk', 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Navy background -->
+  <rect width="220" height="160" fill="#1C2F5E"/>
+
+  <!-- Grid mark centered: dark cell variants -->
+  <rect x="56"  y="0"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="85"  y="0"  width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="114" y="0"  width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="143" y="0"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="56"  y="29" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="85"  y="29" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="114" y="29" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="143" y="29" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="56"  y="58" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="85"  y="58" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="114" y="58" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="143" y="58" width="22" height="22" rx="4" fill="#3B5785"/>
+
+  <!-- Wordmark — white/amber reversed -->
+  <text x="110" y="110" text-anchor="middle" font-size="24" letter-spacing="-0.3">
+    <tspan font-weight="800" fill="#FFFFFF">Rx</tspan>
+    <tspan font-weight="700" fill="#F07C30"> · </tspan>
+    <tspan font-weight="500" fill="#FFFFFF">Shift</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="110" y="130" text-anchor="middle" font-size="9" font-weight="500" fill="rgba(255,255,255,0.5)" letter-spacing="0.06em">
+    Compliance-ready pharmacy scheduling
+  </text>
+</svg>
