@@ -255,7 +255,7 @@ export async function updateAppUser(
       .eq("tenant_id", ctx.tenantId);
     if (error) throw new ActionError(error.message);
     await logActivity(ctx, "update", "app_user", id, data);
-    revalidatePath("/app/settings/team");
+    revalidatePath("/app/staff");
     return undefined;
   });
 }

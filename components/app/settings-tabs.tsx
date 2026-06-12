@@ -9,7 +9,6 @@ const TABS = [
   { label: "Ratio", href: "/app/settings/ratio" },
   { label: "Work Types", href: "/app/settings/work-types" },
   { label: "Constraint Rules", href: "/app/settings/constraints" },
-  { label: "Team & Roles", href: "/app/settings/team" },
   { label: "Import Staff", href: "/app/settings/import" },
 ];
 

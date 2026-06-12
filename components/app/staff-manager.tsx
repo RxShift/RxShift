@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/ui/page-header";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { createStaff, updateStaff } from "@/lib/actions/staff";
-import type { Location, RatioType, Staff } from "@/lib/types";
+import { updateAppUser } from "@/lib/actions/settings";
+import type { AppRole, AppUser, Location, RatioType, Staff } from "@/lib/types";
 
 const RATIO_LABELS: Record<RatioType, string> = {
   pharmacist: "Pharmacist",
@@ -25,12 +26,24 @@ const EMPLOYMENT_LABELS = {
   contractor_1099: "1099 contractor",
 } as const;
 
+const ROLE_LABELS: Record<AppRole, string> = {
+  owner_admin: "Owner / Admin",
+  scheduler: "Scheduler",
+  supervisor: "Supervisor",
+  read_only: "Read-only",
+  staff: "Staff",
+};
+
 export default function StaffManager({
   staff,
   locations,
+  appUsers,
+  canEditRoles,
 }: {
   staff: Staff[];
   locations: Location[];
+  appUsers: AppUser[];
+  canEditRoles: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | "new" | null>(null);
@@ -59,16 +72,38 @@ export default function StaffManager({
       editing === "new"
         ? await createStaff(values)
         : await updateStaff((editing as Staff).id, values);
-    if (result.ok) {
+
+    // If this person has a sign-in, save their role/approver settings too
+    let roleError: string | null = null;
+    const account =
+      editing !== "new" && editing !== null
+        ? appUsers.find((u) => u.staff_id === editing.id)
+        : undefined;
+    if (result.ok && account && canEditRoles) {
+      const isApprover = form.get("is_pto_approver") === "on";
+      const roleResult = await updateAppUser(account.id, {
+        role: form.get("app_role"),
+        is_pto_approver: isApprover,
+        pto_approver_rank: isApprover
+          ? ((form.get("pto_approver_rank") as string) || "primary")
+          : null,
+      });
+      if (!roleResult.ok) roleError = roleResult.error;
+    }
+
+    if (result.ok && !roleError) {
       setEditing(null);
       router.refresh();
     } else {
-      setError(result.error);
+      setError(result.ok ? roleError : result.error);
     }
     setBusy(false);
   }
 
   const initial = editing !== null && editing !== "new" ? editing : null;
+  const initialAccount = initial
+    ? appUsers.find((u) => u.staff_id === initial.id)
+    : undefined;
 
   return (
     <div className="max-w-[1040px]">
@@ -116,6 +151,12 @@ export default function StaffManager({
                   {s.login_email && (
                     <div className="font-body text-xs text-steel">
                       {s.login_email}
+                      {(() => {
+                        const acct = appUsers.find((u) => u.staff_id === s.id);
+                        return acct
+                          ? ` · ${ROLE_LABELS[acct.role as AppRole]}`
+                          : "";
+                      })()}
                     </div>
                   )}
                 </Td>
@@ -191,7 +232,12 @@ export default function StaffManager({
                 type="email"
                 defaultValue={initial?.login_email ?? ""}
               />
-              <HelpText>How they sign in.</HelpText>
+              <HelpText>
+                How they sign in — their account is created automatically the
+                first time they sign in with this address. Extra sign-in
+                addresses (like a personal email for home) can be added on
+                request.
+              </HelpText>
             </div>
             <div>
               <Label htmlFor="work_email">Work email</Label>
@@ -204,6 +250,72 @@ export default function StaffManager({
               <HelpText>Where notifications go.</HelpText>
             </div>
           </div>
+
+          {editing !== "new" && (
+            <div className="rounded-lg border border-line bg-cloud/50 p-4">
+              <p className="font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
+                Sign-in &amp; role
+              </p>
+              {initialAccount ? (
+                canEditRoles ? (
+                  <div className="mt-3 flex flex-wrap items-end gap-4">
+                    <div className="w-44">
+                      <Label htmlFor="app_role">Role</Label>
+                      <Select
+                        id="app_role"
+                        name="app_role"
+                        defaultValue={initialAccount.role}
+                      >
+                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2.5 pb-2.5">
+                      <input
+                        type="checkbox"
+                        id="is_pto_approver"
+                        name="is_pto_approver"
+                        defaultChecked={initialAccount.is_pto_approver}
+                        className="h-4 w-4 accent-amber"
+                      />
+                      <label
+                        htmlFor="is_pto_approver"
+                        className="font-body text-sm text-navy"
+                      >
+                        PTO approver
+                      </label>
+                    </div>
+                    <div className="w-36">
+                      <Label htmlFor="pto_approver_rank">Approver rank</Label>
+                      <Select
+                        id="pto_approver_rank"
+                        name="pto_approver_rank"
+                        defaultValue={initialAccount.pto_approver_rank ?? "primary"}
+                      >
+                        <option value="primary">Primary</option>
+                        <option value="backup">Backup</option>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 font-body text-sm text-steel">
+                    {ROLE_LABELS[initialAccount.role as AppRole]}
+                    {initialAccount.is_pto_approver ? " · PTO approver" : ""} —
+                    only an Owner/Admin can change roles.
+                  </p>
+                )
+              ) : (
+                <p className="mt-2 font-body text-sm text-steel">
+                  No sign-in yet. They&rsquo;ll appear here automatically the
+                  first time they sign in with the login email above, and you
+                  can adjust their role then.
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="ratio_type">Counts as</Label>
