@@ -48,12 +48,17 @@ RxShift is a **B2B SaaS scheduling platform for retail pharmacies** — multi-te
 
 ## Accounts & Credentials
 
+**Full infrastructure detail lives in `INFRASTRUCTURE.md`** — accounts, DNS
+records, the demo-request email flow, and email troubleshooting steps. Keep
+that file current; Jamison drops updates into it from outside Claude Code.
+
 | Service | Account | Notes |
 |---------|---------|-------|
-| GitHub | RxShift (`github@rxshift.io`) | New account, separate from Jamison's personal/MSP+/TimeZest |
-| Supabase | New dedicated account | Project ID: `cnhpaxucnbgxazpbvtod` |
-| Resend | New dedicated account (`resend@rxshift.io`) | Domain: rxshift.io |
-| Vercel | New dedicated account | NOT YET AUTHORIZED (phone number issue) — TODO |
+| GitHub | RxShift (`github@rxshift.io`) | Repo: RxShift/RxShift. Separate from Jamison's personal/MSP+/TimeZest |
+| Supabase | `supabase@rxshift.io` | Project ID: `cnhpaxucnbgxazpbvtod` |
+| Resend | `resend@rxshift.io` | Sends from hello@rxshift.io; domain verified |
+| Cloudflare | `jamison@jamisonwest.com` | DNS + Email Routing: catch-all `*@rxshift.io` → jamison@jamisonwest.com (M365) |
+| Vercel | `github@rxshift.io` | NOT YET AUTHORIZED (phone verification pending with Vercel support) |
 
 **Environment variables** are in `.env.local` (gitignored). See `.env.example` for the template.
 
