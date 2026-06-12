@@ -53,7 +53,7 @@ export default function ContactForm() {
   }
 
   return (
-    <section id="demo" className="bg-navy px-6 py-16 sm:py-24">
+    <section id="demo" className="scroll-mt-16 bg-navy px-6 py-16 sm:py-24">
       <div className="mx-auto max-w-[560px] text-center">
         <h2 className="font-brand text-[26px] font-bold leading-snug text-white sm:text-[32px]">
           See RxShift working in your pharmacy.
@@ -65,10 +65,33 @@ export default function ContactForm() {
         </p>
 
         {status === "success" ? (
-          <p className="mt-12 font-brand text-lg font-semibold text-white">
-            Thanks, {firstName}. We&rsquo;ll be in touch within one business
-            day.
-          </p>
+          <div className="mt-8 rounded-xl bg-white/[0.06] px-8 py-12 sm:py-16">
+            <svg
+              className="mx-auto"
+              width="48"
+              height="48"
+              viewBox="0 0 48 48"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="24" cy="24" r="22" stroke="#F07C30" strokeWidth="2.5" />
+              <path
+                d="M15 24.5l6 6 12-13"
+                stroke="#F07C30"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <p className="mt-6 font-brand text-lg font-semibold text-white">
+              Thanks, {firstName}. We&rsquo;ll be in touch within one business
+              day.
+            </p>
+            <p className="mt-3 font-body text-sm leading-[1.7] text-white/60">
+              Your demo request is in. We&rsquo;ll reach out from
+              hello@rxshift.io — keep an eye on your inbox.
+            </p>
+          </div>
         ) : (
           <form
             onSubmit={handleSubmit}

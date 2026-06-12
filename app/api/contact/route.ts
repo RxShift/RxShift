@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await resend.emails.send({
+    // The Resend SDK does not throw on API errors — it returns them in
+    // the `error` field, so a failed send must be checked explicitly.
+    const { error } = await resend.emails.send({
       from: `RxShift <${process.env.RESEND_FROM_EMAIL || "hello@rxshift.io"}>`,
       to: process.env.CONTACT_TO_EMAIL || "info@rxshift.io",
       replyTo: email,
@@ -36,6 +38,14 @@ export async function POST(request: NextRequest) {
         ${message ? `<p><strong>Message:</strong> ${escapeHtml(message)}</p>` : ""}
       `,
     });
+
+    if (error) {
+      console.error("Resend send failed:", error);
+      return NextResponse.json(
+        { error: "Failed to send message" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
