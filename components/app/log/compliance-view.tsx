@@ -1,0 +1,246 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import Badge from "@/components/ui/badge";
+import Button from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/page-header";
+import { complianceRecordToCsv } from "@/lib/engine/compliance";
+import type { ComplianceRecordRow } from "@/lib/types";
+import type { ConstraintFlag } from "@/lib/engine/types";
+
+export default function ComplianceView({
+  periods,
+  periodId,
+  records,
+  streaks,
+  constraintFlags,
+  hasRatio,
+}: {
+  periods: { id: string; label: string }[];
+  periodId: string;
+  records: { zoneId: string; zoneName: string; rows: ComplianceRecordRow[] }[];
+  streaks: {
+    deficientDates: string[];
+    streaks: { start: string; length: number }[];
+    boardReportTriggered: boolean;
+  };
+  constraintFlags: ConstraintFlag[];
+  hasRatio: boolean;
+}) {
+  const router = useRouter();
+  const allRows = records.flatMap((r) => r.rows);
+  const deficientHours = allRows.filter(
+    (r) => r.ratio_status === "deficient"
+  ).length;
+
+  function exportCsv() {
+    const blob = new Blob([complianceRecordToCsv(allRows)], {
+      type: "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `compliance-record-${periodId.slice(0, 8)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="max-w-[1100px] space-y-6 print:max-w-none">
+      <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <select
+          value={periodId}
+          onChange={(e) => router.push(`/app/log?period=${e.target.value}`)}
+          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+        >
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <div className="ml-auto flex gap-3">
+          <Button variant="secondary" onClick={() => window.print()}>
+            Print report
+          </Button>
+          <Button variant="secondary" onClick={exportCsv}>
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {streaks.boardReportTriggered && (
+        <div className="rounded-lg border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] p-4">
+          <p className="font-brand text-sm font-bold text-[#C0392B]">
+            Board report trigger: 3+ consecutive deficient days
+          </p>
+          <p className="mt-1 font-body text-[13px] text-navy">
+            {streaks.streaks
+              .filter((s) => s.length >= 3)
+              .map((s) => `${s.length} consecutive deficient days starting ${s.start}`)
+              .join("; ")}
+            . Under proposed R113-24 this is the threshold for board
+            notification. Review the deficient hours below and the override
+            log.
+          </p>
+        </div>
+      )}
+
+      {/* Summary stats */}
+      <div className="grid gap-4 sm:grid-cols-3 print:hidden">
+        <Card>
+          <p className="font-brand text-[10px] font-bold uppercase tracking-[1px] text-steel">
+            Hours recorded
+          </p>
+          <p className="mt-1 font-brand text-[28px] font-bold text-navy">
+            {allRows.length}
+          </p>
+        </Card>
+        <Card>
+          <p className="font-brand text-[10px] font-bold uppercase tracking-[1px] text-steel">
+            Deficient hours
+          </p>
+          <p
+            className={`mt-1 font-brand text-[28px] font-bold ${deficientHours > 0 ? "text-[#C0392B]" : "text-[#2E7D5E]"}`}
+          >
+            {deficientHours}
+          </p>
+        </Card>
+        <Card>
+          <p className="font-brand text-[10px] font-bold uppercase tracking-[1px] text-steel">
+            Hours &amp; caps flags
+          </p>
+          <p
+            className={`mt-1 font-brand text-[28px] font-bold ${constraintFlags.length > 0 ? "text-[#D4860A]" : "text-[#2E7D5E]"}`}
+          >
+            {constraintFlags.length}
+          </p>
+        </Card>
+      </div>
+
+      {!hasRatio && (
+        <p className="font-body text-sm text-steel">
+          Your organization has no ratio requirement configured — this record
+          documents staffing presence for defensibility. Enable the ratio in
+          Settings to add compliant/deficient evaluation.
+        </p>
+      )}
+
+      {records.length === 0 ? (
+        <EmptyState message="No zone-assigned shifts in this period yet. Assign shifts to a ratio zone for them to appear on the record." />
+      ) : (
+        records.map((record) => (
+          <div key={record.zoneId}>
+            <h2 className="mb-3 font-brand text-base font-bold text-navy">
+              {record.zoneName}
+            </h2>
+            <div className="overflow-x-auto rounded-[10px] border border-line bg-white shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {[
+                      "Date",
+                      "Hour",
+                      "Pharmacist(s) on duty",
+                      "Technicians counting",
+                      "Present, not counting (function)",
+                      "Status",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="bg-cloud px-3 py-2.5 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {record.rows.map((r, i) => (
+                    <tr
+                      key={i}
+                      className={
+                        r.ratio_status === "deficient" ? "bg-[#FEF0EF]" : ""
+                      }
+                    >
+                      <td className="border-t border-line px-3 py-2 font-brand text-[11px] font-semibold text-steel">
+                        {r.date}
+                      </td>
+                      <td className="border-t border-line px-3 py-2 font-brand text-[11px] font-semibold text-steel">
+                        {String(r.hour).padStart(2, "0")}:00–
+                        {String(r.hour + 1).padStart(2, "0")}:00
+                      </td>
+                      <td className="border-t border-line px-3 py-2 font-body text-[13px] font-medium text-navy">
+                        {r.pharmacists_on_duty.join(", ") || "—"}
+                      </td>
+                      <td className="border-t border-line px-3 py-2 font-body text-[13px] text-navy">
+                        {(r.technicians_counting as string[]).join(", ") || "—"}
+                        {r.technicians_count > 0 && (
+                          <span className="ml-1 text-steel">
+                            ({r.technicians_count})
+                          </span>
+                        )}
+                      </td>
+                      <td className="border-t border-line px-3 py-2 font-body text-[13px] text-steel">
+                        {r.technicians_present_non_counting.length > 0
+                          ? r.technicians_present_non_counting
+                              .map((t) => `${t.name} (${t.function})`)
+                              .join(", ")
+                          : "—"}
+                      </td>
+                      <td className="border-t border-line px-3 py-2">
+                        <Badge
+                          tone={
+                            r.ratio_status === "deficient"
+                              ? "deficiency"
+                              : "compliant"
+                          }
+                        >
+                          {r.ratio_status}
+                        </Badge>
+                        {r.deficiency_reason && (
+                          <p className="mt-1 font-body text-[11px] text-[#C0392B]">
+                            {r.deficiency_reason}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
+
+      {constraintFlags.length > 0 && (
+        <div>
+          <h2 className="mb-3 font-brand text-base font-bold text-navy">
+            Hours &amp; caps exceptions
+          </h2>
+          <Card>
+            <ul className="space-y-2 font-body text-[13px] text-navy">
+              {constraintFlags.map((f, i) => (
+                <li key={i}>
+                  <Badge tone="alert">{f.rule_type.replace(/_/g, " ")}</Badge>{" "}
+                  <span className="ml-1">{f.message}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      )}
+
+      <p className="font-body text-xs text-steel print:hidden">
+        This record regenerates from the current published schedule; the
+        publish-time snapshot is retained for two years. Acknowledged warnings
+        are cross-referenced in the{" "}
+        <a href="/app/log/overrides" className="underline">
+          override log
+        </a>
+        .
+      </p>
+    </div>
+  );
+}
