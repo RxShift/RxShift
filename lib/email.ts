@@ -1,5 +1,8 @@
 import "server-only";
 import { Resend } from "resend";
+import { isRecipientAllowed, type EmailTenant } from "./email-policy";
+
+export { isRecipientAllowed, type EmailTenant };
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = `RxShift <${process.env.RESEND_FROM_EMAIL || "hello@rxshift.io"}>`;
@@ -16,12 +19,24 @@ function escapeHtml(value: string): string {
  * Branded notification email. Body lines are plain text (escaped here).
  * Best-effort: notification email failures are logged, never thrown —
  * the in-app notification row is the source of truth.
+ *
+ * Requires the tenant so the safety gate runs unconditionally; suppressed
+ * sends are logged WITHOUT the recipient address (roster emails are PII).
  */
 export async function sendNotificationEmail(
+  tenant: EmailTenant,
   to: string,
   subject: string,
   lines: string[]
 ): Promise<void> {
+  if (!isRecipientAllowed(tenant, to)) {
+    console.warn("[email-safety] suppressed", {
+      tenantId: tenant.id,
+      status: tenant.status,
+      killSwitch: tenant.outbound_email_enabled === false,
+    });
+    return;
+  }
   try {
     const { error } = await resend.emails.send({
       from: FROM,

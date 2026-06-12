@@ -38,6 +38,7 @@ export type ConstraintRuleType =
   | "always_off"
   | "max_consecutive_days";
 export type WarningType = "ratio" | "cap" | "constraint";
+export type TenantStatus = "setup" | "trial" | "live";
 
 export interface Tenant {
   id: string;
@@ -50,6 +51,10 @@ export interface Tenant {
   onboarding_complete: boolean;
   /** Kill switch: false = this tenant never sends email (demo/test tenants) */
   outbound_email_enabled: boolean;
+  /** Lifecycle: setup/trial tenants only email the allowlist; live sends normally */
+  status: TenantStatus;
+  /** When non-empty, ONLY these addresses can receive app email (case-insensitive) */
+  email_allowlist: string[] | null;
   created_at: string;
 }
 

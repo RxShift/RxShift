@@ -37,17 +37,11 @@ async function notify(
   );
 }
 
-/**
- * Tenant-level kill switch: demo and test tenants never send email, no
- * matter what addresses exist on staff records.
- */
-function emailAllowed(ctx: AuthedContext): boolean {
-  return ctx.tenant.outbound_email_enabled !== false;
-}
+// Email safety (kill switch + allowlist + trial/live lifecycle) is enforced
+// INSIDE sendNotificationEmail — these helpers just resolve addresses.
 
 /** Emails for every PTO approver / manager in the tenant. */
 async function approverEmails(ctx: AuthedContext): Promise<string[]> {
-  if (!emailAllowed(ctx)) return [];
   const supabase = await createClient();
   const { data: users } = await supabase
     .from("app_user")
@@ -72,7 +66,6 @@ async function staffEmail(
   ctx: AuthedContext,
   staffId: string
 ): Promise<string | null> {
-  if (!emailAllowed(ctx)) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("staff")
@@ -168,7 +161,7 @@ export async function submitTimeOff(input: unknown): Promise<ActionResult> {
 
     const name = await staffName(ctx.appUser.staff_id);
     for (const email of await approverEmails(ctx)) {
-      await sendNotificationEmail(email, `Time-off request from ${name}`, [
+      await sendNotificationEmail(ctx.tenant, email, `Time-off request from ${name}`, [
         `${name} requested time off: ${data.start_date} to ${data.end_date} (${data.type}).`,
         data.staff_message ? `Their note: "${data.staff_message}"` : "",
         "Review it in RxShift under Requests.",
@@ -212,6 +205,7 @@ export async function decideTimeOff(
     const email = await staffEmail(ctx, request.staff_id);
     if (email) {
       await sendNotificationEmail(
+        ctx.tenant,
         email,
         `Your time-off request was ${decision}`,
         [
@@ -287,7 +281,7 @@ export async function logCallout(input: unknown): Promise<ActionResult> {
         ? `This adds ${gap.deficient_slots_added} deficient ratio slot(s) on ${gap.date}.`
         : "No new ratio deficiency results from this callout.";
     for (const email of await approverEmails(ctx)) {
-      await sendNotificationEmail(email, `Callout: ${name}`, [
+      await sendNotificationEmail(ctx.tenant, email, `Callout: ${name}`, [
         `${name} called out${data.reason ? `: "${data.reason}"` : "."}`,
         ctx.tenant.has_ratio ? gapLine : "",
         "The shift and any resulting gap are documented in RxShift.",
@@ -333,7 +327,7 @@ export async function proposeSwap(input: unknown): Promise<ActionResult> {
     const requester = await staffName(ctx.appUser.staff_id);
     const email = await staffEmail(ctx, data.counter_staff_id);
     if (email) {
-      await sendNotificationEmail(email, `${requester} proposed a shift swap`, [
+      await sendNotificationEmail(ctx.tenant, email, `${requester} proposed a shift swap`, [
         `${requester} proposed a shift swap with you.`,
         "Open RxShift → Requests to accept or decline. A manager approves the final swap.",
       ]);
@@ -376,7 +370,7 @@ export async function respondToSwap(
       const requester = await staffName(swap.requesting_staff_id);
       const counter = await staffName(swap.counter_staff_id);
       for (const email of await approverEmails(ctx)) {
-        await sendNotificationEmail(email, "Shift swap awaiting approval", [
+        await sendNotificationEmail(ctx.tenant, email, "Shift swap awaiting approval", [
           `${requester} and ${counter} agreed on a shift swap.`,
           "Review the ratio and hours effect in RxShift → Requests, then approve or deny.",
         ]);
@@ -430,7 +424,7 @@ export async function decideSwap(
     for (const staffId of [swap.requesting_staff_id, swap.counter_staff_id]) {
       const email = await staffEmail(ctx, staffId);
       if (email) {
-        await sendNotificationEmail(email, `Shift swap ${decision}`, [
+        await sendNotificationEmail(ctx.tenant, email, `Shift swap ${decision}`, [
           `The proposed shift swap was ${decision} by a manager.`,
           decision === "approved"
             ? "The schedule has been updated — check My Schedule."
