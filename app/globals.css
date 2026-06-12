@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
+/* ─── RxShift Design Tokens ──────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand palette */
+  --color-navy:   #1C2F5E;
+  --color-amber:  #F07C30;
+  --color-steel:  #4A5B7A;
+  --color-cloud:  #F2F5FA;
+  --color-white:  #FFFFFF;
+  --color-border: #DDE5EF;
+  --color-bg:     #F8FAFC;
+
+  /* Grid mark colors — SVG use only, do not use in UI */
+  --color-grid-inactive:      #C4D2E2;
+  --color-grid-upcoming:      #8FAABB;
+  --color-grid-dark-inactive: #3B5785;
+  --color-grid-dark-upcoming: #557AB0;
+
+  /* Status colors — product UI only, not marketing */
+  --color-compliant:      #2E7D5E;
+  --color-alert:          #D4860A;
+  --color-deficiency:     #C0392B;
+  --color-compliant-bg:   #EDF7F2;
+  --color-alert-bg:       #FEF7ED;
+  --color-deficiency-bg:  #FEF0EF;
+
+  /* Spacing — 4px base unit */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Border radius */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   12px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-card:     0 1px 3px rgba(28, 47, 94, 0.08);
+  --shadow-dropdown: 0 4px 16px rgba(28, 47, 94, 0.12);
+  --shadow-dialog:   0 8px 32px rgba(28, 47, 94, 0.16);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-navy);
+  --font-brand: var(--font-space-grotesk), 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif;
+  --font-body:  var(--font-inter), -apple-system, 'Helvetica Neue', sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-navy);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
