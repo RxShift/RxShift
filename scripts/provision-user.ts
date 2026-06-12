@@ -17,6 +17,13 @@
 //   --role    (optional) owner_admin | scheduler | supervisor | read_only | staff
 //             (default: staff). Manager roles get PTO-approver rights.
 //
+// Alias mode (one account, multiple sign-in emails):
+//   npx tsx scripts/provision-user.ts --add-alias work@employer.com --for personal@gmail.com
+//   Registers an extra sign-in address for an existing account. Typing the
+//   alias at /app/login delivers the magic link to that inbox but signs
+//   into the same account. Refuses aliases that collide with any existing
+//   login or alias. --for accepts the account's primary email or auth id.
+//
 // Cleanup mode (no provisioning):
 //   npx tsx scripts/provision-user.ts --delete-auth-user <auth-user-id-or-email>
 //   Refuses to delete a user that still has an app_user or platform_admin row.
@@ -92,6 +99,72 @@ async function deleteAuthUser(idOrEmail: string) {
   const { error } = await supabase.auth.admin.deleteUser(target.id);
   if (error) throw new Error(`deleteUser failed: ${error.message}`);
   console.log(`Deleted orphan auth user ${target.id} (${target.email ?? idOrEmail}).`);
+}
+
+// ── alias mode ───────────────────────────────────────────────────────────────
+async function addAlias(aliasRaw: string, forRaw: string) {
+  const alias = aliasRaw.toLowerCase().trim();
+  if (!alias.includes("@")) {
+    console.error(`Not a valid email: ${aliasRaw}`);
+    process.exit(1);
+  }
+
+  // An alias must never shadow an existing login or another alias
+  const collidingUser = await findAuthUserByEmail(alias);
+  if (collidingUser) {
+    console.error(
+      `REFUSING: ${alias} is already a sign-in email for auth user ${collidingUser.id}.`
+    );
+    process.exit(1);
+  }
+  const { data: existingAlias } = await supabase
+    .from("login_alias")
+    .select("app_user_id")
+    .eq("alias_email", alias)
+    .maybeSingle();
+  if (existingAlias) {
+    console.log(`${alias} is already an alias. No changes made.`);
+    return;
+  }
+
+  // Resolve the target account by primary email or auth user id
+  const target = UUID_RE.test(forRaw)
+    ? { id: forRaw }
+    : await findAuthUserByEmail(forRaw.toLowerCase().trim());
+  if (!target) {
+    console.error(`No auth user found for ${forRaw}.`);
+    process.exit(1);
+  }
+  const { data: appUser } = await supabase
+    .from("app_user")
+    .select("id, tenant_id")
+    .eq("supabase_user_id", target.id)
+    .maybeSingle();
+  if (!appUser) {
+    console.error(
+      `${forRaw} has no app account yet — provision them first, then add the alias.`
+    );
+    process.exit(1);
+  }
+
+  const { error } = await supabase
+    .from("login_alias")
+    .insert({ alias_email: alias, app_user_id: appUser.id });
+  if (error) throw new Error(`login_alias insert failed: ${error.message}`);
+
+  await supabase.from("activity_log").insert({
+    tenant_id: appUser.tenant_id,
+    actor_user_id: target.id,
+    action: "add_login_alias",
+    entity_type: "app_user",
+    entity_id: appUser.id,
+    detail: { alias_email: alias, via: "scripts/provision-user.ts" },
+  });
+
+  console.log(
+    `Done. ${alias} now signs in to the same account as ${forRaw}.` +
+    `\nTyping it at /app/login delivers the magic link to that inbox.`
+  );
 }
 
 // ── provision mode ───────────────────────────────────────────────────────────
@@ -196,7 +269,22 @@ async function provision() {
 
 // ── main ─────────────────────────────────────────────────────────────────────
 const deleteTarget = getArg("--delete-auth-user");
-(deleteTarget ? deleteAuthUser(deleteTarget) : provision()).catch((e) => {
+const aliasTarget = getArg("--add-alias");
+const aliasFor = getArg("--for");
+
+let task: Promise<void>;
+if (deleteTarget) {
+  task = deleteAuthUser(deleteTarget);
+} else if (aliasTarget) {
+  if (!aliasFor) {
+    console.error("--add-alias requires --for <primary-email-or-auth-id>");
+    process.exit(1);
+  }
+  task = addAlias(aliasTarget, aliasFor);
+} else {
+  task = provision();
+}
+task.catch((e) => {
   console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });
