@@ -37,8 +37,17 @@ async function notify(
   );
 }
 
+/**
+ * Tenant-level kill switch: demo and test tenants never send email, no
+ * matter what addresses exist on staff records.
+ */
+function emailAllowed(ctx: AuthedContext): boolean {
+  return ctx.tenant.outbound_email_enabled !== false;
+}
+
 /** Emails for every PTO approver / manager in the tenant. */
 async function approverEmails(ctx: AuthedContext): Promise<string[]> {
+  if (!emailAllowed(ctx)) return [];
   const supabase = await createClient();
   const { data: users } = await supabase
     .from("app_user")
@@ -59,7 +68,11 @@ async function approverEmails(ctx: AuthedContext): Promise<string[]> {
     .filter((e): e is string => !!e);
 }
 
-async function staffEmail(staffId: string): Promise<string | null> {
+async function staffEmail(
+  ctx: AuthedContext,
+  staffId: string
+): Promise<string | null> {
+  if (!emailAllowed(ctx)) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("staff")
@@ -196,7 +209,7 @@ export async function decideTimeOff(
       .eq("id", id);
     if (error) throw new ActionError(error.message);
 
-    const email = await staffEmail(request.staff_id);
+    const email = await staffEmail(ctx, request.staff_id);
     if (email) {
       await sendNotificationEmail(
         email,
@@ -318,7 +331,7 @@ export async function proposeSwap(input: unknown): Promise<ActionResult> {
     if (error) throw new ActionError(error.message);
 
     const requester = await staffName(ctx.appUser.staff_id);
-    const email = await staffEmail(data.counter_staff_id);
+    const email = await staffEmail(ctx, data.counter_staff_id);
     if (email) {
       await sendNotificationEmail(email, `${requester} proposed a shift swap`, [
         `${requester} proposed a shift swap with you.`,
@@ -415,7 +428,7 @@ export async function decideSwap(
     if (error) throw new ActionError(error.message);
 
     for (const staffId of [swap.requesting_staff_id, swap.counter_staff_id]) {
-      const email = await staffEmail(staffId);
+      const email = await staffEmail(ctx, staffId);
       if (email) {
         await sendNotificationEmail(email, `Shift swap ${decision}`, [
           `The proposed shift swap was ${decision} by a manager.`,

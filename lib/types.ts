@@ -48,6 +48,8 @@ export interface Tenant {
   has_ratio: boolean;
   branding: { logo_url?: string; primary_color?: string } | null;
   onboarding_complete: boolean;
+  /** Kill switch: false = this tenant never sends email (demo/test tenants) */
+  outbound_email_enabled: boolean;
   created_at: string;
 }
 

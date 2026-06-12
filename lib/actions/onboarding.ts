@@ -194,15 +194,23 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
 
     const service = createServiceClient();
 
-    // One workspace per sign-in (v1)
+    // Platform admins can create unlimited tenants; everyone else gets
+    // one workspace per sign-in (v1)
+    const { data: platformAdmin } = await service
+      .from("platform_admin")
+      .select("supabase_user_id")
+      .eq("supabase_user_id", user.id)
+      .maybeSingle();
+
     const { data: existing } = await service
       .from("app_user")
       .select("id")
       .eq("supabase_user_id", user.id)
       .maybeSingle();
-    if (existing)
+    if (existing && !platformAdmin)
       throw new ActionError("This sign-in already belongs to a workspace.");
 
+    const isExtraAdminTenant = !!(existing && platformAdmin);
     const data = wizardSchema.parse(input);
 
     // 1. Tenant
@@ -222,6 +230,9 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
               }
             : null,
         onboarding_complete: false,
+        // Admin-created test/demo tenants never email anyone until the
+        // owner flips the switch deliberately
+        outbound_email_enabled: !isExtraAdminTenant,
       })
       .select("id")
       .single();
@@ -289,48 +300,64 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
       .from("work_type")
       .insert(workTypes.map((w) => ({ ...w, tenant_id: tenantId })));
 
-    // 5. Staff — ensure the onboarding user exists as staff too
+    // 5. Staff — for a user's own workspace, ensure they exist as staff.
+    // Platform admins creating extra tenants are NOT added as staff (they
+    // administer through the platform role, and their real email must not
+    // end up on a test tenant's roster).
     const email = user.email?.toLowerCase() ?? null;
     const staffRows = [...data.staff];
-    const meInList = staffRows.find(
-      (s) => s.login_email?.toLowerCase() === email
-    );
-    if (!meInList) {
-      staffRows.unshift({
-        full_name: data.my_name,
-        login_email: email,
-        work_email: email,
-        job_title: null,
-        ratio_type: "pharmacist",
-        employment_type: "full_time",
-      });
+    if (!isExtraAdminTenant) {
+      const meInList = staffRows.find(
+        (s) => s.login_email?.toLowerCase() === email
+      );
+      if (!meInList) {
+        staffRows.unshift({
+          full_name: data.my_name,
+          login_email: email,
+          work_email: email,
+          job_title: null,
+          ratio_type: "pharmacist",
+          employment_type: "full_time",
+        });
+      }
     }
-    const { data: insertedStaff, error: staffError } = await service
-      .from("staff")
-      .insert(
-        staffRows.map((s) => ({
-          ...s,
-          tenant_id: tenantId,
-          home_location_id: locationIds[0] ?? null,
-        }))
-      )
-      .select("id, login_email");
-    if (staffError) throw new ActionError(staffError.message);
+    let myStaffId: string | null = null;
+    if (staffRows.length > 0) {
+      const { data: insertedStaff, error: staffError } = await service
+        .from("staff")
+        .insert(
+          staffRows.map((s) => ({
+            ...s,
+            tenant_id: tenantId,
+            home_location_id: locationIds[0] ?? null,
+          }))
+        )
+        .select("id, login_email");
+      if (staffError) throw new ActionError(staffError.message);
+      myStaffId =
+        (insertedStaff ?? []).find(
+          (s) => s.login_email?.toLowerCase() === email
+        )?.id ?? null;
+    }
 
-    const myStaff = (insertedStaff ?? []).find(
-      (s) => s.login_email?.toLowerCase() === email
-    );
-
-    // 6. The onboarding user is Owner/Admin and primary PTO approver
-    const { error: userError } = await service.from("app_user").insert({
-      supabase_user_id: user.id,
-      staff_id: myStaff?.id ?? null,
-      tenant_id: tenantId,
-      role: "owner_admin",
-      is_pto_approver: true,
-      pto_approver_rank: "primary",
-    });
-    if (userError) throw new ActionError(userError.message);
+    // 6. Membership: own workspace → Owner/Admin app_user; extra admin
+    // tenant → just point the platform admin's active tenant at it
+    if (isExtraAdminTenant) {
+      await service
+        .from("platform_admin")
+        .update({ active_tenant_id: tenantId, emulate_app_user_id: null })
+        .eq("supabase_user_id", user.id);
+    } else {
+      const { error: userError } = await service.from("app_user").insert({
+        supabase_user_id: user.id,
+        staff_id: myStaffId,
+        tenant_id: tenantId,
+        role: "owner_admin",
+        is_pto_approver: true,
+        pto_approver_rank: "primary",
+      });
+      if (userError) throw new ActionError(userError.message);
+    }
 
     // 7. Done
     await service

@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
-import EntityManager from "@/components/app/entity-manager";
+import ZonesManager from "@/components/app/settings/zones-manager";
 import RatioRuleForm from "@/components/app/settings/ratio-rule-form";
-import Badge from "@/components/ui/badge";
 import type { Location, RatioRule, RatioZone } from "@/lib/types";
 
 export default async function RatioSettingsPage() {
@@ -17,10 +16,10 @@ export default async function RatioSettingsPage() {
       supabase.from("ratio_rule").select("*"),
     ]);
 
-  const locs = (locations ?? []) as Location[];
   const allRules = (rules ?? []) as RatioRule[];
   const tenantRule = allRules.find((r) => r.tenant_id === tenant.id) ?? null;
-  const nvSeed = allRules.find((r) => r.tenant_id === null && r.state === "NV") ?? null;
+  const nvSeed =
+    allRules.find((r) => r.tenant_id === null && r.state === "NV") ?? null;
 
   return (
     <div className="max-w-[840px] space-y-10">
@@ -34,48 +33,9 @@ export default async function RatioSettingsPage() {
 
       <RatioRuleForm tenantRule={tenantRule} nvSeed={nvSeed} />
 
-      <EntityManager
-        entity="ratio_zone"
-        title="Ratio Zone"
-        rows={(zones ?? []) as RatioZone[]}
-        emptyMessage="A ratio zone is an independent compliance boundary. Most pharmacies have exactly one per location. Add a second zone only for an isolated room — a sterile or IV room with its own staffing."
-        columns={[
-          { label: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
-          {
-            label: "Location",
-            render: (r) => locs.find((l) => l.id === r.location_id)?.name ?? "—",
-          },
-          {
-            label: "Isolation",
-            render: (r) =>
-              r.ratio_isolated ? (
-                <Badge tone="alert">Isolated</Badge>
-              ) : (
-                <Badge tone="neutral">Main floor</Badge>
-              ),
-          },
-        ]}
-        fields={[
-          { name: "name", label: "Zone name", type: "text", required: true },
-          {
-            name: "location_id",
-            label: "Location",
-            type: "select",
-            required: true,
-            options: locs.map((l) => ({ value: l.id, label: l.name })),
-          },
-          {
-            name: "ratio_isolated",
-            label: "Isolated room (counts independently from the main floor)",
-            type: "checkbox",
-            help: "Two zones can be split by a wall in one building. Staff in an isolated room never count toward the main floor's ratio.",
-          },
-        ]}
-        toFormValues={(r) => ({
-          name: r.name,
-          location_id: r.location_id,
-          ratio_isolated: r.ratio_isolated,
-        })}
+      <ZonesManager
+        zones={(zones ?? []) as RatioZone[]}
+        locations={(locations ?? []) as Location[]}
       />
     </div>
   );

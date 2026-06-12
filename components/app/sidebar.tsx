@@ -18,8 +18,16 @@ interface NavSection {
 
 const MANAGE: AppRole[] = ["owner_admin", "scheduler", "supervisor", "read_only"];
 
-function sections(hasRatio: boolean): NavSection[] {
+function sections(hasRatio: boolean, isPlatformAdmin: boolean): NavSection[] {
   return [
+    ...(isPlatformAdmin
+      ? [
+          {
+            label: "Platform",
+            items: [{ label: "Admin Console", href: "/app/admin" }],
+          },
+        ]
+      : []),
     {
       label: null,
       items: [
@@ -56,11 +64,13 @@ export default function Sidebar({
   role,
   hasRatio,
   userEmail,
+  isPlatformAdmin = false,
 }: {
   tenantName: string;
   role: AppRole;
   hasRatio: boolean;
   userEmail: string;
+  isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -76,7 +86,7 @@ export default function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
-        {sections(hasRatio).map((section, i) => {
+        {sections(hasRatio, isPlatformAdmin).map((section, i) => {
           const visible = section.items.filter(
             (item) => !item.roles || item.roles.includes(role)
           );
