@@ -28,7 +28,7 @@ export default function Nav() {
         {/* Desktop */}
         <div className="hidden items-center sm:flex">
           <a
-            href="https://app.rxshift.io"
+            href="/app/login"
             className="mr-4 font-body text-sm font-medium text-steel hover:text-navy"
           >
             Log in
@@ -63,7 +63,7 @@ export default function Nav() {
       {open && (
         <div className="border-t border-line bg-white px-6 py-4 sm:hidden">
           <a
-            href="https://app.rxshift.io"
+            href="/app/login"
             className="block py-3 font-body text-sm font-medium text-steel"
           >
             Log in
