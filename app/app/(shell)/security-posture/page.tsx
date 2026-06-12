@@ -55,7 +55,8 @@ const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Audit & retention",
     items: [
-      "Append-only activity log for schedule changes, approvals, imports, role changes, and AI-applied operations.",
+      "Append-only activity log for schedule changes, approvals, imports, role changes, offboarding, and AI-applied operations.",
+      "Offboarding blocks a departed employee's sign-in while preserving their name in historical schedules, logs, and compliance records.",
       "Override log: every published-past warning records who, when, warning type, and the required reason.",
       "Compliance records snapshot at publish and are retained for two years; exportable to CSV and print.",
     ],

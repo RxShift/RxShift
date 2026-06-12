@@ -9,7 +9,7 @@ import Modal from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/page-header";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
-import { createStaff, updateStaff } from "@/lib/actions/staff";
+import { createStaff, offboardStaff, updateStaff } from "@/lib/actions/staff";
 import { updateAppUser } from "@/lib/actions/settings";
 import type { AppRole, AppUser, Location, RatioType, Staff } from "@/lib/types";
 
@@ -48,6 +48,7 @@ export default function StaffManager({
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | "new" | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [confirmOffboard, setConfirmOffboard] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,7 +187,11 @@ export default function StaffManager({
                 </Td>
                 <Td>
                   <button
-                    onClick={() => setEditing(s)}
+                    onClick={() => {
+                      setConfirmOffboard(false);
+                      setError(null);
+                      setEditing(s);
+                    }}
                     className="font-body text-xs font-medium text-navy underline-offset-2 hover:underline"
                   >
                     Edit
@@ -200,7 +205,10 @@ export default function StaffManager({
 
       <Modal
         open={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setConfirmOffboard(false);
+          setEditing(null);
+        }}
         title={editing === "new" ? "Add person" : `Edit ${initial?.full_name}`}
         footer={
           <>
@@ -380,9 +388,62 @@ export default function StaffManager({
               className="h-4 w-4 accent-amber"
             />
             <label htmlFor="active" className="font-body text-sm text-navy">
-              Active (can be scheduled and can sign in)
+              Active — can be scheduled (re-activating also restores sign-in)
             </label>
           </div>
+
+          {initial && initial.active && canEditRoles && (
+            <div className="border-t border-line pt-4">
+              {!confirmOffboard ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmOffboard(true)}
+                  className="font-body text-sm font-medium text-[#C0392B] underline-offset-2 hover:underline"
+                >
+                  Offboard {initial.full_name}…
+                </button>
+              ) : (
+                <div className="rounded-md border border-[#C0392B]/30 bg-[#FEF0EF] p-4">
+                  <p className="font-body text-sm text-navy">
+                    <strong>No longer with the pharmacy?</strong> Offboarding
+                    removes {initial.full_name} from scheduling and the live
+                    board and blocks their sign-in. Every past schedule, log,
+                    and compliance record keeps their name. Reversible by
+                    re-activating them later.
+                  </p>
+                  <div className="mt-3 flex gap-3">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        const result = await offboardStaff(initial.id);
+                        if (result.ok) {
+                          setConfirmOffboard(false);
+                          setEditing(null);
+                          router.refresh();
+                        } else {
+                          setError(result.error);
+                        }
+                        setBusy(false);
+                      }}
+                    >
+                      Offboard
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => setConfirmOffboard(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
         </form>
       </Modal>

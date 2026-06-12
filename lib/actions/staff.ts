@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import {
   ActionError,
   logActivity,
+  requireAdmin,
   requireManager,
   runAction,
   type ActionResult,
@@ -50,7 +52,73 @@ export async function updateStaff(id: string, input: unknown): Promise<ActionRes
       .eq("id", id)
       .eq("tenant_id", ctx.tenantId);
     if (error) throw new ActionError(error.message);
+
+    // Re-activating someone lifts any sign-in ban from a prior offboarding
+    if (data.active) await setSignInBanned(ctx.tenantId, id, false);
+
     await logActivity(ctx, "update", "staff", id, { name: data.full_name });
+    revalidatePath("/app/staff");
+    return undefined;
+  });
+}
+
+/** Ban/unban the auth user linked to a staff record (no-op if none). */
+async function setSignInBanned(
+  tenantId: string,
+  staffId: string,
+  banned: boolean
+): Promise<boolean> {
+  const service = createServiceClient();
+  const { data: account } = await service
+    .from("app_user")
+    .select("supabase_user_id")
+    .eq("staff_id", staffId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!account) return false;
+  const { error } = await service.auth.admin.updateUserById(
+    account.supabase_user_id,
+    { ban_duration: banned ? "876000h" : "none" } // ~100 years / lift
+  );
+  if (error) throw new ActionError(`Sign-in ${banned ? "block" : "restore"} failed: ${error.message}`);
+  return true;
+}
+
+/**
+ * Offboarding: the person leaves the pharmacy. Deactivates them (no more
+ * scheduling, live board, or roster auto-attach) AND blocks their sign-in,
+ * while every past schedule, log, and compliance record keeps their name.
+ * Reversible: re-activating via the staff editor lifts the sign-in block.
+ */
+export async function offboardStaff(id: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireAdmin();
+    const supabase = await createClient();
+
+    const { data: person, error: findErr } = await supabase
+      .from("staff")
+      .select("id, full_name")
+      .eq("id", id)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (findErr) throw new ActionError(findErr.message);
+    if (!person) throw new ActionError("Staff member not found.");
+    if (person.id === ctx.appUser.staff_id)
+      throw new ActionError("You can't offboard yourself.");
+
+    const { error } = await supabase
+      .from("staff")
+      .update({ active: false })
+      .eq("id", id)
+      .eq("tenant_id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+
+    const signInBlocked = await setSignInBanned(ctx.tenantId, id, true);
+
+    await logActivity(ctx, "offboard", "staff", id, {
+      name: person.full_name,
+      sign_in_blocked: signInBlocked,
+    });
     revalidatePath("/app/staff");
     return undefined;
   });
