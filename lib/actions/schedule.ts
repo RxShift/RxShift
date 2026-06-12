@@ -203,6 +203,7 @@ export async function copyForward(
           date: newDate,
           schedule_period_id: periodId,
           status: "draft",
+          break_minutes: shift.break_minutes ?? 0,
           created_by: ctx.userId,
         })
         .select("id")

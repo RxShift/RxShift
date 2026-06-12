@@ -13,9 +13,12 @@ import { evaluateZone } from "@/lib/engine/ratio";
 import { evaluateConstraints } from "@/lib/engine/constraints";
 import {
   loadPeriodBundle,
+  toEngineRule,
   toEngineSegments,
   validateBundle,
 } from "@/lib/schedule-data";
+import { eachDate } from "@/lib/dates";
+import { timeToMinutes } from "@/lib/engine/ratio";
 import type { ConstraintRule } from "@/lib/types";
 import {
   ActionError,
@@ -99,6 +102,17 @@ const operationSchema = z.discriminatedUnion("op", [
     shift_id: z.string().uuid(),
   }),
   z.object({
+    op: z.literal("create_shifts"),
+    staff_id: z.string().uuid(),
+    days_of_week: z
+      .array(z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]))
+      .min(1),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/),
+    date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+    date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+  }),
+  z.object({
     op: z.literal("add_constraint"),
     staff_id: z.string().uuid(),
     rule_type: z.enum([
@@ -114,6 +128,54 @@ const operationSchema = z.discriminatedUnion("op", [
 ]);
 
 export type AiOperation = z.infer<typeof operationSchema>;
+
+const DAY_INDEX: Record<string, number> = {
+  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+};
+
+/**
+ * Expand a create_shifts operation into concrete dates — clamped to the
+ * period, skipping days where the person already has a shift and days
+ * covered by approved time off. Used by BOTH the simulation and the
+ * executor so the preview always matches what gets applied.
+ */
+function expandCreateDates(
+  op: Extract<AiOperation, { op: "create_shifts" }>,
+  bundle: NonNullable<Awaited<ReturnType<typeof loadPeriodBundle>>>
+): string[] {
+  const from =
+    op.date_from && op.date_from > bundle.period.start_date
+      ? op.date_from
+      : bundle.period.start_date;
+  const to =
+    op.date_to && op.date_to < bundle.period.end_date
+      ? op.date_to
+      : bundle.period.end_date;
+  if (from > to) return [];
+
+  const wanted = new Set(op.days_of_week.map((d) => DAY_INDEX[d]));
+  const existing = new Set(
+    bundle.shifts.filter((s) => s.staff_id === op.staff_id).map((s) => s.date)
+  );
+  const pto = bundle.approvedTimeOff.filter((t) => t.staff_id === op.staff_id);
+
+  return eachDate(from, to).filter((date) => {
+    const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (!wanted.has(dow)) return false;
+    if (existing.has(date)) return false;
+    if (pto.some((t) => t.start_date <= date && date <= t.end_date)) return false;
+    return true;
+  });
+}
+
+/** Default zone for AI-created shifts: the period location's main floor. */
+function defaultZoneId(
+  bundle: NonNullable<Awaited<ReturnType<typeof loadPeriodBundle>>>
+): string | null {
+  return (
+    bundle.zones.find((z) => !z.ratio_isolated)?.id ?? bundle.zones[0]?.id ?? null
+  );
+}
 
 export interface AiCommandResult {
   mode: "answer" | "proposal";
@@ -168,12 +230,18 @@ export async function aiScheduleCommand(
         "Allowed operations:\n" +
         '- {"op":"reassign_shift","shift_id":"<uuid>","to_staff_id":"<uuid>"}\n' +
         '- {"op":"delete_shift","shift_id":"<uuid>"}\n' +
+        '- {"op":"create_shifts","staff_id":"<uuid>","days_of_week":["mon","tue"],"start_time":"08:00","end_time":"17:00","date_from":"yyyy-mm-dd or null","date_to":"yyyy-mm-dd or null"}\n' +
         '- {"op":"add_constraint","staff_id":"<uuid>","rule_type":"always_off|recurring_unavailable|unavailable_window|hour_cap","params":{...},"effective_start":"yyyy-mm-dd","effective_end":"yyyy-mm-dd or null"}\n' +
         'Constraint params: always_off {"days":["fri"]}; recurring_unavailable {"recurrence":{"days":["mon"],"interval_weeks":2}}; ' +
         'unavailable_window {"days":["mon"],"time_range":{"start":"14:00","end":"18:00"}}; hour_cap {"hours":40,"period":"week"}.\n' +
+        "create_shifts builds recurring shifts: e.g. \"Marcus works 8 to 5 Monday through Friday for the next " +
+        'three weeks" → {"op":"create_shifts","staff_id":"<marcus uuid>","days_of_week":["mon","tue","wed","thu","fri"],' +
+        '"start_time":"08:00","end_time":"17:00","date_from":<start>,"date_to":<start+20 days>}. Dates are clamped ' +
+        "to this schedule period; days where the person already works or has approved time off are skipped " +
+        "automatically — mention in the description if part of the request falls outside this period.\n" +
         "Use ONLY ids from the data. To give someone days off for a date range, use add_constraint with " +
-        "effective dates, AND reassign or delete their conflicting shifts if asked. Never invent shifts that " +
-        "don't exist. If the request is ambiguous or impossible, use mode answer to say what you need.",
+        "effective dates, AND reassign or delete their conflicting shifts if asked. " +
+        "If the request is ambiguous or impossible, use mode answer to say what you need.",
       `Schedule period: ${bundle.period.start_date} to ${bundle.period.end_date}\n\nSTAFF (id | name | type):\n${staffList}\n\nSHIFTS (id | date | staff | times):\n${shiftList}\n\nCURRENT FLAGS:\n${flagSummary || "none"}\n\nUSER REQUEST: ${command}`,
       900
     );
@@ -202,9 +270,36 @@ export async function aiScheduleCommand(
     let simulated = [...segments];
     const simulatedRules: ConstraintRule[] = [...bundle.constraints];
 
+    let createdCount = 0;
     for (const op of ops) {
       if (op.op === "delete_shift") {
         simulated = simulated.filter((s) => s.shift_id !== op.shift_id);
+      } else if (op.op === "create_shifts") {
+        const person = staffById.get(op.staff_id);
+        if (!person) throw new ActionError("Proposed shifts target unknown staff.");
+        const zoneId = defaultZoneId(bundle);
+        const spanMin =
+          timeToMinutes(op.end_time) - timeToMinutes(op.start_time);
+        const breakMin =
+          spanMin >= 360 ? (ctx.tenant.default_break_minutes ?? 30) : 0;
+        for (const date of expandCreateDates(op, bundle)) {
+          createdCount += 1;
+          simulated.push({
+            shift_id: `proposed-${op.staff_id}-${date}`,
+            zone_id: zoneId,
+            date,
+            start_time: op.start_time,
+            end_time: op.end_time,
+            break_minutes: breakMin,
+            staff: {
+              id: person.id,
+              full_name: person.full_name,
+              ratio_type: person.ratio_type,
+            },
+            work_type: null,
+            counts_override: null,
+          });
+        }
       } else if (op.op === "reassign_shift") {
         const to = staffById.get(op.to_staff_id);
         if (!to) throw new ActionError("Proposed reassignment targets unknown staff.");
@@ -238,7 +333,7 @@ export async function aiScheduleCommand(
       for (const zone of bundle.zones) {
         const evals = evaluateZone(
           segs.filter((s) => s.zone_id === zone.id),
-          { max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist },
+          toEngineRule(bundle.ratioRule),
           ctx.tenant.ratio_slot_minutes
         );
         for (const [, slots] of evals)
@@ -253,6 +348,7 @@ export async function aiScheduleCommand(
     const constraintFlagsBefore = validation.constraintFlags.length;
 
     const validationSummary = [
+      createdCount > 0 ? `✓ Creates ${createdCount} shift(s).` : "",
       deficientAfter > deficientBefore
         ? `⚠ Adds ${deficientAfter - deficientBefore} deficient ratio slot(s).`
         : deficientAfter < deficientBefore
@@ -261,7 +357,9 @@ export async function aiScheduleCommand(
       constraintFlagsAfter > constraintFlagsBefore
         ? `⚠ Raises ${constraintFlagsAfter - constraintFlagsBefore} new constraint flag(s).`
         : "✓ No new constraint flags.",
-    ].join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return {
       mode: "proposal" as const,
@@ -282,8 +380,47 @@ export async function applyAiOperations(
 
     const ops = operations.map((o) => operationSchema.parse(o));
 
+    // create_shifts needs the period context to expand dates exactly the
+    // way the simulation previewed them
+    const needsBundle = ops.some((o) => o.op === "create_shifts");
+    const bundle = needsBundle ? await loadPeriodBundle(periodId) : null;
+    if (needsBundle && !bundle) throw new ActionError("Period not found.");
+
     for (const op of ops) {
-      if (op.op === "delete_shift") {
+      if (op.op === "create_shifts" && bundle) {
+        const zoneId = defaultZoneId(bundle);
+        const spanMin =
+          timeToMinutes(op.end_time) - timeToMinutes(op.start_time);
+        const breakMin =
+          spanMin >= 360 ? (ctx.tenant.default_break_minutes ?? 30) : 0;
+        for (const date of expandCreateDates(op, bundle)) {
+          const { data: row, error } = await supabase
+            .from("shift")
+            .insert({
+              tenant_id: ctx.tenantId,
+              location_id: bundle.period.location_id,
+              ratio_zone_id: zoneId,
+              staff_id: op.staff_id,
+              date,
+              schedule_period_id: periodId,
+              status: bundle.period.status,
+              break_minutes: breakMin,
+              created_by: ctx.userId,
+            })
+            .select("id")
+            .single();
+          if (error) throw new ActionError(error.message);
+          const { error: segErr } = await supabase.from("shift_segment").insert({
+            shift_id: row.id,
+            tenant_id: ctx.tenantId,
+            start_time: op.start_time,
+            end_time: op.end_time,
+            work_type_id: null,
+            counts_toward_ratio: null,
+          });
+          if (segErr) throw new ActionError(segErr.message);
+        }
+      } else if (op.op === "delete_shift") {
         const { error } = await supabase
           .from("shift")
           .delete()
