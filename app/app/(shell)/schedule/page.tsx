@@ -46,15 +46,28 @@ export default async function SchedulePage({
     );
   }
 
-  const locationId = params.location ?? locs[0].id;
-  const { data: periods } = await supabase
+  // Default location: prefer one with a PUBLISHED schedule — landing on an
+  // empty draft (e.g. a location that hasn't opened yet) reads as broken.
+  const { data: allPeriods } = await supabase
     .from("schedule_period")
     .select("*")
-    .eq("location_id", locationId)
     .order("start_date", { ascending: false });
-  const periodList = (periods ?? []) as SchedulePeriod[];
+  const everyPeriod = (allPeriods ?? []) as SchedulePeriod[];
 
-  const periodId = params.period ?? periodList[0]?.id;
+  const defaultLocationId =
+    locs.find((l) =>
+      everyPeriod.some(
+        (p) => p.location_id === l.id && p.status === "published"
+      )
+    )?.id ?? locs[0].id;
+  const locationId = params.location ?? defaultLocationId;
+
+  const periodList = everyPeriod.filter((p) => p.location_id === locationId);
+
+  // Default period: published first (newest), then newest of any status
+  const periodId =
+    params.period ??
+    (periodList.find((p) => p.status === "published") ?? periodList[0])?.id;
 
   if (!periodId) {
     return (
