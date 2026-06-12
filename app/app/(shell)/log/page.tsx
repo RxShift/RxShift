@@ -9,7 +9,7 @@ import {
   validateBundle,
 } from "@/lib/schedule-data";
 import { deficiencyStreaks } from "@/lib/engine/compliance";
-import { fmtRange } from "@/lib/dates";
+import { fmtRange, todayStr } from "@/lib/dates";
 import type { Location, SchedulePeriod } from "@/lib/types";
 
 export default async function ComplianceLogPage({
@@ -50,7 +50,14 @@ export default async function ComplianceLogPage({
     );
   }
 
-  const periodId = params.period ?? published[0].id;
+  // Default to the CURRENT week's record, not the newest period — with
+  // future weeks already published, "newest" would show an empty future log
+  const today = todayStr();
+  const defaultPeriod =
+    published.find((p) => p.start_date <= today && p.end_date >= today) ??
+    published.find((p) => p.start_date <= today) ??
+    published[0];
+  const periodId = params.period ?? defaultPeriod.id;
   const bundle = await loadPeriodBundle(periodId);
   const { data: locations } = await supabase.from("location").select("*");
   const locs = (locations ?? []) as Location[];

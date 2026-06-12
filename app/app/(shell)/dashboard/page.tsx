@@ -55,18 +55,24 @@ export default async function DashboardPage() {
     allPeriods[0] ??
     null;
 
+  // Multi-location tenants run one period PER LOCATION over the same
+  // dates — the headline numbers must aggregate all of them, or a
+  // deficiency at one location hides behind another's compliant period.
+  const currentPublished = covering.filter((p) => p.status === "published");
+  const scope =
+    currentPublished.length > 0 ? currentPublished : current ? [current] : [];
   let insights: Insight[] = [];
   let deficientSlots = 0;
   let openFlags = 0;
-  if (current) {
-    const bundle = await loadPeriodBundle(current.id);
-    if (bundle) {
-      const validation = validateBundle(bundle, tenant);
-      insights = computeInsights(bundle, validation);
-      deficientSlots = validation.ratioFlags.length;
-      openFlags = validation.constraintFlags.length;
-    }
+  for (const period of scope) {
+    const bundle = await loadPeriodBundle(period.id);
+    if (!bundle) continue;
+    const validation = validateBundle(bundle, tenant);
+    deficientSlots += validation.ratioFlags.length;
+    openFlags += validation.constraintFlags.length;
+    insights.push(...computeInsights(bundle, validation));
   }
+  insights = insights.slice(0, 5);
 
   if (locs.length === 0) {
     return (
