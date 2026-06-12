@@ -1,0 +1,418 @@
+"use client";
+
+// The schedule grid builder. Rows = staff, columns = the period's days.
+// Click a cell to add or edit a shift (with split segments). Flags from
+// the deterministic engines render as red/amber highlights plus a flag
+// panel; publishing with open flags requires a logged reason.
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Badge from "@/components/ui/badge";
+import Button from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
+import { Textarea } from "@/components/ui/form";
+import { eachDate, fmtDay, fmtRange } from "@/lib/dates";
+import { copyForward, publishPeriod } from "@/lib/actions/schedule";
+import type { ValidationOut } from "@/lib/schedule-data";
+import type {
+  Location,
+  RatioZone,
+  SchedulePeriod,
+  Shift,
+  ShiftSegment,
+  Staff,
+  Tenant,
+  TimeOffRequest,
+  WorkType,
+} from "@/lib/types";
+import ShiftModal from "./shift-modal";
+
+interface ShiftWithSegments extends Shift {
+  segments: ShiftSegment[];
+}
+
+export interface BuilderBundle {
+  period: SchedulePeriod;
+  shifts: ShiftWithSegments[];
+  staff: Staff[];
+  workTypes: WorkType[];
+  zones: RatioZone[];
+  approvedTimeOff: TimeOffRequest[];
+}
+
+export default function ScheduleBuilder({
+  tenant,
+  locations,
+  locationId,
+  periods,
+  bundle,
+  validation,
+}: {
+  tenant: Tenant;
+  locations: Location[];
+  locationId: string;
+  periods: SchedulePeriod[];
+  bundle: BuilderBundle;
+  validation: ValidationOut;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<{
+    staff: Staff;
+    date: string;
+    shift: ShiftWithSegments | null;
+  } | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [showFlags, setShowFlags] = useState(true);
+
+  const dates = useMemo(
+    () => eachDate(bundle.period.start_date, bundle.period.end_date),
+    [bundle.period.start_date, bundle.period.end_date]
+  );
+
+  const shiftsByCell = useMemo(() => {
+    const map = new Map<string, ShiftWithSegments[]>();
+    for (const s of bundle.shifts) {
+      const key = `${s.staff_id}|${s.date}`;
+      const list = map.get(key) ?? [];
+      list.push(s);
+      map.set(key, list);
+    }
+    return map;
+  }, [bundle.shifts]);
+
+  const timeOffByCell = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of bundle.approvedTimeOff) {
+      for (const d of eachDate(t.start_date, t.end_date)) {
+        set.add(`${t.staff_id}|${d}`);
+      }
+    }
+    return set;
+  }, [bundle.approvedTimeOff]);
+
+  // Dates with a deficient slot in the zone a staff member is shifted into
+  const deficientShiftIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const s of bundle.shifts) {
+      if (!s.ratio_zone_id) continue;
+      const dates = validation.deficientCells[s.ratio_zone_id];
+      if (dates?.includes(s.date)) out.add(s.id);
+    }
+    return out;
+  }, [bundle.shifts, validation.deficientCells]);
+
+  const constraintShiftIds = useMemo(
+    () =>
+      new Set(
+        validation.constraintFlags
+          .map((f) => f.shift_id)
+          .filter((x): x is string => x !== null)
+      ),
+    [validation.constraintFlags]
+  );
+
+  const flagCount =
+    validation.ratioFlags.length + validation.constraintFlags.length;
+  const isPublished = bundle.period.status === "published";
+
+  async function handlePublish() {
+    setBusy(true);
+    setPublishError(null);
+    const result = await publishPeriod(
+      bundle.period.id,
+      flagCount > 0 ? overrideReason : null
+    );
+    if (result.ok) {
+      setPublishOpen(false);
+      router.refresh();
+    } else {
+      setPublishError(result.error);
+    }
+    setBusy(false);
+  }
+
+  async function handleCopyForward() {
+    setBusy(true);
+    const result = await copyForward(bundle.period.id);
+    if (result.ok && result.data) {
+      router.refresh();
+    } else if (!result.ok) {
+      alert(result.error);
+    }
+    setBusy(false);
+  }
+
+  function exportCsv() {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const header = ["Staff", ...dates].join(",");
+    const lines = bundle.staff.map((person) => {
+      const cells = dates.map((d) => {
+        const shifts = shiftsByCell.get(`${person.id}|${d}`) ?? [];
+        if (timeOffByCell.has(`${person.id}|${d}`)) return "PTO";
+        return shifts
+          .flatMap((s) =>
+            s.segments.map(
+              (seg) =>
+                `${String(seg.start_time).slice(0, 5)}-${String(seg.end_time).slice(0, 5)}`
+            )
+          )
+          .join(" / ");
+      });
+      return [esc(person.full_name), ...cells.map(esc)].join(",");
+    });
+    const blob = new Blob([[header, ...lines].join("\n")], {
+      type: "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `schedule-${bundle.period.start_date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={locationId}
+          onChange={(e) =>
+            router.push(`/app/schedule?location=${e.target.value}`)
+          }
+          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+        >
+          {locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={bundle.period.id}
+          onChange={(e) =>
+            router.push(
+              `/app/schedule?location=${locationId}&period=${e.target.value}`
+            )
+          }
+          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+        >
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {fmtRange(p.start_date, p.end_date)}
+              {p.status === "published" ? " ✓" : " (draft)"}
+            </option>
+          ))}
+        </select>
+
+        <Badge tone={isPublished ? "compliant" : "neutral"}>
+          {isPublished ? "Published" : "Draft"}
+        </Badge>
+
+        <div className="ml-auto flex items-center gap-3">
+          {bundle.shifts.length === 0 && (
+            <Button variant="secondary" onClick={handleCopyForward} disabled={busy}>
+              Copy previous period
+            </Button>
+          )}
+          <Button variant="secondary" onClick={exportCsv}>
+            Export CSV
+          </Button>
+          {!isPublished && (
+            <Button onClick={() => setPublishOpen(true)} disabled={busy}>
+              Publish
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Flag summary */}
+      {flagCount > 0 && (
+        <div className="rounded-lg border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] p-4">
+          <button
+            onClick={() => setShowFlags(!showFlags)}
+            className="font-brand text-sm font-bold text-[#C0392B]"
+          >
+            {flagCount} open flag{flagCount === 1 ? "" : "s"}{" "}
+            {showFlags ? "▾" : "▸"}
+          </button>
+          {showFlags && (
+            <ul className="mt-2 space-y-1.5 font-body text-[13px] text-navy">
+              {validation.ratioFlags.slice(0, 20).map((f, i) => (
+                <li key={`r${i}`}>
+                  <span className="font-medium text-[#C0392B]">Ratio</span> ·{" "}
+                  {f.date} {f.slot_label} ({f.zone_name}): {f.reason}
+                </li>
+              ))}
+              {validation.constraintFlags.slice(0, 20).map((f, i) => (
+                <li key={`c${i}`}>
+                  <span className="font-medium text-[#D4860A]">
+                    {f.rule_type.replace(/_/g, " ")}
+                  </span>{" "}
+                  · {f.message}
+                </li>
+              ))}
+              {flagCount > 40 && <li>…and more.</li>}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* The grid */}
+      <div className="overflow-x-auto rounded-[10px] border border-line bg-white shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
+                Staff
+              </th>
+              {dates.map((d) => {
+                const day = fmtDay(d);
+                const isWeekend = day.dow === "Sat" || day.dow === "Sun";
+                return (
+                  <th
+                    key={d}
+                    className={`min-w-[92px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
+                      isWeekend ? "bg-cloud/60 text-steel/70" : "bg-cloud text-steel"
+                    }`}
+                  >
+                    {day.dow}
+                    <br />
+                    <span className="font-body text-[10px] font-medium normal-case tracking-normal">
+                      {day.label}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {bundle.staff.map((person) => (
+              <tr key={person.id}>
+                <td className="sticky left-0 z-10 border-r border-t border-line bg-white px-3 py-1.5">
+                  <span className="font-body text-[13px] font-medium text-navy">
+                    {person.full_name}
+                  </span>
+                  <span className="ml-1.5 font-body text-[10px] text-steel">
+                    {person.ratio_type === "pharmacist"
+                      ? "RPh"
+                      : person.ratio_type === "technician"
+                        ? "Tech"
+                        : ""}
+                  </span>
+                </td>
+                {dates.map((d) => {
+                  const key = `${person.id}|${d}`;
+                  const cellShifts = shiftsByCell.get(key) ?? [];
+                  const hasPto = timeOffByCell.has(key);
+                  const shift = cellShifts[0] ?? null;
+                  const deficient = shift ? deficientShiftIds.has(shift.id) : false;
+                  const constrained = shift ? constraintShiftIds.has(shift.id) : false;
+
+                  return (
+                    <td
+                      key={d}
+                      onClick={() => setEditing({ staff: person, date: d, shift })}
+                      className={`cursor-pointer border-t border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
+                        hasPto ? "bg-cloud" : ""
+                      }`}
+                    >
+                      {hasPto && (
+                        <span className="block font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel">
+                          PTO
+                        </span>
+                      )}
+                      {shift && (
+                        <div
+                          className={`rounded-[4px] px-1.5 py-1 font-body text-[11px] font-medium ${
+                            deficient
+                              ? "border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] text-[#C0392B]"
+                              : constrained
+                                ? "border-l-[3px] border-l-[#D4860A] bg-[#FEF7ED] text-[#8a5a06]"
+                                : "bg-[#EDF7F2] text-[#2E7D5E]"
+                          }`}
+                        >
+                          {shift.segments.map((seg) => (
+                            <div key={seg.id}>
+                              {String(seg.start_time).slice(0, 5)}–
+                              {String(seg.end_time).slice(0, 5)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="font-body text-xs text-steel">
+        Click any cell to add or edit a shift. Green = scheduled, red = in a
+        deficient ratio slot, amber = constraint flag, grey = approved time
+        off. Flags are advisory — publishing past them requires a reason,
+        which is logged.
+      </p>
+
+      {/* Shift editor */}
+      {editing && (
+        <ShiftModal
+          open={true}
+          onClose={() => setEditing(null)}
+          staff={editing.staff}
+          date={editing.date}
+          shift={editing.shift}
+          period={bundle.period}
+          locationId={locationId}
+          zones={bundle.zones}
+          workTypes={bundle.workTypes}
+          hasRatio={tenant.has_ratio}
+        />
+      )}
+
+      {/* Publish confirm */}
+      <Modal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        title="Publish this schedule?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPublishOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePublish} disabled={busy}>
+              {busy ? "Publishing…" : "Publish"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Publishing makes the schedule visible to staff and generates the
+          hourly compliance record.
+        </p>
+        {flagCount > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 font-medium text-[#C0392B]">
+              {flagCount} flag{flagCount === 1 ? "" : "s"} will be overridden.
+              A reason is required and goes in the override log.
+            </p>
+            <Textarea
+              rows={2}
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              placeholder="Why is it acceptable to publish with these flags?"
+            />
+          </div>
+        )}
+        {publishError && (
+          <p className="mt-3 font-body text-sm text-[#C0392B]">{publishError}</p>
+        )}
+      </Modal>
+    </div>
+  );
+}
