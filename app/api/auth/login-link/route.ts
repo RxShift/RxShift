@@ -29,37 +29,59 @@ export async function POST(request: NextRequest) {
   }
 
   const service = createServiceClient();
+
+  // 1) Registered alias → deliver the PRIMARY account's link to this inbox
+  // 2) Existing auth user's own email → branded link to themselves
+  //    (this keeps EVERY known-user login on our branded sender + the
+  //    scanner-proof interstitial; Supabase's template only ever touches
+  //    brand-new signups via the client fallback)
+  let primaryEmail: string | null = null;
+
   const { data: alias } = await service
     .from("login_alias")
     .select("app_user_id")
     .eq("alias_email", email)
     .maybeSingle();
 
-  if (!alias) return NextResponse.json({ handled: false });
+  if (alias) {
+    const { data: appUser } = await service
+      .from("app_user")
+      .select("supabase_user_id")
+      .eq("id", alias.app_user_id)
+      .maybeSingle();
+    if (appUser) {
+      const { data: userData } = await service.auth.admin.getUserById(
+        appUser.supabase_user_id
+      );
+      primaryEmail = userData?.user?.email ?? null;
+    }
+  } else {
+    // Exact-match lookup against existing auth users (paginated scan is
+    // fine at this scale; revisit with a lookup table at real volume)
+    let page = 1;
+    for (;;) {
+      const { data, error } = await service.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (error || !data) break;
+      const hit = data.users.find((u) => u.email?.toLowerCase() === email);
+      if (hit) {
+        primaryEmail = hit.email ?? null;
+        break;
+      }
+      if (data.users.length < 1000) break;
+      page++;
+    }
+  }
+
+  if (!primaryEmail) return NextResponse.json({ handled: false });
 
   const last = lastSent.get(email);
   if (last && Date.now() - last < COOLDOWN_MS) {
     return NextResponse.json(
       { error: "A sign-in link was just sent. Check your inbox, or try again in a minute." },
       { status: 429 }
-    );
-  }
-
-  const { data: appUser } = await service
-    .from("app_user")
-    .select("supabase_user_id")
-    .eq("id", alias.app_user_id)
-    .maybeSingle();
-  if (!appUser) return NextResponse.json({ handled: false });
-
-  const { data: userData, error: userErr } =
-    await service.auth.admin.getUserById(appUser.supabase_user_id);
-  const primaryEmail = userData?.user?.email;
-  if (userErr || !primaryEmail) {
-    console.error("[login-link] primary lookup failed:", userErr?.message);
-    return NextResponse.json(
-      { error: "Couldn't send a sign-in link. Contact your administrator." },
-      { status: 500 }
     );
   }
 

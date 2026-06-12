@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -66,14 +67,6 @@ async function captureLead(input: {
   }
 }
 
-function escapeHtml(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { name, pharmacy, state, email, message, source } =
@@ -101,16 +94,20 @@ export async function POST(request: NextRequest) {
       from: `RxShift <${process.env.RESEND_FROM_EMAIL || "hello@rxshift.io"}>`,
       to: process.env.CONTACT_TO_EMAIL || "info@rxshift.io",
       replyTo: email,
-      subject: `Demo Request: ${pharmacy} — ${state}`,
-      html: `
-        <h2>New Demo Request</h2>
-        <p><strong>Name:</strong> ${escapeHtml(name)}</p>
-        <p><strong>Pharmacy:</strong> ${escapeHtml(pharmacy)}</p>
-        <p><strong>State:</strong> ${escapeHtml(state)}</p>
-        <p><strong>Email:</strong> ${escapeHtml(email)}</p>
-        ${message ? `<p><strong>Message:</strong> ${escapeHtml(message)}</p>` : ""}
-        <p><strong>Source:</strong> ${escapeHtml(source || "unknown")}</p>
-      `,
+      subject: `New Demo Request — ${pharmacy} (${state})`,
+      html: brandedEmailHtml({
+        bodyHtml:
+          emailFields([
+            ["Name", String(name)],
+            ["Pharmacy", String(pharmacy)],
+            ["State", String(state)],
+            ["Email", String(email)],
+            ["Message", message ? String(message) : "(none)"],
+            ["Source", String(source || "unknown")],
+            ["Submitted", new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"],
+          ]) +
+          emailLines(["Reply directly to this email to respond — it goes to the prospect."]),
+      }),
     });
 
     if (error) {

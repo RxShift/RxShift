@@ -20,11 +20,61 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Branded sign-in link email for login ALIASES. This is an AUTH email —
- * user-initiated, delivered to an admin-registered address that already
- * has sign-in power over the account — so it deliberately bypasses the
- * tenant notification gate, exactly like Supabase's own magic-link emails.
- * Throws on failure so the login endpoint can surface an error.
+ * THE branded email layout — every email RxShift sends uses this shell:
+ * wordmark header, body content, optional amber CTA button, steel footer.
+ * `bodyHtml` is trusted HTML (escape user values BEFORE building it);
+ * the lines/cta helpers below escape for you.
+ */
+export function brandedEmailHtml(opts: {
+  bodyHtml: string;
+  cta?: { label: string; url: string };
+  afterCtaHtml?: string;
+}): string {
+  const button = opts.cta
+    ? `<p style="margin: 20px 0;">
+        <a href="${escapeHtml(opts.cta.url)}" style="display: inline-block; background: #F07C30; color: #ffffff; font-family: -apple-system, 'Helvetica Neue', sans-serif; font-size: 14px; font-weight: bold; padding: 12px 26px; border-radius: 6px; text-decoration: none;">${escapeHtml(opts.cta.label)}</a>
+      </p>`
+    : "";
+  return `
+    <div style="font-family: -apple-system, 'Helvetica Neue', sans-serif; max-width: 520px; margin: 0 auto; background: #ffffff;">
+      <div style="padding: 18px 0; border-bottom: 2px solid #F07C30;">
+        <span style="color: #1C2F5E; font-size: 19px; font-weight: 700; letter-spacing: -0.3px;">Rx<span style="color:#F07C30; font-weight: 700;"> · </span><span style="font-weight: 500;">Shift</span></span>
+      </div>
+      <div style="padding: 22px 0; color: #4A5B7A; font-size: 15px; line-height: 1.65;">
+        ${opts.bodyHtml}
+        ${button}
+        ${opts.afterCtaHtml ?? ""}
+      </div>
+      <p style="color: #9BAABB; font-size: 12px; border-top: 1px solid #DDE5EF; padding-top: 14px; margin: 0;">
+        Sent by RxShift — compliance-ready pharmacy scheduling · rxshift.io
+      </p>
+    </div>
+  `;
+}
+
+/** Escaped paragraph rows from plain-text lines. */
+export function emailLines(lines: string[]): string {
+  return lines
+    .map((l) => `<p style="margin: 0 0 12px;">${escapeHtml(l)}</p>`)
+    .join("");
+}
+
+/** Escaped label/value rows (for lead notifications and the like). */
+export function emailFields(fields: [string, string][]): string {
+  return fields
+    .map(
+      ([label, value]) =>
+        `<p style="margin: 0 0 8px;"><strong style="color: #1C2F5E;">${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`
+    )
+    .join("");
+}
+
+/**
+ * Branded sign-in link email. This is an AUTH email — user-initiated,
+ * delivered to the address the user typed (their own, or a registered
+ * alias) — so it deliberately bypasses the tenant notification gate,
+ * exactly like Supabase's own magic-link emails. Throws on failure so
+ * the login endpoint can surface an error.
  */
 export async function sendLoginLinkEmail(
   to: string,
@@ -34,23 +84,15 @@ export async function sendLoginLinkEmail(
     from: FROM,
     to,
     subject: "Your RxShift sign-in link",
-    html: `
-      <div style="font-family: -apple-system, 'Helvetica Neue', sans-serif; max-width: 520px; margin: 0 auto;">
-        <div style="padding: 16px 0; border-bottom: 2px solid #F07C30;">
-          <strong style="color: #1C2F5E; font-size: 18px;">Rx<span style="color:#F07C30">·</span>Shift</strong>
-        </div>
-        <div style="padding: 20px 0; color: #4A5B7A; font-size: 15px; line-height: 1.65;">
-          <p style="margin: 0 0 16px;">Click the button below to sign in to RxShift. The link expires in an hour and can be used once.</p>
-          <p style="margin: 0 0 16px;">
-            <a href="${escapeHtml(confirmUrl)}" style="display: inline-block; background: #F07C30; color: #ffffff; font-weight: bold; padding: 12px 24px; border-radius: 6px; text-decoration: none;">Sign in to RxShift</a>
-          </p>
-          <p style="margin: 0;">If you didn't request this, you can safely ignore this email.</p>
-        </div>
-        <p style="color: #9BAABB; font-size: 12px; border-top: 1px solid #DDE5EF; padding-top: 12px;">
-          Sent by RxShift — compliance-ready pharmacy scheduling.
-        </p>
-      </div>
-    `,
+    html: brandedEmailHtml({
+      bodyHtml: emailLines([
+        "Click the button below to sign in to RxShift. The link expires in an hour and can be used once.",
+      ]),
+      cta: { label: "Sign in to RxShift", url: confirmUrl },
+      afterCtaHtml: emailLines([
+        "If you didn't request this, you can safely ignore this email.",
+      ]),
+    }),
   });
   if (error) throw new Error(`Login link email failed: ${error.message}`);
 }
@@ -89,19 +131,10 @@ export async function sendNotificationEmail(
       from: FROM,
       to: delivery.to,
       subject: finalSubject,
-      html: `
-        <div style="font-family: -apple-system, 'Helvetica Neue', sans-serif; max-width: 520px; margin: 0 auto;">
-          <div style="padding: 16px 0; border-bottom: 2px solid #F07C30;">
-            <strong style="color: #1C2F5E; font-size: 18px;">Rx<span style="color:#F07C30">·</span>Shift</strong>
-          </div>
-          <div style="padding: 20px 0; color: #4A5B7A; font-size: 15px; line-height: 1.65;">
-            ${finalLines.map((l) => `<p style="margin: 0 0 12px;">${escapeHtml(l)}</p>`).join("")}
-          </div>
-          <p style="color: #9BAABB; font-size: 12px; border-top: 1px solid #DDE5EF; padding-top: 12px;">
-            Sent by RxShift — compliance-ready pharmacy scheduling.
-          </p>
-        </div>
-      `,
+      html: brandedEmailHtml({
+        bodyHtml: emailLines(finalLines),
+        cta: { label: "Open RxShift", url: "https://app.rxshift.io" },
+      }),
     });
     if (error) console.error("Notification email failed:", error);
   } catch (e) {
