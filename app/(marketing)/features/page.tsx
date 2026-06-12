@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
@@ -49,12 +50,12 @@ export default function FeaturesPage() {
             ))}
           </div>
 
-          <a
+          <Link
             href="/#demo"
             className="mt-12 inline-block rounded-md bg-amber px-6 py-3 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
           >
             See it working — Schedule a Demo
-          </a>
+          </Link>
 
           <p className="mt-8 font-body text-[13px] text-steel">
             Have a specific workflow question? Email us at{" "}

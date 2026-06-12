@@ -33,12 +33,12 @@ export default function Nav() {
           >
             Log in
           </a>
-          <a
+          <Link
             href="/#demo"
             className="rounded-md bg-amber px-5 py-2.5 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
           >
             Schedule a Demo
-          </a>
+          </Link>
         </div>
 
         {/* Mobile hamburger */}
@@ -68,13 +68,13 @@ export default function Nav() {
           >
             Log in
           </a>
-          <a
+          <Link
             href="/#demo"
             onClick={() => setOpen(false)}
             className="mt-2 block rounded-md bg-amber px-5 py-3 text-center font-brand text-sm font-bold text-white"
           >
             Schedule a Demo
-          </a>
+          </Link>
         </div>
       )}
     </header>

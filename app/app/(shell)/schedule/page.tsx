@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import ScheduleBuilder from "@/components/app/schedule/schedule-builder";
 import NewPeriodButton from "@/components/app/schedule/new-period-button";
+import AiCommandBar from "@/components/app/schedule/ai-command-bar";
 import { loadPeriodBundle, validateBundle } from "@/lib/schedule-data";
 import { fmtRange } from "@/lib/dates";
 import type { Location, SchedulePeriod } from "@/lib/types";
@@ -88,7 +89,8 @@ export default async function SchedulePage({
       <PageHeader
         title={`Schedule — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
       />
-      <div className="flex-1 p-8">
+      <div className="flex-1 space-y-5 p-8">
+        <AiCommandBar periodId={bundle.period.id} />
         <ScheduleBuilder
           tenant={tenant}
           locations={locs}

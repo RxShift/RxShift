@@ -12,6 +12,10 @@ export default function Footer() {
           <a href="https://app.rxshift.io" className="hover:text-white/70">
             Log in
           </a>
+          {"  ·  "}
+          <a href="/security" className="hover:text-white/70">
+            Security
+          </a>
           {"  ·  © 2026 RxShift  ·  rxshift.io  ·  "}
           <a href="mailto:info@rxshift.io" className="hover:text-white/70">
             info@rxshift.io

@@ -44,6 +44,7 @@ function sections(hasRatio: boolean): NavSection[] {
       items: [
         { label: "Staff", href: "/app/staff", roles: MANAGE },
         { label: "Settings", href: "/app/settings", roles: ["owner_admin"] },
+        { label: "Security Posture", href: "/app/security-posture", roles: ["owner_admin"] },
         { label: "Help", href: "/app/help" },
       ],
     },

@@ -157,7 +157,12 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
       departments: [],
       work_types: workTypes
         .filter((w) => w.enabled)
-        .map(({ enabled: _enabled, ...w }) => w),
+        .map((w) => ({
+          name: w.name,
+          counts_as: w.counts_as,
+          counting_default: w.counting_default,
+          is_specialized: w.is_specialized,
+        })),
       staff: staffRows.map((s) => ({
         full_name: s.full_name,
         login_email: s.login_email || null,

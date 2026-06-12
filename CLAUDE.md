@@ -92,7 +92,22 @@ Full brand spec lives in `Brand Items/DESIGN.md`. Read it before building any UI
 
 ---
 
-## Product Architecture (Planned)
+## Product Architecture (BUILT — June 11, 2026)
+
+The full v1 build is complete per `docs/RxShift-Product-Scoping.md` (the authoritative scope doc — read it). **The database schema is written but NOT yet applied to Supabase** (migrations in `supabase/migrations/`, application pending a personal access token from Jamison).
+
+### What exists
+- **Two-domain architecture:** marketing at `rxshift.io` (root routes), app at `app.rxshift.io` → host-based middleware rewrites to the `/app` route tree. Local dev: `http://localhost:3200/app/...` works directly.
+- **Auth:** Supabase magic link; middleware gates all `/app` routes; roles via `app_user` (owner_admin / scheduler / supervisor / read_only / staff).
+- **Deterministic engines** (`lib/engine/` — pure functions, 24 vitest tests, `npm test`): slot-based ratio evaluation with work-type counting + overnight spillover; all 7 constraint rule types; hourly compliance record with documented exceptions + 3-day board-report trigger. **These engines own compliance truth. AI never decides a ratio.**
+- **Schedule builder:** period management per cycle, grid with segments (split counting/non-counting), PTO overlay, copy-forward, live validation flags, publish-with-logged-override, CSV export, compliance snapshot at publish.
+- **Requests:** time off (approver pool), callouts (with computed ratio gap), manager-mediated swaps. Resend emails + in-app notifications.
+- **Onboarding wizard:** 7 screens, AI-assisted state ratio proposal (verified seed vs flagged AI proposal), CSV roster import, creates the whole tenant via service role.
+- **AI layer** (`lib/ai.ts`, OpenAI gpt-4o-mini, server-side ONLY): help assistant (answers from help articles), flag explanations, NL schedule commands (propose → engine-validate → human confirm), deterministic insights on the dashboard.
+- **Compliance record** (`/app/log`): hourly per zone, CSV + print export, override log.
+- **Live ratio board** (`/app/board`, gated on `has_ratio`): schedule + live-status overlay, one-tap status from `/app/me`.
+- **Security pages:** marketing `/security` + in-app `/app/security-posture` (update its `LAST_REVIEWED` const when security-relevant code changes).
+- **Keep-alive cron:** `/api/cron/keep-alive` + `vercel.json` (activates when Vercel connects).
 
 This is a **multi-tenant** platform. Each tenant = one pharmacy organization (which may have multiple locations).
 
@@ -133,11 +148,19 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 
 ## Pending TODOs (as of June 11, 2026)
 
-- [ ] Authorize Vercel account (blocked on phone number — Jamison's action item)
-- [ ] Connect GitHub repo to Vercel once authorized
-- [ ] Add `vercel.json` with keep-alive cron once Vercel is connected
-- [ ] Confirm `RESEND_FROM_EMAIL` address (domain rxshift.io is set up; from address TBD)
-- [ ] Define auth strategy (magic link vs. email/password)
-- [ ] Define initial Supabase schema (organizations, locations, staff, ratio_rules, schedules, compliance_logs)
-- [ ] Build marketing homepage at `/`
-- [ ] Build first app screen (dashboard or schedule builder — TBD)
+- [ ] **Apply migrations to Supabase** — `supabase/migrations/0001-0003` written; needs Jamison's personal access token (or paste into the SQL editor). Nothing in the app works against the DB until this runs.
+- [ ] Configure Supabase Auth: set site URL + redirect URLs (`http://localhost:3200/app/auth/callback`, later `https://app.rxshift.io/auth/callback`); consider custom SMTP via Resend for production magic links.
+- [ ] Authorize Vercel account (blocked on Vercel support — phone number)
+- [ ] Connect GitHub repo to Vercel once authorized; add env vars; verify cron
+- [ ] Push repo to GitHub (needs RxShift-account PAT)
+- [ ] End-to-end walkthrough with a real tenant once the DB exists (onboarding → schedule → publish → compliance record)
+- [x] Marketing homepage, /pricing, /features, /security
+- [x] Full app v1 build (June 11, 2026 — see Product Architecture above)
+
+### v1 simplifications to revisit
+- Location operating hours: schema supports per-day hours; no UI editor yet (engine doesn't need it).
+- Staff import is CSV-only (no XLSX).
+- PDF export = browser print view (no server-side PDF generation).
+- Swap proposals don't pre-compute ratio effect at peer-accept; the manager sees the engine check via the AI command path and post-apply revalidation.
+- Branding (logo upload) deferred — needs Supabase Storage setup.
+- Departments step in onboarding is skipped (manageable in Settings).

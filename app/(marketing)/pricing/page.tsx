@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
@@ -28,12 +29,11 @@ export default function PricingPage() {
             </p>
             <p>Talk to us about your specific setup.</p>
           </div>
-          <a
-            href="/#demo"
+          <Link href="/#demo"
             className="mt-8 inline-block rounded-md bg-amber px-6 py-3 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
           >
             Schedule a Demo
-          </a>
+          </Link>
         </div>
       </main>
       <Footer />
