@@ -460,13 +460,19 @@ export async function seedMesaVista(
             if (line.staff === "Dr. Sunita Patel") end = "14:00";
             if (line.staff === "Dr. Owen Fitzgerald") start = "16:00";
           }
+          // Technicians need a counting work type — a typeless technician
+          // does NOT count toward ratio (pharmacists count by default)
+          const person = ROSTER.find((p) => p.name === line.staff)!;
+          const workType =
+            line.workType ??
+            (person.ratio === "technician" ? "Dispensing" : undefined);
           shiftInputs.push({
             staff: line.staff,
             date,
             start,
             end,
             breakMin: line.breakMin,
-            workType: line.workType,
+            workType,
           });
         }
       }
