@@ -5,7 +5,15 @@ import Badge from "@/components/ui/badge";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
-import { addDaysStr, fmtDay, todayStr } from "@/lib/dates";
+import { addDaysStr, eachDate, fmtDay, todayStr } from "@/lib/dates";
+
+/** Compact 12-hour label: 08:00 → 8a, 17:30 → 5:30p (fits a calendar cell) */
+function compactTime(t: string): string {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  const ap = h >= 12 ? "p" : "a";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${h12}${ap}` : `${h12}:${String(m).padStart(2, "0")}${ap}`;
+}
 import type {
   LiveStatus,
   Shift,
@@ -94,42 +102,79 @@ export default async function MePage() {
             <h2 className="mb-3 font-brand text-base font-bold text-navy">
               My next two weeks
             </h2>
-            {shifts.length === 0 ? (
-              <p className="font-body text-sm text-steel">
+            {shifts.length === 0 && (
+              <p className="mb-3 font-body text-sm text-steel">
                 No published shifts in the next 14 days.
               </p>
-            ) : (
-              <div className="space-y-2">
-                {shifts.map((s) => {
-                  const day = fmtDay(s.date);
-                  return (
-                    <div
-                      key={s.id}
-                      className={`flex items-center justify-between rounded-lg border border-line p-3 ${s.date === today ? "ring-2 ring-amber" : ""}`}
-                    >
-                      <div>
-                        <p className="font-brand text-sm font-semibold text-navy">
-                          {day.dow}, {day.label}
-                          {s.date === today && (
-                            <span className="ml-2 font-body text-[10px] font-bold uppercase text-amber">
-                              Today
-                            </span>
-                          )}
-                        </p>
-                        <p className="font-body text-[13px] text-steel">
-                          {(s.shift_segment ?? [])
-                            .map(
-                              (seg) =>
-                                `${String(seg.start_time).slice(0, 5)}–${String(seg.end_time).slice(0, 5)}`
-                            )
-                            .join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             )}
+            {(() => {
+              // Calendar weeks (Mon–Sun) covering today → today+14
+              const todayDow = new Date(`${today}T00:00:00Z`).getUTCDay();
+              const gridStart = addDaysStr(today, todayDow === 0 ? -6 : 1 - todayDow);
+              const weeks: string[][] = [];
+              for (let d = gridStart; d <= horizon; d = addDaysStr(d, 7)) {
+                weeks.push(eachDate(d, addDaysStr(d, 6)));
+              }
+              const byDate = new Map<string, typeof shifts>();
+              for (const s of shifts) {
+                const list = byDate.get(s.date) ?? [];
+                list.push(s);
+                byDate.set(s.date, list);
+              }
+              return (
+                <div className="grid grid-cols-7 gap-1">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((h) => (
+                    <div
+                      key={h}
+                      className="pb-1 text-center font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel"
+                    >
+                      {h}
+                    </div>
+                  ))}
+                  {weeks.flat().map((date) => {
+                    const inRange = date >= today && date <= horizon;
+                    const dayShifts = byDate.get(date) ?? [];
+                    const isToday = date === today;
+                    const dayNum = Number(date.slice(8, 10));
+                    return (
+                      <div
+                        key={date}
+                        className={`min-h-[58px] rounded-md border p-1 text-center ${
+                          isToday
+                            ? "border-amber ring-1 ring-amber"
+                            : "border-line"
+                        } ${inRange ? "bg-white" : "bg-cloud/50"}`}
+                      >
+                        <p
+                          className={`font-brand text-[11px] font-semibold ${
+                            inRange ? "text-navy" : "text-steel/60"
+                          }`}
+                        >
+                          {dayNum}
+                        </p>
+                        {dayShifts.map((s) => (
+                          <p
+                            key={s.id}
+                            className="mt-0.5 rounded bg-[#FEF7ED] px-0.5 font-body text-[10px] font-medium leading-4 text-[#B05A12]"
+                          >
+                            {(s.shift_segment ?? [])
+                              .slice(0, 1)
+                              .map(
+                                (seg) =>
+                                  `${compactTime(seg.start_time)}–${compactTime(seg.end_time)}`
+                              )}
+                            {(s.shift_segment ?? []).length > 1 && " +"}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            <p className="mt-2 font-body text-[11px] text-steel">
+              Blank days are days off. Today is outlined.
+            </p>
           </Card>
 
           <Card>

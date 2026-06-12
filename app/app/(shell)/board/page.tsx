@@ -53,7 +53,8 @@ export default async function LiveBoardPage() {
   const zoneCards: {
     zoneId: string;
     zoneName: string;
-    pharmacists: { name: string; staffId: string; live: string }[];
+    pharmacistsCounting: { name: string; staffId: string; live: string }[];
+    pharmacistsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
     techsCounting: { name: string; staffId: string; live: string }[];
     techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
     status: "compliant" | "deficient";
@@ -102,12 +103,33 @@ export default async function LiveBoardPage() {
         return start <= nowMinutes && nowMinutes < end;
       });
 
-      const pharmacists = onNow
-        .filter((s) => s.staff.ratio_type === "pharmacist")
+      // Pharmacists get the same counting / not-counting split as techs —
+      // a pharmacist at lunch shouldn't inflate the headline count
+      const pharmacistsAll = onNow.filter(
+        (s) => s.staff.ratio_type === "pharmacist"
+      );
+      const pharmacistsCounting = pharmacistsAll
+        .filter(
+          (s) =>
+            (liveByStaff.get(s.staff.id) ?? "present_counting") ===
+            "present_counting"
+        )
         .map((s) => ({
           name: s.staff.full_name,
           staffId: s.staff.id,
-          live: liveByStaff.get(s.staff.id) ?? "present_counting",
+          live: "present_counting",
+        }));
+      const pharmacistsNotCounting = pharmacistsAll
+        .filter(
+          (s) =>
+            (liveByStaff.get(s.staff.id) ?? "present_counting") !==
+            "present_counting"
+        )
+        .map((s) => ({
+          name: s.staff.full_name,
+          staffId: s.staff.id,
+          live: liveByStaff.get(s.staff.id)!,
+          reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
         }));
       const techs = onNow.filter((s) => s.staff.ratio_type === "technician");
       const techsCounting = techs
@@ -137,7 +159,8 @@ export default async function LiveBoardPage() {
       zoneCards.push({
         zoneId: zone.id,
         zoneName: zone.name,
-        pharmacists,
+        pharmacistsCounting,
+        pharmacistsNotCounting,
         techsCounting,
         techsNotCounting,
         status: currentSlot?.status ?? "compliant",

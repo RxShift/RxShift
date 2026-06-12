@@ -19,12 +19,21 @@ const STATUS_LABELS: Record<string, string> = {
 interface ZoneCard {
   zoneId: string;
   zoneName: string;
-  pharmacists: { name: string; staffId: string; live: string }[];
+  pharmacistsCounting: { name: string; staffId: string; live: string }[];
+  pharmacistsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
   techsCounting: { name: string; staffId: string; live: string }[];
   techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
   status: "compliant" | "deficient";
   reason: string | null;
   maxTechs: number;
+}
+
+function GroupHead({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-2 font-brand text-[9px] font-bold uppercase tracking-[1px] text-steel first:mt-0">
+      {children}
+    </p>
+  );
 }
 
 export default function LiveBoard({
@@ -81,10 +90,10 @@ export default function LiveBoard({
             <div className="mb-4 flex items-end gap-6">
               <div>
                 <p className="font-brand text-[10px] font-bold uppercase tracking-[1px] text-steel">
-                  Pharmacists
+                  Pharmacists counting
                 </p>
                 <p className="font-brand text-[32px] font-bold text-navy">
-                  {zone.pharmacists.length}
+                  {zone.pharmacistsCounting.length}
                 </p>
               </div>
               <div>
@@ -98,7 +107,7 @@ export default function LiveBoard({
                 </p>
               </div>
               <p className="mb-2 font-body text-xs text-steel">
-                limit {zone.pharmacists.length * zone.maxTechs} (
+                limit {zone.pharmacistsCounting.length * zone.maxTechs} (
                 {zone.maxTechs}/pharmacist)
               </p>
             </div>
@@ -110,23 +119,36 @@ export default function LiveBoard({
             )}
 
             <div className="space-y-1 font-body text-[13px] text-navy">
-              {zone.pharmacists.map((p) => (
+              <GroupHead>Pharmacists</GroupHead>
+              {zone.pharmacistsCounting.map((p) => (
                 <p key={p.staffId}>
                   <span className="font-medium">{p.name}</span>{" "}
-                  <span className="text-steel">RPh · {STATUS_LABELS[p.live]}</span>
+                  <span className="text-steel">RPh · counting</span>
                 </p>
               ))}
+              <GroupHead>Techs — counting</GroupHead>
               {zone.techsCounting.map((t) => (
                 <p key={t.staffId}>
                   <span className="font-medium">{t.name}</span>{" "}
                   <span className="text-steel">Tech · counting</span>
                 </p>
               ))}
-              {zone.techsNotCounting.map((t) => (
-                <p key={t.staffId} className="text-steel">
-                  {t.name} · {t.reason} (not counting)
-                </p>
-              ))}
+              {(zone.pharmacistsNotCounting.length > 0 ||
+                zone.techsNotCounting.length > 0) && (
+                <>
+                  <GroupHead>Not counting right now</GroupHead>
+                  {zone.pharmacistsNotCounting.map((p) => (
+                    <p key={p.staffId} className="text-steel">
+                      {p.name} · RPh · {p.reason}
+                    </p>
+                  ))}
+                  {zone.techsNotCounting.map((t) => (
+                    <p key={t.staffId} className="text-steel">
+                      {t.name} · {t.reason}
+                    </p>
+                  ))}
+                </>
+              )}
             </div>
           </Card>
         ))}
