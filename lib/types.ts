@@ -61,6 +61,13 @@ export interface Tenant {
   is_demo: boolean;
   /** When set on a demo tenant, ALL app email is rewritten to this address */
   demo_redirect_email: string | null;
+  // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)
+  billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
+  billing_provider: "manual" | "stripe" | "chargebee" | null;
+  billing_external_id: string | null;
+  billed_locations: number | null;
+  billing_interval: "monthly" | "annual" | null;
+  billing_started_at: string | null;
   created_at: string;
 }
 
@@ -134,6 +141,8 @@ export interface Staff {
   job_title: string | null;
   ratio_type: RatioType;
   employment_type: EmploymentType;
+  /** CPhT national certification — informational + shown in exports */
+  certified: boolean;
   active: boolean;
   created_at: string;
 }
@@ -252,11 +261,17 @@ export interface ConstraintRule {
   created_at: string;
 }
 
+export type RatioFormula = "flat" | "additive";
+
 export interface RatioRule {
   id: string;
   tenant_id: string | null; // null = global seed
   state: string;
   max_techs_per_pharmacist: number;
+  /** 'flat': P × cap. 'additive': first + (P−1) × additional (CA: 2P−1) */
+  formula: RatioFormula;
+  additive_first_techs: number | null;
+  additive_additional_techs: number | null;
   trainee_sublimits: Record<string, unknown> | null;
   composition_rules: Record<string, unknown> | null;
   source_citation: string | null;

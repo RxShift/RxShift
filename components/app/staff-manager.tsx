@@ -67,6 +67,7 @@ export default function StaffManager({
       ratio_type: form.get("ratio_type"),
       employment_type: form.get("employment_type"),
       home_location_id: (form.get("home_location_id") as string) || null,
+      certified: form.get("certified") === "on",
       active: form.get("active") === "on",
     };
     const result =
@@ -173,6 +174,11 @@ export default function StaffManager({
                   >
                     {RATIO_LABELS[s.ratio_type]}
                   </Badge>
+                  {s.certified && (
+                    <span className="ml-1.5 font-body text-[10px] font-bold text-steel">
+                      CPhT
+                    </span>
+                  )}
                 </Td>
                 <Td>{s.job_title ?? "—"}</Td>
                 <Td>{EMPLOYMENT_LABELS[s.employment_type]}</Td>
@@ -378,6 +384,18 @@ export default function StaffManager({
                 ))}
               </Select>
             </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <input
+              type="checkbox"
+              id="certified"
+              name="certified"
+              defaultChecked={initial?.certified ?? false}
+              className="h-4 w-4 accent-amber"
+            />
+            <label htmlFor="certified" className="font-body text-sm text-navy">
+              Certified (CPhT) — shown on rosters and compliance exports
+            </label>
           </div>
           <div className="flex items-center gap-2.5">
             <input

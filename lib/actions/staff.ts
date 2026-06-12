@@ -21,6 +21,7 @@ const staffSchema = z.object({
   ratio_type: z.enum(["pharmacist", "technician", "non_counting"]),
   employment_type: z.enum(["full_time", "part_time", "per_diem", "contractor_1099"]),
   home_location_id: z.string().uuid().nullish(),
+  certified: z.coerce.boolean().default(false),
   active: z.coerce.boolean().default(true),
 });
 

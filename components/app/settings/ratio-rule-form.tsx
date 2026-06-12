@@ -19,6 +19,9 @@ export default function RatioRuleForm({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [formula, setFormula] = useState<"flat" | "additive">(
+    tenantRule?.formula ?? "flat"
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,6 +31,9 @@ export default function RatioRuleForm({
     const result = await upsertRatioRule({
       state: data.get("state"),
       max_techs_per_pharmacist: data.get("max_techs_per_pharmacist"),
+      formula,
+      additive_first_techs: data.get("additive_first_techs") || null,
+      additive_additional_techs: data.get("additive_additional_techs") || null,
       notes: data.get("notes") || null,
     });
     setMessage(result.ok ? "Saved." : result.error);
@@ -60,6 +66,21 @@ export default function RatioRuleForm({
             </Select>
           </div>
           <div>
+            <Label htmlFor="formula">Rule type</Label>
+            <Select
+              id="formula"
+              value={formula}
+              onChange={(e) => setFormula(e.target.value as "flat" | "additive")}
+            >
+              <option value="flat">Flat — each pharmacist adds the same</option>
+              <option value="additive">
+                Additive — first pharmacist adds less (California)
+              </option>
+            </Select>
+          </div>
+        </div>
+        {formula === "flat" ? (
+          <div className="max-w-[280px]">
             <Label htmlFor="max_techs_per_pharmacist">
               Max techs per pharmacist
             </Label>
@@ -77,7 +98,48 @@ export default function RatioRuleForm({
               }
             />
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {/* keep a value posted for the flat column even in additive mode */}
+            <input
+              type="hidden"
+              name="max_techs_per_pharmacist"
+              value={rule?.max_techs_per_pharmacist ?? 1}
+            />
+            <div>
+              <Label htmlFor="additive_first_techs">
+                Techs allowed by FIRST pharmacist
+              </Label>
+              <Input
+                id="additive_first_techs"
+                name="additive_first_techs"
+                type="number"
+                min={0}
+                max={10}
+                required
+                defaultValue={rule?.additive_first_techs ?? 1}
+              />
+            </div>
+            <div>
+              <Label htmlFor="additive_additional_techs">
+                Techs added by EACH ADDITIONAL pharmacist
+              </Label>
+              <Input
+                id="additive_additional_techs"
+                name="additive_additional_techs"
+                type="number"
+                min={0}
+                max={10}
+                required
+                defaultValue={rule?.additive_additional_techs ?? 2}
+              />
+              <HelpText>
+                California (BPC 4115): first = 1, each additional = 2 — so two
+                pharmacists allow 3 techs, three allow 5.
+              </HelpText>
+            </div>
+          </div>
+        )}
         <div>
           <Label htmlFor="notes">Notes</Label>
           <Input

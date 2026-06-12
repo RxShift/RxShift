@@ -37,6 +37,11 @@ export interface EngineSegment {
 
 export interface EngineRatioRule {
   max_techs_per_pharmacist: number;
+  /** 'flat' (default): P × cap. 'additive' (California BPC 4115):
+   *  first + (P−1) × additional — e.g. 2P−1 with first=1, additional=2. */
+  formula?: "flat" | "additive";
+  additive_first_techs?: number | null;
+  additive_additional_techs?: number | null;
 }
 
 export interface SlotEval {

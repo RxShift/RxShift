@@ -449,6 +449,7 @@ export async function seedMesaVista(
         job_title: p.title,
         ratio_type: p.ratio,
         employment_type: "full_time",
+        certified: p.title.includes("CPhT"),
       }))
     )
     .select("id, full_name");

@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import LiveBoard from "@/components/app/board/live-board";
-import { loadPeriodBundle, toEngineSegments } from "@/lib/schedule-data";
-import { evaluateZone, timeToMinutes } from "@/lib/engine/ratio";
+import { loadPeriodBundle, toEngineRule, toEngineSegments } from "@/lib/schedule-data";
+import { evaluateZone, maxTechsAllowed, timeToMinutes } from "@/lib/engine/ratio";
 import { nowInTimeZone } from "@/lib/dates";
 import type { LiveStatus, SchedulePeriod, Staff } from "@/lib/types";
 
@@ -59,7 +59,8 @@ export default async function LiveBoardPage() {
     techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
     status: "compliant" | "deficient";
     reason: string | null;
-    maxTechs: number;
+    techLimit: number;
+    limitLabel: string;
   }[] = [];
 
   for (const period of todaysPeriods) {
@@ -86,7 +87,7 @@ export default async function LiveBoardPage() {
 
       const evals = evaluateZone(
         adjusted,
-        { max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist },
+        toEngineRule(bundle.ratioRule),
         tenant.ratio_slot_minutes
       );
       const slots = evals.get(today) ?? [];
@@ -156,6 +157,7 @@ export default async function LiveBoardPage() {
           reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
         }));
 
+      const engineRule = toEngineRule(bundle.ratioRule);
       zoneCards.push({
         zoneId: zone.id,
         zoneName: zone.name,
@@ -165,7 +167,11 @@ export default async function LiveBoardPage() {
         techsNotCounting,
         status: currentSlot?.status ?? "compliant",
         reason: currentSlot?.deficiency_reason ?? null,
-        maxTechs: bundle.ratioRule.max_techs_per_pharmacist,
+        techLimit: maxTechsAllowed(pharmacistsCounting.length, engineRule),
+        limitLabel:
+          engineRule.formula === "additive"
+            ? `additive: first +${engineRule.additive_first_techs ?? 1}, each addl +${engineRule.additive_additional_techs ?? 2}`
+            : `${bundle.ratioRule.max_techs_per_pharmacist}/pharmacist`,
       });
     }
   }

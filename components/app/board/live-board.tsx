@@ -25,7 +25,8 @@ interface ZoneCard {
   techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
   status: "compliant" | "deficient";
   reason: string | null;
-  maxTechs: number;
+  techLimit: number;
+  limitLabel: string;
 }
 
 function GroupHead({ children }: { children: React.ReactNode }) {
@@ -107,8 +108,7 @@ export default function LiveBoard({
                 </p>
               </div>
               <p className="mb-2 font-body text-xs text-steel">
-                limit {zone.pharmacistsCounting.length * zone.maxTechs} (
-                {zone.maxTechs}/pharmacist)
+                limit {zone.techLimit} ({zone.limitLabel})
               </p>
             </div>
 

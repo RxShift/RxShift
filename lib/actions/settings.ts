@@ -182,6 +182,10 @@ export async function deleteEntity(
 const ratioRuleSchema = z.object({
   state: z.string().length(2),
   max_techs_per_pharmacist: z.coerce.number().int().min(1).max(10),
+  // 'flat': P × cap. 'additive' (California BPC 4115): first + (P−1) × additional
+  formula: z.enum(["flat", "additive"]).default("flat"),
+  additive_first_techs: z.coerce.number().int().min(0).max(10).nullish(),
+  additive_additional_techs: z.coerce.number().int().min(0).max(10).nullish(),
   notes: z.string().max(2000).nullish(),
 });
 

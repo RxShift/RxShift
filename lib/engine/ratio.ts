@@ -34,6 +34,25 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Max counting technicians allowed for a pharmacist count under a rule.
+ * Flat: every pharmacist adds the same capacity (NV: 1 RPh : 3 techs).
+ * Additive: the first pharmacist adds less than each additional one
+ * (CA BPC 4115: first allows 1 tech, each additional allows 2 — 2P − 1).
+ */
+export function maxTechsAllowed(
+  pharmacists: number,
+  rule: EngineRatioRule
+): number {
+  if (pharmacists <= 0) return 0;
+  if (rule.formula === "additive") {
+    const first = rule.additive_first_techs ?? 1;
+    const additional = rule.additive_additional_techs ?? 2;
+    return first + (pharmacists - 1) * additional;
+  }
+  return pharmacists * rule.max_techs_per_pharmacist;
+}
+
 /** Does this segment's person count toward ratio while in this segment? */
 export function segmentCounts(seg: EngineSegment): boolean {
   if (seg.staff.ratio_type === "non_counting") return false;
@@ -124,12 +143,16 @@ export function evaluateZone(
       let status: SlotEval["status"] = "compliant";
       let reason: string | null = null;
 
+      const limit = maxTechsAllowed(pCount, rule);
       if (tCount > 0 && pCount === 0) {
         status = "deficient";
         reason = `${tCount} technician${tCount === 1 ? "" : "s"} counting with no pharmacist on duty`;
-      } else if (pCount > 0 && tCount > pCount * rule.max_techs_per_pharmacist) {
+      } else if (pCount > 0 && tCount > limit) {
         status = "deficient";
-        reason = `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_techs_per_pharmacist} per pharmacist (${pCount * rule.max_techs_per_pharmacist} total)`;
+        reason =
+          rule.formula === "additive"
+            ? `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — additive limit is ${limit} (first pharmacist ${rule.additive_first_techs ?? 1}, each additional +${rule.additive_additional_techs ?? 2})`
+            : `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_techs_per_pharmacist} per pharmacist (${limit} total)`;
       }
 
       slots.push({

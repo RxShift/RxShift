@@ -24,7 +24,7 @@ function ComingSoonBadge() {
 
 const STATES = [
   { label: "Nevada", href: "/nevada", soon: false },
-  { label: "California", href: "/states/california", soon: true },
+  { label: "California", href: "/states/california", soon: false },
   { label: "Tennessee", href: "/states/tennessee", soon: true },
 ];
 

@@ -121,6 +121,16 @@ export async function loadPeriodBundle(
   };
 }
 
+/** Full rule subset for the engine — keeps additive-formula fields intact. */
+export function toEngineRule(rule: RatioRule) {
+  return {
+    max_techs_per_pharmacist: rule.max_techs_per_pharmacist,
+    formula: rule.formula,
+    additive_first_techs: rule.additive_first_techs,
+    additive_additional_techs: rule.additive_additional_techs,
+  };
+}
+
 export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
   const staffById = new Map(bundle.staff.map((s) => [s.id, s]));
   const wtById = new Map(bundle.workTypes.map((w) => [w.id, w]));
@@ -172,7 +182,7 @@ export function validateBundle(
       if (zoneSegs.length === 0) continue;
       const evals = evaluateZone(
         zoneSegs,
-        { max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist },
+        toEngineRule(bundle.ratioRule),
         tenant.ratio_slot_minutes
       );
       for (const [date, slots] of evals) {
@@ -213,7 +223,7 @@ export function buildComplianceRecords(
     if (zoneSegs.length === 0) continue;
     const evals = evaluateZone(
       zoneSegs,
-      { max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist },
+      toEngineRule(bundle.ratioRule),
       tenant.ratio_slot_minutes
     );
     out.push({

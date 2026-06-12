@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateZone, segmentCounts, timeToMinutes } from "../ratio";
+import { evaluateZone, maxTechsAllowed, segmentCounts, timeToMinutes } from "../ratio";
 import type { EngineSegment, EngineStaff, EngineWorkType } from "../types";
 
 const rph = (name = "Sue RPh"): EngineStaff => ({
@@ -174,5 +174,65 @@ describe("evaluateZone", () => {
     const slots = evals.get("2026-06-15")!;
     expect(slots[0].techs_counting).toEqual([]);
     expect(slots[0].techs_present_non_counting).toEqual([]);
+  });
+});
+
+describe("additive formula (California BPC 4115: max techs = 2P − 1)", () => {
+  const CA_RULE = {
+    max_techs_per_pharmacist: 1, // ignored under additive
+    formula: "additive" as const,
+    additive_first_techs: 1,
+    additive_additional_techs: 2,
+  };
+
+  it("maxTechsAllowed follows 2P − 1", () => {
+    expect(maxTechsAllowed(1, CA_RULE)).toBe(1);
+    expect(maxTechsAllowed(2, CA_RULE)).toBe(3);
+    expect(maxTechsAllowed(3, CA_RULE)).toBe(5);
+    expect(maxTechsAllowed(0, CA_RULE)).toBe(0);
+    // and flat rules are unchanged
+    expect(maxTechsAllowed(2, RULE)).toBe(6);
+  });
+
+  it("1 pharmacist + 1 tech is compliant; + 2 techs is deficient", () => {
+    const ok = evaluateZone(
+      [seg(rph(), "08:00", "12:00", null), seg(tech("Ann"), "08:00", "12:00")],
+      CA_RULE,
+      30
+    );
+    expect(ok.get("2026-06-15")![0].status).toBe("compliant");
+
+    const bad = evaluateZone(
+      [
+        seg(rph(), "08:00", "12:00", null),
+        seg(tech("Ann"), "08:00", "12:00"),
+        seg(tech("Bo"), "08:00", "12:00"),
+      ],
+      CA_RULE,
+      30
+    );
+    const slot = bad.get("2026-06-15")![0];
+    expect(slot.status).toBe("deficient");
+    expect(slot.deficiency_reason).toContain("additive limit is 1");
+  });
+
+  it("2 pharmacists + 3 techs compliant; + 4 deficient (not 2×cap math)", () => {
+    const base = [
+      seg(rph("Dr A"), "08:00", "12:00", null),
+      seg(rph("Dr B"), "08:00", "12:00", null),
+      seg(tech("Ann"), "08:00", "12:00"),
+      seg(tech("Bo"), "08:00", "12:00"),
+      seg(tech("Cy"), "08:00", "12:00"),
+    ];
+    expect(evaluateZone(base, CA_RULE, 30).get("2026-06-15")![0].status).toBe(
+      "compliant"
+    );
+    expect(
+      evaluateZone(
+        [...base, seg(tech("Di"), "08:00", "12:00")],
+        CA_RULE,
+        30
+      ).get("2026-06-15")![0].status
+    ).toBe("deficient");
   });
 });

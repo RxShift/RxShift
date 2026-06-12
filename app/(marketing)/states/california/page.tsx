@@ -37,13 +37,13 @@ export default function CaliforniaPage() {
             </p>
             <h1 className="mt-4 font-brand text-3xl font-bold leading-tight tracking-[-0.3px] text-navy sm:text-4xl">
               California&rsquo;s ratio rules are more complex than most
-              states. RxShift is built to handle the math.
+              states. RxShift handles the math automatically.
             </h1>
             <p className="mx-auto mt-5 max-w-[620px] font-body text-lg leading-[1.7] text-steel">
               Under BPC 4115, each additional pharmacist on duty changes your
-              supervision capacity. RxShift&rsquo;s California configuration —
-              tracking that capacity automatically as the schedule changes —
-              is in active development.
+              supervision capacity. RxShift&rsquo;s ratio engine applies
+              California&rsquo;s additive formula to every schedule you build,
+              so you&rsquo;re always operating within the rules.
             </p>
           </div>
         </section>
@@ -76,10 +76,9 @@ export default function CaliforniaPage() {
             <p className="mt-6 font-body text-base leading-[1.7] text-steel">
               In practice, this means your ratio changes with every pharmacist
               on the schedule. A shift with two pharmacists allows up to 3
-              technicians. Three pharmacists allows up to 5. That recalculation
-              is exactly the kind of math a scheduling tool should do for you —
-              and it&rsquo;s what we&rsquo;re building into RxShift&rsquo;s
-              California configuration now.
+              technicians. Three pharmacists allows up to 5. RxShift
+              recalculates this automatically as you build the schedule — and
+              flags any slot that breaks the formula before you publish.
             </p>
           </div>
         </section>
@@ -110,7 +109,7 @@ export default function CaliforniaPage() {
           source="california-page"
           id="demo-form"
           heading="Managing a California pharmacy?"
-          body="We'd like to understand your scheduling workflow as we build California's configuration. Schedule a 20-minute conversation."
+          body="We'll walk through your scheduling workflow and show you BPC 4115's additive formula applied to a real schedule. About 20 minutes."
         />
       </main>
       <Footer />
