@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96" width="128" height="96"
+     role="img" aria-label="RxShift Schedule Grid Mark — Dark">
+  <!-- RxShift Schedule Grid Mark — navy background variant -->
+  <!-- Grid centered: x_start=10, y_start=8 within 128×96 navy field -->
+
+  <rect width="128" height="96" fill="#1C2F5E"/>
+
+  <!-- Row 1 -->
+  <rect x="10" y="8"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="39" y="8"  width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="68" y="8"  width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="97" y="8"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <!-- Row 2 -->
+  <rect x="10" y="37" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="39" y="37" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="68" y="37" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="97" y="37" width="22" height="22" rx="4" fill="#3B5785"/>
+  <!-- Row 3 -->
+  <rect x="10" y="66" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="39" y="66" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="68" y="66" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="97" y="66" width="22" height="22" rx="4" fill="#3B5785"/>
+</svg>

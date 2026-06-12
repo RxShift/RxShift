@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 44" width="240" height="44"
+     role="img" aria-label="RxShift Wordmark — Reversed">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&amp;display=swap');
+      text { font-family: 'Space Grotesk', 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif; }
+    </style>
+  </defs>
+  <!-- Wordmark reversed — for use on navy or dark backgrounds -->
+  <text x="0" y="34" font-size="36" letter-spacing="-0.3">
+    <tspan font-weight="800" fill="#FFFFFF">Rx</tspan>
+    <tspan font-weight="700" fill="#F07C30"> · </tspan>
+    <tspan font-weight="500" fill="#FFFFFF">Shift</tspan>
+  </text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 80" width="460" height="80"
+     role="img" aria-label="RxShift — Horizontal Lockup, Dark">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&amp;display=swap');
+      text { font-family: 'Space Grotesk', 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Navy background -->
+  <rect width="460" height="80" fill="#1C2F5E"/>
+
+  <!-- Grid mark — dark cell variants -->
+  <rect x="0"  y="0"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="29" y="0"  width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="58" y="0"  width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="0"  width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="0"  y="29" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="29" y="29" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="58" y="29" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="29" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="0"  y="58" width="22" height="22" rx="4" fill="#3B5785"/>
+  <rect x="29" y="58" width="22" height="22" rx="4" fill="#557AB0"/>
+  <rect x="58" y="58" width="22" height="22" rx="4" fill="#F07C30"/>
+  <rect x="87" y="58" width="22" height="22" rx="4" fill="#3B5785"/>
+
+  <!-- Wordmark: Rx · Shift — white/amber reversed -->
+  <text x="127" y="50" font-size="36" letter-spacing="-0.3">
+    <tspan font-weight="800" fill="#FFFFFF">Rx</tspan>
+    <tspan font-weight="700" fill="#F07C30"> · </tspan>
+    <tspan font-weight="500" fill="#FFFFFF">Shift</tspan>
+  </text>
+</svg>
