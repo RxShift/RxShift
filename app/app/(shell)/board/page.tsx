@@ -5,7 +5,7 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import LiveBoard from "@/components/app/board/live-board";
 import { loadPeriodBundle, toEngineSegments } from "@/lib/schedule-data";
 import { evaluateZone, timeToMinutes } from "@/lib/engine/ratio";
-import { todayStr } from "@/lib/dates";
+import { nowInTimeZone } from "@/lib/dates";
 import type { LiveStatus, SchedulePeriod, Staff } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,9 @@ export default async function LiveBoardPage() {
   if (!tenant.has_ratio) redirect("/app/dashboard");
 
   const supabase = await createClient();
-  const today = todayStr();
+  // "Today" and "now" in the TENANT's timezone — the server clock (UTC on
+  // Vercel) would otherwise blank the board outside its own business hours.
+  const { date: today, minutes: nowMinutes } = nowInTimeZone(tenant.timezone);
 
   const { data: periods } = await supabase
     .from("schedule_period")
@@ -48,9 +50,6 @@ export default async function LiveBoardPage() {
   // Build today's per-zone picture from the schedule, then overlay live
   // status: anyone currently off the floor / at lunch / in a meeting / on
   // non-tech work does NOT count right now, whatever the schedule says.
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
   const zoneCards: {
     zoneId: string;
     zoneName: string;

@@ -44,9 +44,14 @@ export default async function DashboardPage() {
 
   const locs = (locations ?? []) as Location[];
   const allPeriods = (periods ?? []) as SchedulePeriod[];
-  // The period covering today, else the most recent
+  // The period covering today — preferring a published one when several
+  // overlap (an empty draft would read as zero activity) — else most recent
+  const covering = allPeriods.filter(
+    (p) => p.start_date <= today && p.end_date >= today
+  );
   const current =
-    allPeriods.find((p) => p.start_date <= today && p.end_date >= today) ??
+    covering.find((p) => p.status === "published") ??
+    covering[0] ??
     allPeriods[0] ??
     null;
 

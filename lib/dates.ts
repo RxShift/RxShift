@@ -21,6 +21,29 @@ export function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Wall-clock "now" in an IANA timezone: local date string + minutes since
+ * midnight. Server clocks (UTC on Vercel) must never decide what "today"
+ * or "right now" means for a tenant.
+ */
+export function nowInTimeZone(timeZone: string): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    // % 24 guards the "24:xx at midnight" quirk in some Intl implementations
+    minutes: (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10),
+  };
+}
+
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
