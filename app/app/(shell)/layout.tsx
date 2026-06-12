@@ -34,14 +34,25 @@ export default async function ShellLayout({
             emulatingLabel={session.platform.emulatingLabel}
           />
         )}
-        {session.tenant.status !== "live" && (
+        {session.tenant.is_demo ? (
           <div className="flex items-center justify-center gap-2 border-b border-[#D4860A]/30 bg-[#FEF7ED] px-4 py-1.5">
             <p className="font-brand text-[12px] font-bold text-[#D4860A]">
-              Trial mode — RxShift is not emailing your staff.
-              {session.appUser.role === "owner_admin" &&
-                " Go live in Settings when you're ready."}
+              Demo pharmacy — fictional data.
+              {session.tenant.demo_redirect_email
+                ? ` Emails redirect to ${session.tenant.demo_redirect_email}.`
+                : " No emails are sent."}
             </p>
           </div>
+        ) : (
+          session.tenant.status !== "live" && (
+            <div className="flex items-center justify-center gap-2 border-b border-[#D4860A]/30 bg-[#FEF7ED] px-4 py-1.5">
+              <p className="font-brand text-[12px] font-bold text-[#D4860A]">
+                Trial mode — RxShift is not emailing your staff.
+                {session.appUser.role === "owner_admin" &&
+                  " Go live in Settings when you're ready."}
+              </p>
+            </div>
+          )
         )}
         {children}
       </div>

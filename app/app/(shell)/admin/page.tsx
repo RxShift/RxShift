@@ -33,6 +33,8 @@ export default async function AdminPage() {
     outbound_email_enabled: t.outbound_email_enabled,
     status: t.status,
     email_allowlist: t.email_allowlist ?? [],
+    is_demo: t.is_demo,
+    demo_redirect_email: t.demo_redirect_email ?? "",
     created_at: t.created_at,
     staff_count: allStaff.filter((s) => s.tenant_id === t.id).length,
     user_count: allUsers.filter((u) => u.tenant_id === t.id).length,

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select, Label, Textarea, HelpText } from "@/components/ui/form";
+import { Select, Label, Textarea, HelpText, Input } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import {
   emulateAppUser,
@@ -24,12 +24,20 @@ interface TenantSummary {
   outbound_email_enabled: boolean;
   status: TenantStatus;
   email_allowlist: string[];
+  is_demo: boolean;
+  demo_redirect_email: string;
   created_at: string;
   staff_count: number;
   user_count: number;
 }
 
 function emailBadge(t: TenantSummary) {
+  if (t.is_demo)
+    return (
+      <Badge tone="neutral">
+        {t.demo_redirect_email ? "Demo · redirect" : "Demo · silent"}
+      </Badge>
+    );
   if (!t.outbound_email_enabled) return <Badge tone="alert">Suppressed</Badge>;
   if (t.email_allowlist.length > 0)
     return <Badge tone="neutral">{`${t.status === "live" ? "Live" : "Trial"} · ${t.email_allowlist.length} allowed`}</Badge>;
@@ -63,12 +71,16 @@ export default function AdminConsole({
   const [draftStatus, setDraftStatus] = useState<TenantStatus>("trial");
   const [draftEnabled, setDraftEnabled] = useState(true);
   const [draftAllowlist, setDraftAllowlist] = useState("");
+  const [draftIsDemo, setDraftIsDemo] = useState(false);
+  const [draftDemoRedirect, setDraftDemoRedirect] = useState("");
 
   function openEmailEditor(t: TenantSummary) {
     setEditingEmail(t.id);
     setDraftStatus(t.status);
     setDraftEnabled(t.outbound_email_enabled);
     setDraftAllowlist(t.email_allowlist.join("\n"));
+    setDraftIsDemo(t.is_demo);
+    setDraftDemoRedirect(t.demo_redirect_email);
   }
 
   const currentTenantId = activeTenantId ?? ownTenantId;
@@ -209,6 +221,38 @@ export default function AdminConsole({
                                 an empty list sends nothing at all.
                               </HelpText>
                             </div>
+                            <div className="w-64">
+                              <Label htmlFor={`demo-${t.id}`}>Demo tenant</Label>
+                              <label
+                                htmlFor={`demo-${t.id}`}
+                                className="flex items-center gap-2 py-2.5 font-body text-sm text-navy"
+                              >
+                                <input
+                                  id={`demo-${t.id}`}
+                                  type="checkbox"
+                                  checked={draftIsDemo}
+                                  onChange={(e) => setDraftIsDemo(e.target.checked)}
+                                />
+                                Fictional data — never goes live
+                              </label>
+                              {draftIsDemo && (
+                                <>
+                                  <Input
+                                    type="email"
+                                    value={draftDemoRedirect}
+                                    onChange={(e) =>
+                                      setDraftDemoRedirect(e.target.value)
+                                    }
+                                    placeholder="redirect inbox (optional)"
+                                  />
+                                  <HelpText>
+                                    Every email this tenant would send goes to
+                                    this one inbox instead. Leave empty to send
+                                    nothing at all.
+                                  </HelpText>
+                                </>
+                              )}
+                            </div>
                             <div className="pt-6">
                               <Button
                                 disabled={busy}
@@ -218,6 +262,8 @@ export default function AdminConsole({
                                       status: draftStatus,
                                       outbound_email_enabled: draftEnabled,
                                       allowlist: draftAllowlist.split(/\r?\n/),
+                                      is_demo: draftIsDemo,
+                                      demo_redirect_email: draftDemoRedirect,
                                     })
                                   ).then(() => setEditingEmail(null))
                                 }

@@ -57,6 +57,39 @@ export interface Tenant {
   email_allowlist: string[] | null;
   /** Default unpaid break minutes applied to new shifts of 6+ hours */
   default_break_minutes: number;
+  /** Demo tenant: fictional data; email redirected or suppressed, never live */
+  is_demo: boolean;
+  /** When set on a demo tenant, ALL app email is rewritten to this address */
+  demo_redirect_email: string | null;
+  created_at: string;
+}
+
+// ─── Internal CRM (platform-admin only) ──────────────────────────────────────
+
+export type LeadSource = "inbound" | "referral" | "LinkedIn" | "Susie" | "cold";
+export type LeadStage = "Lead" | "Demo" | "Trial" | "Active" | "Churned";
+
+export interface Lead {
+  id: string;
+  pharmacy_name: string;
+  location_count: number | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  source: LeadSource;
+  stage: LeadStage;
+  state: string | null;
+  message: string | null;
+  source_page: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadNote {
+  id: string;
+  lead_id: string;
+  author: string;
+  body: string;
   created_at: string;
 }
 

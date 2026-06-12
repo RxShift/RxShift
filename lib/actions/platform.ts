@@ -50,6 +50,8 @@ export async function updateTenantEmailMode(
     status: "setup" | "trial" | "live";
     outbound_email_enabled: boolean;
     allowlist: string[];
+    is_demo: boolean;
+    demo_redirect_email: string;
   }
 ): Promise<ActionResult> {
   return runAction(async () => {
@@ -58,6 +60,9 @@ export async function updateTenantEmailMode(
 
     if (!["setup", "trial", "live"].includes(input.status))
       throw new ActionError("Invalid tenant status.");
+    // Demo tenants hold fictional rosters — they never go live
+    if (input.is_demo && input.status === "live")
+      throw new ActionError("Demo tenants can't go live. Uncheck demo first.");
 
     // Normalize the allowlist: trim, lowercase, drop blanks, dedupe —
     // the mailer compares normalized, so store normalized too.
@@ -73,6 +78,9 @@ export async function updateTenantEmailMode(
         status: input.status,
         outbound_email_enabled: input.outbound_email_enabled,
         email_allowlist: allowlist,
+        is_demo: input.is_demo,
+        demo_redirect_email:
+          input.demo_redirect_email.trim().toLowerCase() || null,
       })
       .eq("id", tenantId);
     if (error) throw new ActionError(error.message);

@@ -11,7 +11,7 @@ export default async function OrganizationSettingsPage() {
   return (
     <div className="max-w-[560px]">
       <OrgSettingsForm tenant={tenant} />
-      {tenant.status !== "live" && isOwner && (
+      {tenant.status !== "live" && isOwner && !tenant.is_demo && (
         <GoLiveCard status={tenant.status} />
       )}
       <DangerZone tenantName={tenant.name} />
