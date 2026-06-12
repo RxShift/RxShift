@@ -2,10 +2,14 @@
 // retired Optum-Schedule-Demo prototype, for stakeholders (Susie, Lucy,
 // Brandi) to explore.
 //
-// EMAIL SAFETY — three independent locks:
+// EMAIL SAFETY — four independent locks:
 //   1. Every staff record is seeded with NULL login/work emails.
 //   2. The tenant is created with outbound_email_enabled = false.
-//   3. No app_user rows are created, so nobody can sign into it directly;
+//   3. The tenant is created with status = 'trial': even if the kill switch
+//      is later turned on, a trial tenant only emails addresses on its
+//      email_allowlist (set per-tenant in the admin console) — never the
+//      roster at large.
+//   4. No app_user rows are created, so nobody can sign into it directly;
 //      platform admins reach it through the admin console.
 //
 // Run: npx tsx scripts/seed-demo.ts
@@ -223,7 +227,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 1. Tenant — outbound email HARD OFF
+  // 1. Tenant — outbound email HARD OFF, lifecycle 'trial'
   const { data: tenant, error: tErr } = await supabase
     .from("tenant")
     .insert({
@@ -234,6 +238,7 @@ async function main() {
       has_ratio: true,
       onboarding_complete: true,
       outbound_email_enabled: false,
+      status: "trial",
     })
     .select("id")
     .single();

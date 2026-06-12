@@ -44,6 +44,44 @@ export async function switchActiveTenant(
   });
 }
 
+export async function updateTenantEmailMode(
+  tenantId: string,
+  input: {
+    status: "setup" | "trial" | "live";
+    outbound_email_enabled: boolean;
+    allowlist: string[];
+  }
+): Promise<ActionResult> {
+  return runAction(async () => {
+    await requirePlatformAdmin();
+    const service = createServiceClient();
+
+    if (!["setup", "trial", "live"].includes(input.status))
+      throw new ActionError("Invalid tenant status.");
+
+    // Normalize the allowlist: trim, lowercase, drop blanks, dedupe —
+    // the mailer compares normalized, so store normalized too.
+    const allowlist = [
+      ...new Set(
+        input.allowlist.map((e) => e.trim().toLowerCase()).filter(Boolean)
+      ),
+    ];
+
+    const { error } = await service
+      .from("tenant")
+      .update({
+        status: input.status,
+        outbound_email_enabled: input.outbound_email_enabled,
+        email_allowlist: allowlist,
+      })
+      .eq("id", tenantId);
+    if (error) throw new ActionError(error.message);
+
+    revalidatePath("/app/admin");
+    return undefined;
+  });
+}
+
 export async function emulateAppUser(
   appUserId: string | null
 ): Promise<ActionResult> {

@@ -31,6 +31,8 @@ export default async function AdminPage() {
     has_ratio: t.has_ratio,
     schedule_cycle: t.schedule_cycle,
     outbound_email_enabled: t.outbound_email_enabled,
+    status: t.status,
+    email_allowlist: t.email_allowlist ?? [],
     created_at: t.created_at,
     staff_count: allStaff.filter((s) => s.tenant_id === t.id).length,
     user_count: allUsers.filter((u) => u.tenant_id === t.id).length,

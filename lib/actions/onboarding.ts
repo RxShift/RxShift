@@ -233,6 +233,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
         // Admin-created test/demo tenants never email anyone until the
         // owner flips the switch deliberately
         outbound_email_enabled: !isExtraAdminTenant,
+        status: "setup",
       })
       .select("id")
       .single();
@@ -359,10 +360,11 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
       if (userError) throw new ActionError(userError.message);
     }
 
-    // 7. Done
+    // 7. Done. The tenant lands in 'trial': fully usable, but no email goes
+    // out until the owner deliberately goes live (Settings → Go Live).
     await service
       .from("tenant")
-      .update({ onboarding_complete: true })
+      .update({ onboarding_complete: true, status: "trial" })
       .eq("id", tenantId);
 
     await service.from("activity_log").insert({
