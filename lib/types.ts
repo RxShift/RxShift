@@ -55,6 +55,8 @@ export interface Tenant {
   status: TenantStatus;
   /** When non-empty, ONLY these addresses can receive app email (case-insensitive) */
   email_allowlist: string[] | null;
+  /** Default unpaid break minutes applied to new shifts of 6+ hours */
+  default_break_minutes: number;
   created_at: string;
 }
 
@@ -137,6 +139,8 @@ export interface Shift {
   schedule_period_id: string;
   status: ShiftStatus;
   notes: string | null;
+  /** Unpaid break (lunch) — subtracted from paid hours, not from coverage */
+  break_minutes: number;
   created_by: string | null;
   created_at: string;
 }

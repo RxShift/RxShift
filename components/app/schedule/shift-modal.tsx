@@ -41,6 +41,7 @@ export default function ShiftModal({
   zones,
   workTypes,
   hasRatio,
+  defaultBreakMinutes,
 }: {
   open: boolean;
   onClose: () => void;
@@ -52,6 +53,7 @@ export default function ShiftModal({
   zones: RatioZone[];
   workTypes: WorkType[];
   hasRatio: boolean;
+  defaultBreakMinutes: number;
 }) {
   const router = useRouter();
   const [segments, setSegments] = useState<SegmentDraft[]>(
@@ -72,6 +74,9 @@ export default function ShiftModal({
   const [zoneId, setZoneId] = useState(
     shift?.ratio_zone_id ?? zones[0]?.id ?? ""
   );
+  const [breakMinutes, setBreakMinutes] = useState(
+    String(shift ? shift.break_minutes : defaultBreakMinutes)
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +95,7 @@ export default function ShiftModal({
       staff_id: staff.id,
       date,
       ratio_zone_id: zoneId || null,
+      break_minutes: Math.max(0, parseInt(breakMinutes, 10) || 0),
       segments: segments.map((s) => ({
         start_time: s.start_time,
         end_time: s.end_time,
@@ -148,23 +154,41 @@ export default function ShiftModal({
       }
     >
       <div className="space-y-4">
-        {hasRatio && zones.length > 0 && (
-          <div className="max-w-[280px]">
-            <Label htmlFor="zone">Ratio zone</Label>
-            <Select
-              id="zone"
-              value={zoneId}
-              onChange={(e) => setZoneId(e.target.value)}
-            >
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
-                  {z.ratio_isolated ? " (isolated)" : ""}
-                </option>
-              ))}
-            </Select>
+        <div className="flex flex-wrap gap-4">
+          {hasRatio && zones.length > 0 && (
+            <div className="w-[280px]">
+              <Label htmlFor="zone">Ratio zone</Label>
+              <Select
+                id="zone"
+                value={zoneId}
+                onChange={(e) => setZoneId(e.target.value)}
+              >
+                {zones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.name}
+                    {z.ratio_isolated ? " (isolated)" : ""}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="break">Unpaid break (min)</Label>
+            <Input
+              id="break"
+              type="number"
+              min={0}
+              max={240}
+              step={5}
+              value={breakMinutes}
+              onChange={(e) => setBreakMinutes(e.target.value)}
+              className="w-28"
+            />
+            <HelpText>
+              Subtracted from paid hours. Doesn&rsquo;t affect ratio coverage.
+            </HelpText>
           </div>
-        )}
+        </div>
 
         <div>
           <Label>Segments</Label>

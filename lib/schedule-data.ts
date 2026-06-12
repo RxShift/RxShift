@@ -135,6 +135,7 @@ export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
         shift_id: shift.id,
         zone_id: shift.ratio_zone_id,
         date: shift.date,
+        break_minutes: shift.break_minutes ?? 0,
         start_time: String(seg.start_time).slice(0, 5),
         end_time: String(seg.end_time).slice(0, 5),
         staff: {

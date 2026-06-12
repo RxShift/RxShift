@@ -20,6 +20,7 @@ const tenantSchema = z.object({
   schedule_cycle: z.enum(["weekly", "biweekly", "monthly"]),
   ratio_slot_minutes: z.coerce.number().pipe(z.union([z.literal(15), z.literal(30), z.literal(60)])),
   has_ratio: z.coerce.boolean(),
+  default_break_minutes: z.coerce.number().int().min(0).max(240).default(30),
 });
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {

@@ -117,4 +117,57 @@ describe("evaluateConstraints", () => {
     );
     expect(flags).toHaveLength(1);
   });
+
+  describe("unpaid breaks (break_minutes)", () => {
+    const withBreak = (date: string, start: string, end: string, breakMin: number) => ({
+      ...seg(date, start, end),
+      break_minutes: breakMin,
+    });
+
+    it("subtracts the break from weekly hours: 5× 8.5h spans with 30-min lunches = 40.0, not 42.5", () => {
+      const segs = ["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-19"].map(
+        (d) => withBreak(d, "08:00", "16:30", 30)
+      );
+      // 42.5 raw − 2.5 breaks = 40.0 → NOT over the 40 threshold
+      expect(evaluateConstraints([rule("overtime", {})], segs)).toHaveLength(0);
+      // …but a 39.5 cap still catches the 40.0
+      const capFlags = evaluateConstraints(
+        [rule("hour_cap", { hours: 39.5, period: "week" })],
+        segs
+      );
+      expect(capFlags).toHaveLength(1);
+      expect(capFlags[0].message).toContain("40.0 hours");
+    });
+
+    it("subtracts a shift's break ONCE even when the shift has two segments", () => {
+      const twoSegmentShift: EngineSegment[] = [
+        { ...seg("2026-06-15", "08:00", "12:00"), break_minutes: 30 },
+        { ...seg("2026-06-15", "12:00", "16:30"), break_minutes: 30 },
+      ]; // same shift_id (s-2026-06-15): 8.5h span − 0.5 = 8.0
+      const flags = evaluateConstraints(
+        [rule("hour_cap", { hours: 7.5, period: "week" })],
+        twoSegmentShift
+      );
+      expect(flags).toHaveLength(1);
+      expect(flags[0].message).toContain("8.0 hours");
+    });
+
+    it("zero / missing break_minutes leaves hours unchanged", () => {
+      const segs = ["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-19"].map(
+        (d) => seg(d, "08:00", "16:30") // no break_minutes field at all
+      );
+      const flags = evaluateConstraints([rule("overtime", {})], segs);
+      expect(flags).toHaveLength(1);
+      expect(flags[0].message).toContain("42.5 hours");
+    });
+
+    it("real overtime survives the deduction (six 9h days with 60-min lunches = 48h)", () => {
+      const segs = ["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-19", "2026-06-20"].map(
+        (d) => withBreak(d, "08:00", "17:00", 60)
+      );
+      const flags = evaluateConstraints([rule("overtime", {})], segs);
+      expect(flags).toHaveLength(1);
+      expect(flags[0].message).toContain("48.0 hours");
+    });
+  });
 });

@@ -27,6 +27,12 @@ export interface EngineSegment {
   staff: EngineStaff;
   work_type: EngineWorkType | null;
   counts_override: boolean | null; // segment-level override, null = default
+  /**
+   * The parent SHIFT's unpaid break minutes (same value on every segment of
+   * the shift). Subtracted ONCE per shift in paid-hours math (hour caps,
+   * overtime). Never affects ratio coverage — the person is still on site.
+   */
+  break_minutes?: number;
 }
 
 export interface EngineRatioRule {

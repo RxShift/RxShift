@@ -77,6 +77,7 @@ const shiftSchema = z.object({
   ratio_zone_id: z.string().uuid().nullish(),
   department_id: z.string().uuid().nullish(),
   notes: z.string().max(500).nullish(),
+  break_minutes: z.coerce.number().int().min(0).max(240).default(0),
   segments: z.array(segmentSchema).min(1).max(8),
 });
 

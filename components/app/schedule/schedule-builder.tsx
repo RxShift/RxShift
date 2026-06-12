@@ -114,6 +114,25 @@ export default function ScheduleBuilder({
     [validation.constraintFlags]
   );
 
+  // One line per (rule, person) in the flag panel — "Melissa Morse — 4×"
+  // instead of four near-identical overtime lines
+  const groupedConstraintFlags = useMemo(() => {
+    const groups = new Map<
+      string,
+      { rule_type: string; staff_name: string; messages: string[]; dates: string[] }
+    >();
+    for (const f of validation.constraintFlags) {
+      const key = `${f.rule_type}|${f.staff_id}`;
+      const g =
+        groups.get(key) ??
+        { rule_type: f.rule_type, staff_name: f.staff_name, messages: [], dates: [] };
+      g.messages.push(f.message);
+      if (f.date) g.dates.push(f.date);
+      groups.set(key, g);
+    }
+    return [...groups.values()];
+  }, [validation.constraintFlags]);
+
   const flagCount =
     validation.ratioFlags.length + validation.constraintFlags.length;
   const isPublished = bundle.period.status === "published";
@@ -247,15 +266,23 @@ export default function ScheduleBuilder({
                   {f.date} {f.slot_label} ({f.zone_name}): {f.reason}
                 </li>
               ))}
-              {validation.constraintFlags.slice(0, 20).map((f, i) => (
+              {groupedConstraintFlags.slice(0, 20).map((g, i) => (
                 <li key={`c${i}`}>
                   <span className="font-medium text-[#D4860A]">
-                    {f.rule_type.replace(/_/g, " ")}
+                    {g.rule_type.replace(/_/g, " ")}
                   </span>{" "}
-                  · {f.message}
+                  ·{" "}
+                  {g.messages.length === 1
+                    ? g.messages[0]
+                    : `${g.staff_name} — ${g.messages.length}× (${g.dates
+                        .slice(0, 4)
+                        .join(", ")}${g.dates.length > 4 ? ", …" : ""})`}
                 </li>
               ))}
-              {flagCount > 40 && <li>…and more.</li>}
+              {validation.ratioFlags.length > 20 ||
+              groupedConstraintFlags.length > 20 ? (
+                <li>…and more.</li>
+              ) : null}
             </ul>
           )}
         </div>
@@ -372,6 +399,7 @@ export default function ScheduleBuilder({
           zones={bundle.zones}
           workTypes={bundle.workTypes}
           hasRatio={tenant.has_ratio}
+          defaultBreakMinutes={tenant.default_break_minutes ?? 30}
         />
       )}
 

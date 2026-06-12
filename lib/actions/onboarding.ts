@@ -234,6 +234,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult> 
         // owner flips the switch deliberately
         outbound_email_enabled: !isExtraAdminTenant,
         status: "setup",
+        default_break_minutes: 30,
       })
       .select("id")
       .single();

@@ -83,6 +83,9 @@ export function evaluateConstraints(
           const cap = Number(rule.params.hours ?? 0);
           const period = String(rule.params.period ?? "week");
           const buckets = new Map<string, number>();
+          // Unpaid break is a per-SHIFT value carried on each segment —
+          // subtract it once per shift, not once per segment.
+          const breakTaken = new Set<string>();
           for (const s of applicable) {
             const key =
               period === "year"
@@ -90,7 +93,12 @@ export function evaluateConstraints(
                 : period === "pay_period"
                   ? weekStart(s.date) // approximation: weekly buckets
                   : weekStart(s.date);
-            buckets.set(key, (buckets.get(key) ?? 0) + segmentHours(s));
+            let hours = segmentHours(s);
+            if (!breakTaken.has(s.shift_id)) {
+              breakTaken.add(s.shift_id);
+              hours -= (s.break_minutes ?? 0) / 60;
+            }
+            buckets.set(key, (buckets.get(key) ?? 0) + hours);
           }
           for (const [bucket, hours] of buckets) {
             if (hours > cap) {
@@ -111,9 +119,15 @@ export function evaluateConstraints(
         case "overtime": {
           const threshold = Number(rule.params.threshold_hours ?? 40);
           const weeks = new Map<string, number>();
+          const breakTaken = new Set<string>();
           for (const s of applicable) {
             const wk = weekStart(s.date);
-            weeks.set(wk, (weeks.get(wk) ?? 0) + segmentHours(s));
+            let hours = segmentHours(s);
+            if (!breakTaken.has(s.shift_id)) {
+              breakTaken.add(s.shift_id);
+              hours -= (s.break_minutes ?? 0) / 60;
+            }
+            weeks.set(wk, (weeks.get(wk) ?? 0) + hours);
           }
           for (const [wk, hours] of weeks) {
             if (hours > threshold) {
