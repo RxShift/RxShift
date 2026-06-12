@@ -73,16 +73,18 @@ export default function ComplianceView({
       {streaks.boardReportTriggered && (
         <div className="rounded-lg border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] p-4">
           <p className="font-brand text-sm font-bold text-[#C0392B]">
-            Board report trigger: 3+ consecutive deficient days
+            3+ consecutive deficient days — a board report may be required
           </p>
           <p className="mt-1 font-body text-[13px] text-navy">
             {streaks.streaks
               .filter((s) => s.length >= 3)
               .map((s) => `${s.length} consecutive deficient days starting ${s.start}`)
               .join("; ")}
-            . Under proposed R113-24 this is the threshold for board
-            notification. Review the deficient hours below and the override
-            log.
+            . Under proposed R113-24 this is the threshold at which the
+            managing pharmacist must notify the Board. Whether and how to
+            report is your pharmacy&rsquo;s decision — RxShift flags it and
+            never contacts the board. Review the deficient hours below and
+            the override log.
           </p>
         </div>
       )}

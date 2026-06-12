@@ -52,7 +52,7 @@ const SOLUTION_CARDS = [
   {
     eyebrow: "Hourly log",
     heading: "The R113-24 record, auto-generated.",
-    body: "Every published schedule produces a timestamped hourly record: pharmacist and tech names per hour, deficiency flags when coverage falls short, and automatic board-report triggers after three consecutive deficient days. Retained for two years, exportable on demand.",
+    body: "Every published schedule produces a timestamped hourly record: pharmacist and tech names per hour, deficiency flags when coverage falls short, and an alert to your managers after three consecutive deficient days — the moment a board report may be required. Retained for two years, exportable on demand. RxShift never contacts the board; that decision stays inside your pharmacy.",
   },
   {
     eyebrow: "Zero extra work",
@@ -170,10 +170,11 @@ export default function NevadaPage() {
               Source: NRS 639.1371, NAC 639.250, Proposed R113-24. R113-24 was
               noticed for hearing in 2025 and remains in active rulemaking.
               RxShift&rsquo;s documentation engine already produces the hourly
-              records, two-year retention, and board-report triggers R113-24
-              describes; volume-based staffing minimums are in active
-              development, so adopting the rule won&rsquo;t change your
-              workflow.
+              records, the two-year retention, and the three-consecutive-day
+              flag the rule&rsquo;s reporting requirement is built around —
+              alerting <em>your managers</em>, never the board; any report is
+              the pharmacy&rsquo;s decision to make. Volume-based staffing
+              minimums are in active development.
             </p>
           </div>
         </section>

@@ -36,10 +36,9 @@ const INCLUDED: { heading: string; items: string[] }[] = [
     items: [
       "Automated hourly compliance log",
       "Deficiency flagging (per hour)",
-      "3-consecutive-day deficiency alerts",
-      "Board notification triggers",
+      "3-consecutive-day alerts to your managers",
       "2-year record retention",
-      "Compliance export (board-ready format)",
+      "Compliance log export (.xlsx, board-ready)",
     ],
   },
   {

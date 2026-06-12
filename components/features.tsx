@@ -7,7 +7,7 @@ const FEATURES = [
   {
     eyebrow: "Compliance",
     heading: "Automated hourly compliance logs",
-    body: "Every published schedule produces a timestamped record: pharmacist and tech names per hour, deficiency flags, and automatic board-report triggers after 3 consecutive deficient days. Retained for two years, exportable on demand.",
+    body: "Every published schedule produces a timestamped record: pharmacist and tech names per hour, deficiency flags, and an alert to your managers after 3 consecutive deficient days — when a board report may be required. Retained for two years, exportable on demand. RxShift never contacts your board; that call stays yours.",
   },
   {
     eyebrow: "Built for your size",

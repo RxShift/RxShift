@@ -10,6 +10,8 @@ import {
   addDaysStr,
 } from "@/lib/dates";
 import { buildComplianceRecords, loadPeriodBundle } from "@/lib/schedule-data";
+import { deficiencyStreaks } from "@/lib/engine/compliance";
+import { sendNotificationEmail } from "@/lib/email";
 import {
   ActionError,
   logActivity,
@@ -284,6 +286,7 @@ export async function publishPeriod(
 
     // Snapshot the compliance record at publish (Appendix D retention)
     const records = buildComplianceRecords(bundle, ctx.tenant);
+    const streakAlerts: string[] = [];
     for (const { zone, rows } of records) {
       await supabase.from("compliance_snapshot").insert({
         tenant_id: ctx.tenantId,
@@ -291,10 +294,55 @@ export async function publishPeriod(
         ratio_zone_id: zone.id,
         rows,
       });
+      // 3+ consecutive deficient days: alert the pharmacy's OWN managers.
+      // RxShift never contacts any board — whether to report is the
+      // pharmacy's decision; this makes sure they know the moment the
+      // threshold is crossed.
+      const streaks = deficiencyStreaks(rows);
+      for (const s of streaks.streaks.filter((x) => x.length >= 3)) {
+        streakAlerts.push(
+          `${zone.name}: ${s.length} consecutive deficient days starting ${s.start}`
+        );
+      }
+    }
+
+    if (streakAlerts.length > 0) {
+      const { data: managers } = await supabase
+        .from("app_user")
+        .select("supabase_user_id, staff(work_email, login_email)")
+        .eq("tenant_id", ctx.tenantId)
+        .in("role", ["owner_admin", "scheduler", "supervisor"]);
+      const lines = [
+        "This published schedule contains 3 or more consecutive deficient days — the threshold at which a board report may be required:",
+        ...streakAlerts,
+        "Review the compliance record in RxShift. Whether and how to report is your pharmacy's decision — RxShift never contacts the board.",
+      ];
+      for (const m of managers ?? []) {
+        await supabase.from("notification").insert({
+          tenant_id: ctx.tenantId,
+          user_id: m.supabase_user_id,
+          type: "deficiency_streak",
+          payload: { period_id: periodId, streaks: streakAlerts },
+          channel: "in_app",
+        });
+        const addr =
+          (m.staff as { work_email?: string; login_email?: string } | null)
+            ?.work_email ??
+          (m.staff as { login_email?: string } | null)?.login_email;
+        if (addr) {
+          await sendNotificationEmail(
+            ctx.tenant,
+            addr,
+            "Deficiency streak alert — a board report may be required",
+            lines
+          );
+        }
+      }
     }
 
     await logActivity(ctx, "publish", "schedule_period", periodId, {
       flags_overridden: flagCount,
+      streak_alerts: streakAlerts.length,
     });
     revalidatePath("/app/schedule");
     revalidatePath("/app/log");
