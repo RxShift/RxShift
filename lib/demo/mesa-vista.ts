@@ -27,6 +27,24 @@ export const MESA_VISTA_NAME = "Mesa Vista Pharmacy";
 export const FRANK_EMAIL = "frank@mesavistarx.com";
 export const DEMO_LOGIN_ALIAS = "demo@rxshift.io";
 
+/**
+ * Staff-linked demo logins, so a demo can be DRIVEN as a real person
+ * (My Schedule, requests, live-status) instead of as a disembodied
+ * owner. The auth emails are fictional (nobody can sign in directly);
+ * the @rxshift.io aliases deliver their magic links to the catch-all
+ * inbox. Re-linked to their staff records on every reset.
+ */
+const DEMO_LOGINS: {
+  staffName: string;
+  alias: string;
+  role: "owner_admin" | "scheduler" | "supervisor" | "read_only" | "staff";
+}[] = [
+  // Jamison's demo identity — a tech's-eye view of the app
+  { staffName: "Jerome Williams", alias: "jerome@rxshift.io", role: "staff" },
+  // Susie's demo identity — the Managing Pharmacist (her real-life role)
+  { staffName: "Dr. Patricia Nguyen", alias: "patricia@rxshift.io", role: "scheduler" },
+];
+
 const TZ = "America/Los_Angeles";
 const WEEK_OFFSETS = [-4, -3, -2, -1, 0, 1, 2]; // 4 past, current, 2 future
 
@@ -257,6 +275,77 @@ async function ensureFrank(
   return authUserId;
 }
 
+/** Create-or-relink the staff-linked demo logins (Jerome, Dr. Nguyen).
+ *  app_user.staff_id is ON DELETE SET NULL, so after a reset wipes the
+ *  roster these accounts survive unlinked — we re-point them at the
+ *  freshly seeded staff rows by name. */
+async function ensureDemoLogins(
+  service: SupabaseClient,
+  tenantId: string,
+  staffIds: Map<string, string>,
+  log: Log
+): Promise<void> {
+  const { data: list } = await service.auth.admin.listUsers({ page: 1, perPage: 1000 });
+
+  for (const login of DEMO_LOGINS) {
+    const staffId = staffIds.get(login.staffName);
+    if (!staffId) continue;
+    const authEmail = fictionalEmail(login.staffName);
+
+    let authUserId = list?.users.find((u) => u.email === authEmail)?.id ?? null;
+    if (!authUserId) {
+      const { data, error } = await service.auth.admin.createUser({
+        email: authEmail,
+        email_confirm: true,
+      });
+      if (error) throw new Error(`${login.staffName} auth user: ${error.message}`);
+      authUserId = data.user.id;
+    }
+
+    const { data: appUser } = await service
+      .from("app_user")
+      .select("id")
+      .eq("supabase_user_id", authUserId)
+      .maybeSingle();
+    let appUserId = appUser?.id as string | undefined;
+    if (appUserId) {
+      const { error } = await service
+        .from("app_user")
+        .update({ staff_id: staffId, role: login.role })
+        .eq("id", appUserId);
+      if (error) throw new Error(`${login.staffName} relink: ${error.message}`);
+    } else {
+      const { data, error } = await service
+        .from("app_user")
+        .insert({
+          supabase_user_id: authUserId,
+          staff_id: staffId,
+          tenant_id: tenantId,
+          role: login.role,
+          is_pto_approver: login.role !== "staff",
+          pto_approver_rank: login.role !== "staff" ? "backup" : null,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(`${login.staffName} app_user: ${error.message}`);
+      appUserId = data.id;
+    }
+
+    const { data: alias } = await service
+      .from("login_alias")
+      .select("alias_email")
+      .eq("alias_email", login.alias)
+      .maybeSingle();
+    if (!alias) {
+      const { error } = await service
+        .from("login_alias")
+        .insert({ alias_email: login.alias, app_user_id: appUserId });
+      if (error) throw new Error(`${login.alias}: ${error.message}`);
+    }
+    log(`Demo login ${login.alias} → ${login.staffName} (${login.role}).`);
+  }
+}
+
 export interface SeedResult {
   tenantId: string;
   weeks: number;
@@ -366,6 +455,8 @@ export async function seedMesaVista(
   if (stErr) throw new Error(stErr.message);
   const staffIds = new Map(staffRows.map((s) => [s.full_name, s.id]));
   log(`${staffRows.length} staff seeded.`);
+
+  await ensureDemoLogins(service, tenantId, staffIds, log);
 
   // Overtime guardrail (gives the constraint engine something real to watch)
   await service.from("constraint_rule").insert({

@@ -164,6 +164,8 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - [ ] **Compliance engine roadmap** (marketing already frames these honestly as roadmap): scripts-per-hour volume minimums (R113-24 — read `volume_data`, new "understaffed for volume" deficiency type), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
 - [ ] Push to the RxShift-account GitHub repo (`origin` → RxShift/RxShift) — needs that account's PAT; `vercel` remote (jamisonwest-ship-it/rx-shift) is the deploy path and works.
 - [ ] Owner-facing alias management UI + real rate limiting on `/api/auth/login-link` before public launch.
+- [ ] **Dark mode** (Jamison wants it) — needs a real theming pass: brand tokens in `globals.css` get a `.dark` variant AND the many hardcoded hex values (`#FEF7ED`, `#C0392B`, shadows, email-style colors) move to tokens first. Do as its own pass; don't rush it.
+- [ ] CRM v2 polish after Susie uses it (it's deliberately basic: no pagination, no stage analytics, client-side filter only).
 
 ### v1 simplifications to revisit
 - Location operating hours: schema supports per-day hours; no UI editor yet (engine doesn't need it).

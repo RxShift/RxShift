@@ -22,6 +22,7 @@ async function requirePlatformAdmin() {
 function adminDisplayName(email: string): string {
   const map: Record<string, string> = {
     "jamison@jamisonwest.com": "Jamison",
+    "dr.monahanwest@outlook.com": "Susie",
   };
   const norm = email.toLowerCase();
   if (map[norm]) return map[norm];

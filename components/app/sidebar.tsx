@@ -18,7 +18,11 @@ interface NavSection {
 
 const MANAGE: AppRole[] = ["owner_admin", "scheduler", "supervisor", "read_only"];
 
-function sections(hasRatio: boolean, isPlatformAdmin: boolean): NavSection[] {
+function sections(
+  hasRatio: boolean,
+  isPlatformAdmin: boolean,
+  tenantName: string
+): NavSection[] {
   return [
     ...(isPlatformAdmin
       ? [
@@ -32,7 +36,9 @@ function sections(hasRatio: boolean, isPlatformAdmin: boolean): NavSection[] {
         ]
       : []),
     {
-      label: null,
+      // The tenant's name heads its own nav — everything below it belongs
+      // to THIS pharmacy, which matters most when an admin is switched in
+      label: tenantName,
       items: [
         { label: "Dashboard", href: "/app/dashboard", roles: MANAGE },
         { label: "Schedule", href: "/app/schedule", roles: MANAGE },
@@ -51,10 +57,15 @@ function sections(hasRatio: boolean, isPlatformAdmin: boolean): NavSection[] {
       ],
     },
     {
-      label: "Workspace",
+      label: "Configuration",
       items: [
         { label: "Staff", href: "/app/staff", roles: MANAGE },
         { label: "Settings", href: "/app/settings", roles: ["owner_admin"] },
+      ],
+    },
+    {
+      label: "Resources",
+      items: [
         { label: "Security Posture", href: "/app/security-posture", roles: ["owner_admin"] },
         { label: "Help", href: "/app/help" },
       ],
@@ -89,7 +100,7 @@ export default function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
-        {sections(hasRatio, isPlatformAdmin).map((section, i) => {
+        {sections(hasRatio, isPlatformAdmin, tenantName).map((section, i) => {
           const visible = section.items.filter(
             (item) => !item.roles || item.roles.includes(role)
           );
