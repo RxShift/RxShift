@@ -35,14 +35,15 @@ export default function NevadaCallout() {
         </p>
 
         <p className="mt-8 font-body text-sm font-medium text-white/60">
-          Currently piloting with Nevada pharmacies. Questions about how
-          R113-24 affects your operation?{" "}
-          <a
-            href="#demo"
-            className="font-bold text-amber hover:underline"
-          >
-            Schedule a demo
+          Currently piloting with Nevada pharmacies.{" "}
+          <a href="/nevada" className="font-bold text-amber hover:underline">
+            Read the full Nevada breakdown
+          </a>{" "}
+          or{" "}
+          <a href="#demo" className="font-bold text-amber hover:underline">
+            schedule a walkthrough
           </a>
+          .
         </p>
       </div>
     </section>

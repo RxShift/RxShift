@@ -2,7 +2,7 @@ const FEATURES = [
   {
     eyebrow: "Scheduling",
     heading: "Ratio-aware schedule generation",
-    body: "Configure your state's pharmacist-to-tech rules once. RxShift applies them to every shift — accounting for certified, non-certified, trainee, and intern staffing in real time. When volume or composition changes, coverage recalculates automatically.",
+    body: "Configure your state's pharmacist-to-tech rules once. RxShift applies them to every shift you build, recalculates as the schedule changes, and flags any deficient slot before you publish — so gaps get fixed on the screen, not on the floor.",
   },
   {
     eyebrow: "Compliance",
