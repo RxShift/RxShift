@@ -38,6 +38,34 @@ export async function updateTenant(input: unknown): Promise<ActionResult> {
   });
 }
 
+/**
+ * Trial → live: the deliberate, owner-only switch that turns on email to
+ * the whole roster. Clears the allowlist (it would otherwise keep
+ * restricting a live tenant) and enables outbound email.
+ */
+export async function goLiveTenant(): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireAdmin();
+    if (ctx.tenant.status === "live")
+      throw new ActionError("This pharmacy is already live.");
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("tenant")
+      .update({
+        status: "live",
+        outbound_email_enabled: true,
+        email_allowlist: [],
+      })
+      .eq("id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+    await logActivity(ctx, "go_live", "tenant", ctx.tenantId, {
+      previous_status: ctx.tenant.status,
+    });
+    revalidatePath("/app", "layout");
+    return undefined;
+  });
+}
+
 // ─── Generic CRUD for simple settings entities ──────────────────────────────
 
 type EntityName =

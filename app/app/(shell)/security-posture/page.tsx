@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-11";
+const LAST_REVIEWED = "2026-06-12";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -41,6 +41,14 @@ const SECTIONS: { heading: string; items: string[] }[] = [
       "AI (OpenAI, server-side) drafts, explains, and proposes. The deterministic ratio/constraints engine is the only source of compliance truth.",
       "Every compliance-affecting AI proposal is validated by the engine and requires explicit human confirmation before it commits.",
       "The help assistant answers only from RxShift's own help articles and does not give regulatory advice.",
+    ],
+  },
+  {
+    heading: "Outbound email safety",
+    items: [
+      "Every notification email passes through a single send-time gate: a per-tenant kill switch plus an optional recipient allowlist. When an allowlist is set, only those addresses can receive email — all others are silently dropped and the suppression is logged without the address.",
+      "Tenants have a lifecycle (setup → trial → live). Trial tenants are fully functional but send no email to staff; going live is an explicit owner action with a confirmation warning, recorded in the audit log.",
+      "Demo and test tenants are seeded with no staff email addresses, the kill switch off, and trial status — four independent locks against accidental email to real people.",
     ],
   },
   {
