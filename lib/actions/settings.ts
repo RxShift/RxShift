@@ -50,12 +50,26 @@ export async function goLiveTenant(): Promise<ActionResult> {
     if (ctx.tenant.status === "live")
       throw new ActionError("This pharmacy is already live.");
     const supabase = await createClient();
+
+    const { count: locationCount } = await supabase
+      .from("location")
+      .select("*", { count: "exact", head: true });
+
     const { error } = await supabase
       .from("tenant")
       .update({
         status: "live",
         outbound_email_enabled: true,
         email_allowlist: [],
+        // Billing scaffold: going live opens a manual subscription record
+        // (Stripe later replaces 'manual' with a real provider + webhooks)
+        billing_status: "active",
+        billing_provider: ctx.tenant.billing_provider ?? "manual",
+        billed_locations:
+          ctx.tenant.billed_locations ?? Math.max(1, locationCount ?? 1),
+        billing_interval: ctx.tenant.billing_interval ?? "monthly",
+        billing_started_at:
+          ctx.tenant.billing_started_at ?? new Date().toISOString(),
       })
       .eq("id", ctx.tenantId);
     if (error) throw new ActionError(error.message);

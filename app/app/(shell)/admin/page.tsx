@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { describeTenantBilling } from "@/lib/billing";
 import PageHeader from "@/components/ui/page-header";
 import AdminConsole from "@/components/app/admin/admin-console";
 import type { AppUser, Staff, Tenant } from "@/lib/types";
@@ -35,6 +36,10 @@ export default async function AdminPage() {
     email_allowlist: t.email_allowlist ?? [],
     is_demo: t.is_demo,
     demo_redirect_email: t.demo_redirect_email ?? "",
+    billing_label: describeTenantBilling(t).label,
+    billing_status: t.billing_status,
+    billed_locations: t.billed_locations,
+    billing_interval: t.billing_interval,
     created_at: t.created_at,
     staff_count: allStaff.filter((s) => s.tenant_id === t.id).length,
     user_count: allUsers.filter((u) => u.tenant_id === t.id).length,

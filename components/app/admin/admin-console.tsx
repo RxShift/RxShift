@@ -12,6 +12,7 @@ import {
   emulateAppUser,
   resetDemoTenant,
   switchActiveTenant,
+  updateTenantBilling,
   updateTenantEmailMode,
 } from "@/lib/actions/platform";
 
@@ -27,6 +28,10 @@ interface TenantSummary {
   email_allowlist: string[];
   is_demo: boolean;
   demo_redirect_email: string;
+  billing_label: string;
+  billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
+  billed_locations: number | null;
+  billing_interval: "monthly" | "annual" | null;
   created_at: string;
   staff_count: number;
   user_count: number;
@@ -75,6 +80,10 @@ export default function AdminConsole({
   const [draftIsDemo, setDraftIsDemo] = useState(false);
   const [draftDemoRedirect, setDraftDemoRedirect] = useState("");
   const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
+  const [draftBillStatus, setDraftBillStatus] =
+    useState<TenantSummary["billing_status"]>("none");
+  const [draftBillLocations, setDraftBillLocations] = useState("");
+  const [draftBillInterval, setDraftBillInterval] = useState("monthly");
 
   function openEmailEditor(t: TenantSummary) {
     setEditingEmail(t.id);
@@ -83,6 +92,9 @@ export default function AdminConsole({
     setDraftAllowlist(t.email_allowlist.join("\n"));
     setDraftIsDemo(t.is_demo);
     setDraftDemoRedirect(t.demo_redirect_email);
+    setDraftBillStatus(t.billing_status);
+    setDraftBillLocations(t.billed_locations ? String(t.billed_locations) : "");
+    setDraftBillInterval(t.billing_interval ?? "monthly");
   }
 
   const currentTenantId = activeTenantId ?? ownTenantId;
@@ -147,6 +159,9 @@ export default function AdminConsole({
                       <Td>
                         {t.staff_count} staff · {t.user_count} sign-in
                         {t.user_count === 1 ? "" : "s"}
+                        <div className="font-body text-[11px] text-steel">
+                          {t.billing_label}
+                        </div>
                       </Td>
                       <Td>
                         {emailBadge(t)}
@@ -274,6 +289,72 @@ export default function AdminConsole({
                               </Button>
                             </div>
                           </div>
+
+                          {!t.is_demo && (
+                            <div className="mt-4 flex flex-wrap items-end gap-4 border-t border-line pt-3">
+                              <div className="w-40">
+                                <Label htmlFor={`bstat-${t.id}`}>Billing</Label>
+                                <Select
+                                  id={`bstat-${t.id}`}
+                                  value={draftBillStatus}
+                                  onChange={(e) =>
+                                    setDraftBillStatus(
+                                      e.target.value as TenantSummary["billing_status"]
+                                    )
+                                  }
+                                >
+                                  {["none", "trial", "active", "past_due", "canceled"].map(
+                                    (s) => (
+                                      <option key={s} value={s}>
+                                        {s}
+                                      </option>
+                                    )
+                                  )}
+                                </Select>
+                              </div>
+                              <div className="w-32">
+                                <Label htmlFor={`bloc-${t.id}`}>Billed locations</Label>
+                                <Input
+                                  id={`bloc-${t.id}`}
+                                  type="number"
+                                  min={1}
+                                  max={99}
+                                  value={draftBillLocations}
+                                  onChange={(e) => setDraftBillLocations(e.target.value)}
+                                />
+                              </div>
+                              <div className="w-32">
+                                <Label htmlFor={`bint-${t.id}`}>Interval</Label>
+                                <Select
+                                  id={`bint-${t.id}`}
+                                  value={draftBillInterval}
+                                  onChange={(e) => setDraftBillInterval(e.target.value)}
+                                >
+                                  <option value="monthly">Monthly</option>
+                                  <option value="annual">Annual</option>
+                                </Select>
+                              </div>
+                              <Button
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() =>
+                                  act(() =>
+                                    updateTenantBilling(t.id, {
+                                      billing_status: draftBillStatus,
+                                      billed_locations:
+                                        parseInt(draftBillLocations, 10) || null,
+                                      billing_interval:
+                                        draftBillStatus === "none"
+                                          ? null
+                                          : (draftBillInterval as "monthly" | "annual"),
+                                    })
+                                  )
+                                }
+                              >
+                                Save billing
+                              </Button>
+                            </div>
+                          )}
 
                           {t.is_demo && (
                             <div className="mt-4 border-t border-line pt-3">

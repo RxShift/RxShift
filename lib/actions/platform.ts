@@ -91,6 +91,32 @@ export async function updateTenantEmailMode(
   });
 }
 
+export async function updateTenantBilling(
+  tenantId: string,
+  input: {
+    billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
+    billed_locations: number | null;
+    billing_interval: "monthly" | "annual" | null;
+  }
+): Promise<ActionResult> {
+  return runAction(async () => {
+    await requirePlatformAdmin();
+    const service = createServiceClient();
+    const { error } = await service
+      .from("tenant")
+      .update({
+        billing_status: input.billing_status,
+        billed_locations: input.billed_locations,
+        billing_interval: input.billing_interval,
+        billing_provider: input.billing_status === "none" ? null : "manual",
+      })
+      .eq("id", tenantId);
+    if (error) throw new ActionError(error.message);
+    revalidatePath("/app/admin");
+    return undefined;
+  });
+}
+
 /**
  * Restore a demo tenant to its baseline: wipes all data, re-seeds, and
  * re-anchors every date to the current week — so the demo always looks
