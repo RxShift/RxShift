@@ -7,6 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { MESA_VISTA_NAME, resetMesaVista } from "@/lib/demo/mesa-vista";
 import { ActionError, runAction, type ActionResult } from "./helpers";
 
 async function requirePlatformAdmin() {
@@ -86,6 +87,32 @@ export async function updateTenantEmailMode(
     if (error) throw new ActionError(error.message);
 
     revalidatePath("/app/admin");
+    return undefined;
+  });
+}
+
+/**
+ * Restore a demo tenant to its baseline: wipes all data, re-seeds, and
+ * re-anchors every date to the current week — so the demo always looks
+ * current. Tenant config and the demo login are preserved.
+ */
+export async function resetDemoTenant(tenantId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    await requirePlatformAdmin();
+    const service = createServiceClient();
+
+    const { data: tenant } = await service
+      .from("tenant")
+      .select("id, name, is_demo")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (!tenant?.is_demo) throw new ActionError("Not a demo tenant.");
+    if (tenant.name !== MESA_VISTA_NAME)
+      throw new ActionError("No reset routine exists for this demo tenant.");
+
+    await resetMesaVista(service);
+
+    revalidatePath("/app", "layout");
     return undefined;
   });
 }

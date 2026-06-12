@@ -10,6 +10,7 @@ import { Select, Label, Textarea, HelpText, Input } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import {
   emulateAppUser,
+  resetDemoTenant,
   switchActiveTenant,
   updateTenantEmailMode,
 } from "@/lib/actions/platform";
@@ -73,6 +74,7 @@ export default function AdminConsole({
   const [draftAllowlist, setDraftAllowlist] = useState("");
   const [draftIsDemo, setDraftIsDemo] = useState(false);
   const [draftDemoRedirect, setDraftDemoRedirect] = useState("");
+  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
 
   function openEmailEditor(t: TenantSummary) {
     setEditingEmail(t.id);
@@ -272,6 +274,46 @@ export default function AdminConsole({
                               </Button>
                             </div>
                           </div>
+
+                          {t.is_demo && (
+                            <div className="mt-4 border-t border-line pt-3">
+                              {confirmRestore === t.id ? (
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <p className="font-body text-sm text-navy">
+                                    Wipe all schedules, staff, and records for{" "}
+                                    <strong>{t.name}</strong> and re-seed the
+                                    baseline with dates anchored to this week?
+                                  </p>
+                                  <Button
+                                    variant="destructive"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      act(() => resetDemoTenant(t.id)).then(() =>
+                                        setConfirmRestore(null)
+                                      )
+                                    }
+                                  >
+                                    {busy ? "Restoring…" : "Yes, restore"}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    disabled={busy}
+                                    onClick={() => setConfirmRestore(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <button
+                                  disabled={busy}
+                                  onClick={() => setConfirmRestore(t.id)}
+                                  className="font-body text-xs font-medium text-navy underline-offset-2 hover:underline"
+                                >
+                                  Restore demo data…
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}
