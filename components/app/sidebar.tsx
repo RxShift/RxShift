@@ -54,6 +54,7 @@ function sections(
       items: [
         { label: "Compliance Record", href: "/app/log", roles: MANAGE },
         { label: "Override Log", href: "/app/log/overrides", roles: MANAGE },
+        { label: "Reports", href: "/app/reports", roles: MANAGE },
       ],
     },
     {
