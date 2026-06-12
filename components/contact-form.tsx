@@ -21,7 +21,18 @@ const INPUT_CLASS =
 
 type Status = "idle" | "sending" | "success" | "error";
 
-export default function ContactForm() {
+export default function ContactForm({
+  source,
+  heading = "See RxShift working in your pharmacy.",
+  body = "We’ll walk through your current scheduling process and show you how RxShift handles it — ratios, documentation, and all. About 20 minutes.",
+  id = "demo",
+}: {
+  /** Which page the form lives on — recorded on the lead (e.g. "nevada-page") */
+  source: string;
+  heading?: string;
+  body?: string;
+  id?: string;
+}) {
   const [status, setStatus] = useState<Status>("idle");
   const [firstName, setFirstName] = useState("");
 
@@ -44,6 +55,7 @@ export default function ContactForm() {
           state: data.get("state"),
           email: data.get("email"),
           message: data.get("message"),
+          source,
         }),
       });
       setStatus(res.ok ? "success" : "error");
@@ -53,15 +65,13 @@ export default function ContactForm() {
   }
 
   return (
-    <section id="demo" className="scroll-mt-16 bg-navy px-6 py-16 sm:py-24">
+    <section id={id} className="scroll-mt-16 bg-navy px-6 py-16 sm:py-24">
       <div className="mx-auto max-w-[560px] text-center">
         <h2 className="font-brand text-[26px] font-bold leading-snug text-white sm:text-[32px]">
-          See RxShift working in your pharmacy.
+          {heading}
         </h2>
         <p className="mt-4 font-body text-base leading-[1.7] text-white/70">
-          We&rsquo;ll walk through your current scheduling process and show you
-          how RxShift handles it — ratios, documentation, and all. About 20
-          minutes.
+          {body}
         </p>
 
         {status === "success" ? (

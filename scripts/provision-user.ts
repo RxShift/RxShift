@@ -17,6 +17,13 @@
 //   --role    (optional) owner_admin | scheduler | supervisor | read_only | staff
 //             (default: staff). Manager roles get PTO-approver rights.
 //
+// Platform-admin mode (product-team accounts — full reach over all tenants):
+//   npx tsx scripts/provision-user.ts --platform-admin --email susie.admin@example.com [--note "Susie - co-founder"]
+//   Creates the auth user, an owner_admin app_user in "Test Pharmacy 1"
+//   (the internal workspace — platform admins need a home tenant for the
+//   app shell), and the platform_admin row that grants the admin console,
+//   tenant switching/emulation, and the internal CRM.
+//
 // Alias mode (one account, multiple sign-in emails):
 //   npx tsx scripts/provision-user.ts --add-alias work@employer.com --for personal@gmail.com
 //   Registers an extra sign-in address for an existing account. Typing the
@@ -167,6 +174,69 @@ async function addAlias(aliasRaw: string, forRaw: string) {
   );
 }
 
+// ── platform-admin mode ──────────────────────────────────────────────────────
+async function provisionPlatformAdmin() {
+  const email = getArg("--email")?.toLowerCase().trim();
+  const note = getArg("--note") ?? "Platform admin";
+  const homeTenantName = getArg("--tenant") ?? "Test Pharmacy 1";
+  if (!email) {
+    console.error("Required: --platform-admin --email <addr> [--note <label>] [--tenant <home-tenant-name>]");
+    process.exit(1);
+  }
+
+  const { data: tenant } = await supabase
+    .from("tenant")
+    .select("id, name")
+    .eq("name", homeTenantName)
+    .maybeSingle();
+  if (!tenant) {
+    console.error(`Home tenant not found: ${homeTenantName}`);
+    process.exit(1);
+  }
+
+  let authUser = await findAuthUserByEmail(email);
+  if (authUser) {
+    console.log(`Auth user exists: ${authUser.id}`);
+  } else {
+    const { data, error } = await supabase.auth.admin.createUser({ email, email_confirm: true });
+    if (error) throw new Error(`createUser failed: ${error.message}`);
+    authUser = data.user;
+    console.log(`Created auth user: ${authUser.id}`);
+  }
+
+  // Home app_user (the shell needs a workspace; platform powers come from
+  // the platform_admin row, not the role here)
+  const { data: existingAppUser } = await supabase
+    .from("app_user")
+    .select("id, tenant_id")
+    .eq("supabase_user_id", authUser.id)
+    .maybeSingle();
+  if (existingAppUser) {
+    console.log(`app_user exists (tenant ${existingAppUser.tenant_id}) — keeping it.`);
+  } else {
+    const { error } = await supabase.from("app_user").insert({
+      supabase_user_id: authUser.id,
+      staff_id: null,
+      tenant_id: tenant.id,
+      role: "owner_admin",
+      is_pto_approver: false,
+      pto_approver_rank: null,
+    });
+    if (error) throw new Error(`app_user insert failed: ${error.message}`);
+    console.log(`Created owner_admin app_user in "${tenant.name}".`);
+  }
+
+  const { error: paErr } = await supabase
+    .from("platform_admin")
+    .upsert({ supabase_user_id: authUser.id, note }, { onConflict: "supabase_user_id" });
+  if (paErr) throw new Error(`platform_admin upsert failed: ${paErr.message}`);
+
+  console.log(
+    `\nDone. ${email} is a PLATFORM ADMIN: admin console, tenant switching,` +
+    `\nuser emulation, and the internal CRM. They sign in by magic link.`
+  );
+}
+
 // ── provision mode ───────────────────────────────────────────────────────────
 async function provision() {
   const email = getArg("--email")?.toLowerCase().trim();
@@ -275,6 +345,8 @@ const aliasFor = getArg("--for");
 let task: Promise<void>;
 if (deleteTarget) {
   task = deleteAuthUser(deleteTarget);
+} else if (process.argv.includes("--platform-admin")) {
+  task = provisionPlatformAdmin();
 } else if (aliasTarget) {
   if (!aliasFor) {
     console.error("--add-alias requires --for <primary-email-or-auth-id>");

@@ -24,7 +24,10 @@ function sections(hasRatio: boolean, isPlatformAdmin: boolean): NavSection[] {
       ? [
           {
             label: "Platform",
-            items: [{ label: "Admin Console", href: "/app/admin" }],
+            items: [
+              { label: "Admin Console", href: "/app/admin" },
+              { label: "Leads", href: "/app/admin/leads" },
+            ],
           },
         ]
       : []),
