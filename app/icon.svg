@@ -1,21 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"
-     role="img" aria-label="RxShift Favicon 32px">
-  <!-- Full 4×3 grid scaled for 32px — cells 6×6, gap 2px -->
-  <!-- x_start=1, y_start=5 | Col x: 1,9,17,25 | Row y: 5,13,21 -->
-
-  <!-- Row 1 -->
-  <rect x="1"  y="5"  width="6" height="6" rx="1.5" fill="#C4D2E2"/>
-  <rect x="9"  y="5"  width="6" height="6" rx="1.5" fill="#8FAABB"/>
-  <rect x="17" y="5"  width="6" height="6" rx="1.5" fill="#F07C30"/>
-  <rect x="25" y="5"  width="6" height="6" rx="1.5" fill="#C4D2E2"/>
-  <!-- Row 2 -->
-  <rect x="1"  y="13" width="6" height="6" rx="1.5" fill="#C4D2E2"/>
-  <rect x="9"  y="13" width="6" height="6" rx="1.5" fill="#8FAABB"/>
-  <rect x="17" y="13" width="6" height="6" rx="1.5" fill="#F07C30"/>
-  <rect x="25" y="13" width="6" height="6" rx="1.5" fill="#C4D2E2"/>
-  <!-- Row 3 -->
-  <rect x="1"  y="21" width="6" height="6" rx="1.5" fill="#C4D2E2"/>
-  <rect x="9"  y="21" width="6" height="6" rx="1.5" fill="#8FAABB"/>
-  <rect x="17" y="21" width="6" height="6" rx="1.5" fill="#F07C30"/>
-  <rect x="25" y="21" width="6" height="6" rx="1.5" fill="#C4D2E2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="6" fill="#1C2F5E"/>
+  <rect x="3"  y="7"  width="5" height="5" rx="1" fill="#C4D2E2"/>
+  <rect x="10" y="7"  width="5" height="5" rx="1" fill="#8FAABB"/>
+  <rect x="17" y="7"  width="5" height="5" rx="1" fill="#F07C30"/>
+  <rect x="24" y="7"  width="5" height="5" rx="1" fill="#C4D2E2"/>
+  <rect x="3"  y="14" width="5" height="5" rx="1" fill="#C4D2E2"/>
+  <rect x="10" y="14" width="5" height="5" rx="1" fill="#8FAABB"/>
+  <rect x="17" y="14" width="5" height="5" rx="1" fill="#F07C30"/>
+  <rect x="24" y="14" width="5" height="5" rx="1" fill="#C4D2E2"/>
+  <rect x="3"  y="21" width="5" height="5" rx="1" fill="#C4D2E2"/>
+  <rect x="10" y="21" width="5" height="5" rx="1" fill="#8FAABB"/>
+  <rect x="17" y="21" width="5" height="5" rx="1" fill="#F07C30"/>
+  <rect x="24" y="21" width="5" height="5" rx="1" fill="#C4D2E2"/>
 </svg>
