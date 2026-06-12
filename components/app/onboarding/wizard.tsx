@@ -1,23 +1,20 @@
 "use client";
 
-// AI-assisted onboarding wizard (scoping Appendix B). Each step gathers
-// plain answers; AI proposes the state ratio rule; the user confirms or
-// edits everything; one server action creates the whole workspace.
+// AI-assisted onboarding wizard (scoping Appendix B). Plain-English
+// quick-start prefills the steps; AI proposes the state ratio rule; the
+// user confirms or edits everything; one server action creates the whole
+// workspace. Finishing uses a hard navigation — no client router races.
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import RxShiftMark from "@/components/rxshift-mark";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import { HelpText, Input, Label, Select, Textarea } from "@/components/ui/form";
 import { TIMEZONES, US_STATES, WORK_TYPE_SEEDS } from "@/lib/seeds";
+import { normalizeEmploymentType, normalizeRatioType, parseCsv } from "@/lib/csv";
+import { aiMapCsvColumns } from "@/lib/actions/import";
 import {
-  guessField,
-  normalizeEmploymentType,
-  normalizeRatioType,
-  parseCsv,
-} from "@/lib/csv";
-import {
+  aiQuickStart,
   completeOnboarding,
   proposeRatioRule,
   type RatioProposal,
@@ -38,6 +35,14 @@ interface StaffDraft {
   employment_type: string;
 }
 
+interface WorkTypeDraft {
+  name: string;
+  counts_as: "pharmacist" | "technician" | "none";
+  counting_default: boolean;
+  is_specialized: boolean;
+  enabled: boolean;
+}
+
 const STEPS = [
   "Your pharmacy",
   "Locations",
@@ -48,11 +53,55 @@ const STEPS = [
   "Finish",
 ];
 
+const CREATING_STAGES = [
+  "Creating your workspace…",
+  "Setting up locations and zones…",
+  "Configuring your ratio rule…",
+  "Loading work types…",
+  "Adding your staff…",
+  "Almost there — opening your dashboard…",
+];
+
+function CreatingOverlay({ failed }: { failed: boolean }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const t = setInterval(
+      () => setStage((s) => Math.min(s + 1, CREATING_STAGES.length - 1)),
+      900
+    );
+    return () => clearInterval(t);
+  }, []);
+  if (failed) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-navy/95">
+      <RxShiftMark size={72} variant="dark" />
+      <p className="mt-8 font-brand text-xl font-bold text-white">
+        {CREATING_STAGES[stage]}
+      </p>
+      <div className="mt-6 h-1.5 w-64 overflow-hidden rounded-full bg-white/15">
+        <div
+          className="h-full rounded-full bg-amber transition-all duration-700"
+          style={{
+            width: `${Math.round(((stage + 1) / CREATING_STAGES.length) * 100)}%`,
+          }}
+        />
+      </div>
+      <p className="mt-4 font-body text-sm text-white/50">
+        This usually takes a few seconds.
+      </p>
+    </div>
+  );
+}
+
 export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI quick-start
+  const [description, setDescription] = useState("");
+  const [quickStartBusy, setQuickStartBusy] = useState(false);
+  const [quickStartNote, setQuickStartNote] = useState<string | null>(null);
 
   // Step 1
   const [businessName, setBusinessName] = useState("");
@@ -73,11 +122,64 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
   const [cycle, setCycle] = useState<"weekly" | "biweekly" | "monthly">("weekly");
   const [slotMinutes, setSlotMinutes] = useState<15 | 30 | 60>(30);
   // Step 5
-  const [workTypes, setWorkTypes] = useState(
+  const [workTypes, setWorkTypes] = useState<WorkTypeDraft[]>(
     WORK_TYPE_SEEDS.map((w) => ({ ...w, enabled: true }))
   );
+  const [newWorkType, setNewWorkType] = useState("");
+  const [newWorkTypeCounts, setNewWorkTypeCounts] = useState(true);
   // Step 6
   const [staffRows, setStaffRows] = useState<StaffDraft[]>([]);
+  const [csvNote, setCsvNote] = useState<string | null>(null);
+  const [csvBusy, setCsvBusy] = useState(false);
+
+  async function handleQuickStart() {
+    setQuickStartBusy(true);
+    setQuickStartNote(null);
+    const result = await aiQuickStart(description);
+    if (result.ok && result.data) {
+      const p = result.data;
+      const applied: string[] = [];
+      if (p.business_name) {
+        setBusinessName(p.business_name);
+        applied.push("name");
+      }
+      if (p.timezone && (TIMEZONES as readonly string[]).includes(p.timezone)) {
+        setTimezone(p.timezone);
+        applied.push("timezone");
+      }
+      if (p.schedule_cycle) {
+        setCycle(p.schedule_cycle);
+        applied.push("schedule cycle");
+      }
+      if (p.locations && p.locations.length > 0) {
+        setLocations(
+          p.locations.map((l) => ({
+            name: l.name,
+            address: l.address ?? "",
+            isolated_rooms: l.isolated_rooms ?? [],
+          }))
+        );
+        applied.push(`${p.locations.length} location${p.locations.length === 1 ? "" : "s"}`);
+      }
+      if (p.has_ratio !== null && p.has_ratio !== undefined) {
+        setHasRatio(p.has_ratio);
+        applied.push(p.has_ratio ? "ratio: yes" : "ratio: no");
+        if (p.has_ratio) {
+          const st = p.state ?? "NV";
+          setState(st);
+          fetchProposal(st);
+        }
+      }
+      setQuickStartNote(
+        applied.length > 0
+          ? `Prefilled: ${applied.join(", ")}. Review each step — you confirm everything.`
+          : "Couldn't pull specifics from that — fill in the steps below."
+      );
+    } else if (!result.ok) {
+      setQuickStartNote(result.error);
+    }
+    setQuickStartBusy(false);
+  }
 
   async function fetchProposal(forState: string) {
     setProposalLoading(true);
@@ -91,36 +193,54 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
     setProposalLoading(false);
   }
 
-  function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const parsed = parseCsv(String(reader.result ?? ""));
-      if (parsed.length < 2) return;
-      const mapping = parsed[0].map((h) => guessField(h));
-      const rows: StaffDraft[] = parsed.slice(1).map((row) => {
-        const rec: StaffDraft = {
-          full_name: "",
-          login_email: "",
-          work_email: "",
-          job_title: "",
-          ratio_type: "technician",
-          employment_type: "full_time",
-        };
-        mapping.forEach((field, i) => {
-          const raw = (row[i] ?? "").trim();
-          if (!field || !raw) return;
-          if (field === "ratio_type") rec.ratio_type = normalizeRatioType(raw);
-          else if (field === "employment_type")
-            rec.employment_type = normalizeEmploymentType(raw);
-          else rec[field as keyof Omit<StaffDraft, "ratio_type" | "employment_type">] = raw;
-        });
-        return rec;
+    setCsvBusy(true);
+    setCsvNote(null);
+    const text = await file.text();
+    const parsed = parseCsv(text);
+    if (parsed.length < 2) {
+      setCsvNote("That file needs a header row plus at least one person.");
+      setCsvBusy(false);
+      return;
+    }
+
+    // AI maps the columns; heuristics as fallback — no manual mapping step
+    const headers = parsed[0];
+    const result = await aiMapCsvColumns(headers, parsed.slice(1, 4));
+    const mapping =
+      result.ok && result.data ? result.data.mapping : headers.map(() => "");
+
+    const rows: StaffDraft[] = parsed.slice(1).map((row) => {
+      const rec: StaffDraft = {
+        full_name: "",
+        login_email: "",
+        work_email: "",
+        job_title: "",
+        ratio_type: "technician",
+        employment_type: "full_time",
+      };
+      mapping.forEach((field, i) => {
+        const raw = (row[i] ?? "").trim();
+        if (!field || !raw) return;
+        if (field === "ratio_type") rec.ratio_type = normalizeRatioType(raw);
+        else if (field === "employment_type")
+          rec.employment_type = normalizeEmploymentType(raw);
+        else
+          rec[field as keyof Omit<StaffDraft, "ratio_type" | "employment_type">] =
+            raw;
       });
-      setStaffRows(rows.filter((r) => r.full_name));
-    };
-    reader.readAsText(file);
+      return rec;
+    });
+    const valid = rows.filter((r) => r.full_name);
+    setStaffRows(valid);
+    setCsvNote(
+      valid.length > 0
+        ? `${result.ok && result.data?.via === "ai" ? "AI mapped" : "Mapped"} your columns automatically — ${valid.length} people found.`
+        : "Couldn't find a name column in that file. Check the CSV and try again."
+    );
+    setCsvBusy(false);
   }
 
   function canContinue(): boolean {
@@ -179,16 +299,45 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
       branding_logo_url: null,
     });
     if (result.ok) {
-      router.push("/app/dashboard");
-      router.refresh();
+      // Hard navigation: guarantees a clean session-aware render, avoids
+      // the push/refresh router race that froze the first walkthrough
+      window.location.assign("/app/dashboard");
     } else {
       setError(result.error);
       setBusy(false);
     }
   }
 
+  const summaryRows: { label: string; value: string }[] = [
+    { label: "Pharmacy", value: businessName || "—" },
+    {
+      label: "Locations",
+      value: locations.map((l) => l.name).filter(Boolean).join(", ") || "—",
+    },
+    {
+      label: "Ratio",
+      value: hasRatio
+        ? `${state} — max ${maxTechs} techs per pharmacist, ${slotMinutes}-minute slots`
+        : "No fixed ratio (documentation still on)",
+    },
+    { label: "Cycle", value: cycle.charAt(0).toUpperCase() + cycle.slice(1) },
+    {
+      label: "Work types",
+      value: `${workTypes.filter((w) => w.enabled).length} selected`,
+    },
+    {
+      label: "Staff",
+      value:
+        staffRows.length > 0
+          ? `${staffRows.length} people imported`
+          : "None yet — add them later in Staff",
+    },
+    { label: "Your role", value: `${myName} — Owner/Admin, primary PTO approver` },
+  ];
+
   return (
     <main className="min-h-screen bg-page px-6 py-10">
+      {busy && <CreatingOverlay failed={!!error} />}
       <div className="mx-auto max-w-[640px]">
         <div className="mb-8 flex items-center gap-3">
           <RxShiftMark size={42} />
@@ -202,7 +351,6 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
           </div>
         </div>
 
-        {/* Progress */}
         <div className="mb-8 flex gap-1.5">
           {STEPS.map((_, i) => (
             <div
@@ -214,7 +362,39 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
 
         <div className="rounded-[10px] border border-line bg-white p-8 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
           {step === 0 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* AI quick-start */}
+              <div className="rounded-lg border border-line bg-cloud/50 p-4">
+                <p className="font-brand text-[10px] font-bold uppercase tracking-[1.8px] text-amber">
+                  Quick start
+                </p>
+                <p className="mt-1.5 font-body text-sm text-steel">
+                  Describe your pharmacy in a sentence or two and we&rsquo;ll
+                  prefill the steps. You&rsquo;ll confirm everything.
+                </p>
+                <Textarea
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder='e.g. "Two retail pharmacies in Las Vegas, one has a sterile compounding room. Nevada ratio rules. We schedule monthly."'
+                  className="mt-3"
+                />
+                <div className="mt-2.5 flex items-center gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={handleQuickStart}
+                    disabled={quickStartBusy || description.trim().length < 10}
+                  >
+                    {quickStartBusy ? "Reading…" : "Prefill from description"}
+                  </Button>
+                  {quickStartNote && (
+                    <span className="font-body text-xs text-steel">
+                      {quickStartNote}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="biz">Pharmacy or business name</Label>
                 <Input
@@ -222,7 +402,6 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="Southwest Medical Pharmacy"
-                  autoFocus
                 />
               </div>
               <div>
@@ -443,11 +622,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                             setLocations((prev) =>
                               prev.map((l, idx) =>
                                 idx === i
-                                  ? {
-                                      ...l,
-                                      isolated_rooms:
-                                        e.target.value.split("\n"),
-                                    }
+                                  ? { ...l, isolated_rooms: e.target.value.split("\n") }
                                   : l
                               )
                             )
@@ -469,9 +644,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                 <Select
                   id="cycle"
                   value={cycle}
-                  onChange={(e) =>
-                    setCycle(e.target.value as typeof cycle)
-                  }
+                  onChange={(e) => setCycle(e.target.value as typeof cycle)}
                 >
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Biweekly</option>
@@ -510,13 +683,13 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
               <p className="mb-4 font-body text-sm text-steel">
                 Work types decide whether someone counts toward the ratio in a
                 given block — production counts, inventory doesn&rsquo;t.
-                We&rsquo;ve preloaded the common ones; uncheck any you
-                don&rsquo;t use. Everything is editable later.
+                Uncheck what you don&rsquo;t use, add your own below, and
+                fine-tune any of it later in Settings → Work Types.
               </p>
               <div className="space-y-2">
                 {workTypes.map((w, i) => (
                   <label
-                    key={w.name}
+                    key={`${w.name}-${i}`}
                     className="flex items-center gap-3 rounded-lg border border-line p-3"
                   >
                     <input
@@ -540,25 +713,74 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                   </label>
                 ))}
               </div>
+
+              <div className="mt-4 flex items-end gap-2 rounded-lg border border-dashed border-line p-3">
+                <div className="flex-1">
+                  <Label>Add your own</Label>
+                  <Input
+                    value={newWorkType}
+                    onChange={(e) => setNewWorkType(e.target.value)}
+                    placeholder="e.g. Drive-through, Vaccinations"
+                  />
+                </div>
+                <Select
+                  value={newWorkTypeCounts ? "yes" : "no"}
+                  onChange={(e) => setNewWorkTypeCounts(e.target.value === "yes")}
+                  className="!w-36"
+                >
+                  <option value="yes">Counts</option>
+                  <option value="no">Doesn&rsquo;t count</option>
+                </Select>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (!newWorkType.trim()) return;
+                    setWorkTypes((prev) => [
+                      ...prev,
+                      {
+                        name: newWorkType.trim(),
+                        counts_as: "technician",
+                        counting_default: newWorkTypeCounts,
+                        is_specialized: false,
+                        enabled: true,
+                      },
+                    ]);
+                    setNewWorkType("");
+                  }}
+                  disabled={!newWorkType.trim()}
+                >
+                  Add
+                </Button>
+              </div>
             </div>
           )}
 
           {step === 5 && (
             <div className="space-y-4">
               <p className="font-body text-sm text-steel">
-                Upload your roster as a CSV (we&rsquo;ll auto-map the columns),
-                or skip and add people later.
+                Upload your roster as a CSV — AI maps your columns
+                automatically, whatever they&rsquo;re called. Or skip and add
+                people later.
               </p>
               <input
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleCsv}
+                disabled={csvBusy}
                 className="block font-body text-sm text-steel file:mr-4 file:rounded-md file:border-0 file:bg-amber file:px-4 file:py-2 file:font-brand file:text-sm file:font-bold file:text-white hover:file:bg-amber-dark"
               />
+              {csvBusy && (
+                <p className="font-body text-sm text-steel">
+                  Reading your file and mapping columns…
+                </p>
+              )}
+              {csvNote && !csvBusy && (
+                <p className="font-body text-sm text-steel">{csvNote}</p>
+              )}
               {staffRows.length > 0 && (
                 <div className="rounded-lg border border-line bg-cloud/40 p-4">
                   <p className="font-body text-sm font-medium text-navy">
-                    {staffRows.length} people ready to import:
+                    {staffRows.length} people ready to import
                   </p>
                   <p className="mt-1 font-body text-xs text-steel">
                     {staffRows.filter((s) => s.ratio_type === "pharmacist").length}{" "}
@@ -568,8 +790,20 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                     {staffRows.filter((s) => s.ratio_type === "non_counting").length}{" "}
                     non-counting
                   </p>
+                  <ul className="mt-2 font-body text-xs text-steel">
+                    {staffRows.slice(0, 4).map((s, i) => (
+                      <li key={i}>
+                        {s.full_name}
+                        {s.job_title ? ` — ${s.job_title}` : ""} ({s.ratio_type})
+                      </li>
+                    ))}
+                    {staffRows.length > 4 && <li>…and {staffRows.length - 4} more</li>}
+                  </ul>
                   <button
-                    onClick={() => setStaffRows([])}
+                    onClick={() => {
+                      setStaffRows([]);
+                      setCsvNote(null);
+                    }}
                     className="mt-2 font-body text-xs font-medium text-[#C0392B] hover:underline"
                   >
                     Clear
@@ -580,39 +814,29 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
           )}
 
           {step === 6 && (
-            <div className="space-y-4">
-              <p className="font-brand text-base font-semibold text-navy">
-                Ready to create {businessName || "your workspace"}.
+            <div>
+              <p className="mb-5 font-brand text-base font-semibold text-navy">
+                Ready to create your workspace
               </p>
-              <ul className="space-y-1.5 font-body text-sm text-steel">
-                <li>
-                  • {locations.length} location{locations.length === 1 ? "" : "s"}
-                </li>
-                <li>
-                  • Ratio:{" "}
-                  {hasRatio
-                    ? `${state} — max ${maxTechs} techs per pharmacist (${slotMinutes}-minute slots)`
-                    : "no fixed ratio (documentation still on)"}
-                </li>
-                <li>• {cycle} schedule cycle</li>
-                <li>
-                  • {workTypes.filter((w) => w.enabled).length} work types
-                </li>
-                <li>
-                  • {staffRows.length} staff imported (you&rsquo;re added as
-                  Owner/Admin)
-                </li>
-              </ul>
-              <p className="font-body text-xs text-steel">
-                Everything here is changeable in Settings.
+              <dl className="divide-y divide-line rounded-lg border border-line">
+                {summaryRows.map((row) => (
+                  <div key={row.label} className="flex gap-4 px-4 py-3">
+                    <dt className="w-28 shrink-0 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
+                      {row.label}
+                    </dt>
+                    <dd className="font-body text-sm text-navy">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-4 font-body text-xs text-steel">
+                Everything here is changeable in Settings after setup.
               </p>
               {error && (
-                <p className="font-body text-sm text-[#C0392B]">{error}</p>
+                <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>
               )}
             </div>
           )}
 
-          {/* Nav buttons */}
           <div className="mt-8 flex items-center justify-between border-t border-line pt-5">
             <Button
               variant="ghost"
@@ -622,15 +846,12 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
               ← Back
             </Button>
             {step < STEPS.length - 1 ? (
-              <Button
-                onClick={() => setStep((s) => s + 1)}
-                disabled={!canContinue()}
-              >
+              <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue()}>
                 Continue →
               </Button>
             ) : (
               <Button onClick={handleFinish} disabled={busy}>
-                {busy ? "Creating your workspace…" : "Create workspace"}
+                {busy ? "Creating…" : "Create workspace"}
               </Button>
             )}
           </div>

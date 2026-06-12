@@ -81,6 +81,60 @@ export async function proposeRatioRule(
   });
 }
 
+// ─── AI quick-start: interpret a plain-English pharmacy description ─────────
+
+const quickStartSchema = z.object({
+  business_name: z.string().max(120).nullish(),
+  timezone: z.string().nullish(),
+  schedule_cycle: z.enum(["weekly", "biweekly", "monthly"]).nullish(),
+  has_ratio: z.boolean().nullish(),
+  state: z.string().length(2).nullish(),
+  locations: z
+    .array(
+      z.object({
+        name: z.string().max(120),
+        address: z.string().max(300).nullish(),
+        isolated_rooms: z.array(z.string().max(120)).nullish(),
+      })
+    )
+    .max(25)
+    .nullish(),
+});
+
+export type QuickStartPrefill = z.infer<typeof quickStartSchema>;
+
+export async function aiQuickStart(
+  description: string
+): Promise<ActionResult<QuickStartPrefill>> {
+  return runAction(async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new ActionError("Not signed in.");
+    if (!aiConfigured())
+      throw new ActionError("The AI assistant isn't configured.");
+    if (description.trim().length < 10)
+      throw new ActionError("Tell me a bit more about the pharmacy first.");
+
+    const result = await aiJson<QuickStartPrefill>(
+      "You turn a pharmacy owner's plain-English description into scheduling setup config. " +
+        "Respond with JSON using only these keys (omit anything not mentioned):\n" +
+        '{"business_name": str, "timezone": IANA tz like "America/Los_Angeles" (infer from city/state if stated), ' +
+        '"schedule_cycle": "weekly"|"biweekly"|"monthly", "has_ratio": bool (true if they mention a state ratio, tech limits, or a state known for ratios like NV), ' +
+        '"state": 2-letter code, "locations": [{"name": str, "address": str|null, "isolated_rooms": ["room name"] for any sterile/IV/compounding rooms mentioned}]}\n' +
+        "Be conservative — only include what the description actually supports. Never invent locations.",
+      description.trim(),
+      600
+    );
+
+    const parsed = quickStartSchema.safeParse(result);
+    if (!parsed.success)
+      throw new ActionError("Couldn't interpret that — try the steps instead.");
+    return parsed.data;
+  });
+}
+
 // ─── Complete onboarding: create the whole tenant in one pass ───────────────
 
 const wizardSchema = z.object({

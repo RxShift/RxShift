@@ -15,7 +15,7 @@ function isAppHost(host: string): boolean {
   return host.startsWith("app.");
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const { pathname } = request.nextUrl;
   const isProd = process.env.NODE_ENV === "production";

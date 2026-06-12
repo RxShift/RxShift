@@ -7,12 +7,12 @@ import { Card } from "@/components/ui/card";
 import { HelpText, Label, Select } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import {
-  guessField,
   normalizeEmploymentType,
   normalizeRatioType,
   parseCsv,
 } from "@/lib/csv";
 import { importStaff } from "@/lib/actions/staff";
+import { aiMapCsvColumns } from "@/lib/actions/import";
 import type { Location } from "@/lib/types";
 
 const TARGET_FIELDS = [
@@ -34,22 +34,27 @@ export default function StaffImport({ locations }: { locations: Location[] }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setResult(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const parsed = parseCsv(String(reader.result ?? ""));
-      if (parsed.length < 2) {
-        setResult("That file needs a header row plus at least one person.");
-        return;
-      }
-      setHeaders(parsed[0]);
-      setRows(parsed.slice(1));
-      setMapping(parsed[0].map((h) => guessField(h)));
-    };
-    reader.readAsText(file);
+    setBusy(true);
+    const parsed = parseCsv(await file.text());
+    if (parsed.length < 2) {
+      setResult("That file needs a header row plus at least one person.");
+      setBusy(false);
+      return;
+    }
+    setHeaders(parsed[0]);
+    setRows(parsed.slice(1));
+    // AI maps the columns automatically; the dropdowns below let you correct it
+    const aiResult = await aiMapCsvColumns(parsed[0], parsed.slice(1, 4));
+    setMapping(
+      aiResult.ok && aiResult.data
+        ? aiResult.data.mapping
+        : parsed[0].map(() => "")
+    );
+    setBusy(false);
   }
 
   async function handleImport() {
@@ -134,9 +139,13 @@ export default function StaffImport({ locations }: { locations: Location[] }) {
 
       {headers.length > 0 && (
         <Card>
-          <h3 className="mb-3 font-brand text-sm font-bold text-navy">
-            Map your columns
+          <h3 className="mb-1 font-brand text-sm font-bold text-navy">
+            Column mapping
           </h3>
+          <p className="mb-3 font-body text-xs text-steel">
+            AI mapped your columns automatically — correct anything it got
+            wrong before importing.
+          </p>
           <div className="mb-5 grid gap-3 sm:grid-cols-2">
             {headers.map((h, i) => (
               <div key={i}>

@@ -1,0 +1,16 @@
+Employee Name,Position,Email Address,Status,Type
+Susan Whitfield,PharmD - Pharmacist in Charge,susan.w@testpharmacy.com,Full Time,RPh
+Marcus Delgado,Staff Pharmacist,marcus.d@testpharmacy.com,Full Time,RPh
+Priya Nair,Pharmacist (Floater),priya.n@testpharmacy.com,Per Diem,RPh
+Ana Gutierrez,Lead Pharmacy Technician,ana.g@testpharmacy.com,Full Time,CPhT
+Tyler Brooks,Pharmacy Technician,tyler.b@testpharmacy.com,Full Time,CPhT
+Mei Chen,Pharmacy Technician,mei.c@testpharmacy.com,Full Time,CPhT
+Jordan Avery,Pharmacy Technician,jordan.a@testpharmacy.com,Part Time,CPhT
+Rosa Martinez,Pharmacy Technician - IV Room,rosa.m@testpharmacy.com,Full Time,CPhT
+Derek Olson,Pharmacy Tech (Per Diem),derek.o@testpharmacy.com,PRN,Tech
+Hannah Kim,Pharmacy Technician Trainee,hannah.k@testpharmacy.com,Full Time,Trainee Tech
+Liam O'Connor,Pharmacy Technician,liam.o@testpharmacy.com,Part Time,CPhT
+Gabrielle Foster,Pharmacy Clerk,gabrielle.f@testpharmacy.com,Part Time,Clerk
+Sam Nguyen,Delivery Driver,sam.n@testpharmacy.com,Part Time,Driver
+Olivia Park,Front Counter / Cashier,olivia.p@testpharmacy.com,Part Time,Cashier
+Carlos Reyes,Inventory Specialist,carlos.r@testpharmacy.com,Full Time,Tech
