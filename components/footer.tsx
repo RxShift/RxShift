@@ -9,7 +9,7 @@ export default function Footer() {
           Compliance-ready pharmacy scheduling
         </p>
         <p className="font-body text-[13px] text-white/40">
-          <a href="/app/login" className="hover:text-white/70">
+          <a href="https://app.rxshift.io" className="hover:text-white/70">
             Log in
           </a>
           {"  ·  "}
