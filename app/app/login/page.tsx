@@ -16,6 +16,30 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
+
+    // Alias path first: if this address is a registered extra sign-in email
+    // for an account, the server delivers the link to it directly.
+    try {
+      const res = await fetch("/api/auth/login-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.handled) {
+        setStatus("sent");
+        return;
+      }
+      if (!res.ok && data.error) {
+        setErrorMsg(data.error);
+        setStatus("error");
+        return;
+      }
+    } catch {
+      // Endpoint unreachable — fall through to the standard flow
+    }
+
+    // Standard flow: Supabase sends the magic link to this address
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
