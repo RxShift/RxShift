@@ -146,16 +146,24 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - When adding new API routes, check whether the Supabase keep-alive cron is in place first (required for free-tier).
 - Do not use AI APIs until Jamison explicitly says to add them.
 
-## Pending TODOs (as of June 11, 2026)
+## Phase 2 (built June 12, 2026)
 
-- [ ] **Apply migrations to Supabase** — `supabase/migrations/0001-0003` written; needs Jamison's personal access token (or paste into the SQL editor). Nothing in the app works against the DB until this runs.
-- [ ] Configure Supabase Auth: set site URL + redirect URLs (`http://localhost:3200/app/auth/callback`, later `https://app.rxshift.io/auth/callback`); consider custom SMTP via Resend for production magic links.
-- [ ] Authorize Vercel account (blocked on Vercel support — phone number)
-- [ ] Connect GitHub repo to Vercel once authorized; add env vars; verify cron
-- [ ] Push repo to GitHub (needs RxShift-account PAT)
-- [ ] End-to-end walkthrough with a real tenant once the DB exists (onboarding → schedule → publish → compliance record)
-- [x] Marketing homepage, /pricing, /features, /security
-- [x] Full app v1 build (June 11, 2026 — see Product Architecture above)
+- **Tenant lifecycle + email safety:** `tenant.status` (setup→trial→live), recipient allowlist, owner Go Live, plus **demo mode** (`is_demo` + `demo_redirect_email` — demo email is redirected to one inbox or suppressed; demo tenants never go live). Gate lives in `lib/email-policy.ts` / `sendNotificationEmail` — every send passes through it.
+- **Login aliases:** one account, multiple sign-in emails (`login_alias` table, `/api/auth/login-link`, `/app/auth/confirm` token-hash flow — survives Outlook link scanners). Manage via `scripts/provision-user.ts --add-alias`.
+- **Unpaid breaks:** `shift.break_minutes` + `tenant.default_break_minutes`; paid-hours math subtracts per shift; ratio coverage untouched.
+- **Internal CRM:** `/app/admin/leads` (platform admins only; service-role tables `leads`/`lead_notes`). Website forms auto-capture leads with source page; duplicates merge via notes.
+- **Website:** interactive `/pricing` calculator, `/nevada` R113-24 deep-dive, `/states/california` + `/states/tennessee` stubs (Coming Soon), `/vs/when-i-work` battle card, States nav dropdown, columned footer. Marketing copy is HONEST about engine scope: volume minimums, certified/non-certified, trainee limits are ROADMAP, not shipped.
+- **Mesa Vista Pharmacy demo tenant:** fully fictional, 3 NV locations, 14 staff, 7 date-anchored weeks, engine-real Henderson Thursday 2–4 PM deficiency. Login: `demo@rxshift.io` (alias → Frank DiMaggio, catch-all delivers to Jamison). Reset: admin console "Restore demo data" or `npx tsx scripts/seed-mesa-vista.ts --reset` (core in `lib/demo/mesa-vista.ts`).
+
+**Spec workflow:** feature specs land in `docs/specs/`; once implemented they move to `docs/specs/_archive/` (see `docs/specs/README.md`). Archived specs are history — code + this file are the source of truth.
+
+## Pending TODOs (as of June 12, 2026)
+
+- [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
+- [ ] **Website interactive demo / screenshots** — now UNBLOCKED by the Mesa Vista demo tenant. Needs a decision on format (screenshots, video, or interactive embed) and imagery production. The homepage/pricing currently have no product visuals.
+- [ ] **Compliance engine roadmap** (marketing already frames these honestly as roadmap): scripts-per-hour volume minimums (R113-24 — read `volume_data`, new "understaffed for volume" deficiency type), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
+- [ ] Push to the RxShift-account GitHub repo (`origin` → RxShift/RxShift) — needs that account's PAT; `vercel` remote (jamisonwest-ship-it/rx-shift) is the deploy path and works.
+- [ ] Owner-facing alias management UI + real rate limiting on `/api/auth/login-link` before public launch.
 
 ### v1 simplifications to revisit
 - Location operating hours: schema supports per-day hours; no UI editor yet (engine doesn't need it).

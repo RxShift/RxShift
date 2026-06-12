@@ -8,6 +8,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     heading: "Data handled (and not handled)",
     items: [
       "Stored: staff names, login/work emails, job titles, employment types, schedules, time-off and callout records, ratio configuration, compliance records, audit logs.",
+      "Sales lead records (prospect pharmacy and contact details from website demo requests) are stored for internal follow-up and visible only to platform administrators — never to pharmacy tenants.",
       "Not stored by design: PHI or any patient data, prescription data, compensation or payroll data, credential documents (license numbers, certificates).",
       "Script-volume counts (numbers only, per hour) may be captured for future forecasting — they contain no patient information.",
     ],
@@ -50,6 +51,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
       "Every notification email passes through a single send-time gate: a per-tenant kill switch plus an optional recipient allowlist. When an allowlist is set, only those addresses can receive email — all others are silently dropped and the suppression is logged without the address.",
       "Tenants have a lifecycle (setup → trial → live). Trial tenants are fully functional but send no email to staff; going live is an explicit owner action with a confirmation warning, recorded in the audit log.",
       "Demo and test tenants are seeded with no staff email addresses, the kill switch off, and trial status — four independent locks against accidental email to real people.",
+      "Demo-mode tenants hold entirely fictional rosters; every email they would send is either rewritten to one configured demo inbox or suppressed outright, and demo tenants can never be switched live.",
     ],
   },
   {
