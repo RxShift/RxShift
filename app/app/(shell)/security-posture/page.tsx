@@ -26,7 +26,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     items: [
       "Magic-link email sign-in (Supabase Auth) — no passwords stored, phished, or reused. Auth endpoints are rate-limited.",
       "An account may have additional admin-registered sign-in addresses (e.g., a work email for the work desktop); every sign-in still proves control of the inbox via a one-time link.",
-      "Roles: Owner/Admin, Scheduler (department-scopable), Approver/Supervisor, Read-only, Staff. Server actions re-check the role on every write.",
+      "Roles: Owner/Admin, Scheduler (department-scopable), Approver/Supervisor, Read-only, Staff. Server actions re-check the role on every write. Schedulers and supervisors can edit pharmacy configuration (locations, ratio rules, work types); going live, deleting the workspace, assigning roles, and offboarding remain Owner/Admin-only.",
       "Staff see their own schedule and requests; managers see their tenant; nobody sees another tenant.",
     ],
   },

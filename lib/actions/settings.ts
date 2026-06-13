@@ -25,7 +25,7 @@ const tenantSchema = z.object({
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {
   return runAction(async () => {
-    const ctx = await requireAdmin();
+    const ctx = await requireManager();
     const data = tenantSchema.parse(input);
     const supabase = await createClient();
     const { error } = await supabase
@@ -205,7 +205,7 @@ const ratioRuleSchema = z.object({
 
 export async function upsertRatioRule(input: unknown): Promise<ActionResult> {
   return runAction(async () => {
-    const ctx = await requireAdmin();
+    const ctx = await requireManager();
     const data = ratioRuleSchema.parse(input);
     const supabase = await createClient();
 

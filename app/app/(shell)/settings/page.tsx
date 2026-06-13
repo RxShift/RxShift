@@ -14,7 +14,7 @@ export default async function OrganizationSettingsPage() {
       {tenant.status !== "live" && isOwner && !tenant.is_demo && (
         <GoLiveCard status={tenant.status} />
       )}
-      <DangerZone tenantName={tenant.name} />
+      {isOwner && <DangerZone tenantName={tenant.name} />}
     </div>
   );
 }

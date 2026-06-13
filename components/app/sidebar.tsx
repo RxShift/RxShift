@@ -18,6 +18,8 @@ interface NavSection {
 }
 
 const MANAGE: AppRole[] = ["owner_admin", "scheduler", "supervisor", "read_only"];
+// Can edit pharmacy configuration (mirrors canManage — excludes read_only)
+const CONFIG: AppRole[] = ["owner_admin", "scheduler", "supervisor"];
 
 function sections(
   hasRatio: boolean,
@@ -62,7 +64,7 @@ function sections(
       label: "Configuration",
       items: [
         { label: "Staff", href: "/app/staff", roles: MANAGE },
-        { label: "Settings", href: "/app/settings", roles: ["owner_admin"] },
+        { label: "Settings", href: "/app/settings", roles: CONFIG },
       ],
     },
     {
