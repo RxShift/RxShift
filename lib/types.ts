@@ -167,6 +167,7 @@ export interface WorkType {
   counting_default: boolean;
   exclusion_rules: Record<string, unknown> | null;
   is_specialized: boolean;
+  color: string | null; // display hex (#RRGGBB); null = neutral
   created_at: string;
 }
 

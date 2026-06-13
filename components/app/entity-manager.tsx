@@ -16,14 +16,57 @@ import {
   deleteEntity,
   updateEntity,
 } from "@/lib/actions/settings";
+import { WORK_TYPE_PALETTE } from "@/lib/work-type-colors";
 
 export interface FieldDef {
   name: string;
   label: string;
-  type: "text" | "select" | "checkbox";
+  type: "text" | "select" | "checkbox" | "color";
   options?: { value: string; label: string }[];
   required?: boolean;
   help?: string;
+}
+
+/** Curated swatch grid bound to a hidden input (FormData-compatible). */
+function SwatchPicker({
+  name,
+  initialValue,
+}: {
+  name: string;
+  initialValue: string;
+}) {
+  const [value, setValue] = useState(initialValue);
+  return (
+    <div>
+      <input type="hidden" name={name} value={value} />
+      <div className="flex flex-wrap gap-2">
+        {WORK_TYPE_PALETTE.map((swatch) => {
+          const selected =
+            value.toLowerCase() === swatch.hex.toLowerCase();
+          return (
+            <button
+              key={swatch.hex}
+              type="button"
+              title={swatch.name}
+              onClick={() => setValue(selected ? "" : swatch.hex)}
+              className={`h-8 w-8 rounded-md transition-transform ${
+                selected
+                  ? "ring-2 ring-navy ring-offset-2 ring-offset-surface scale-110"
+                  : "hover:scale-105"
+              }`}
+              style={{ backgroundColor: swatch.hex }}
+            >
+              {selected && (
+                <span className="font-bold text-white" aria-hidden="true">
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export interface ColumnDef<Row> {
@@ -176,6 +219,14 @@ export default function EntityManager<Row extends { id: string }>({
                     {f.label}
                   </label>
                 </div>
+              ) : f.type === "color" ? (
+                <>
+                  <Label htmlFor={f.name}>{f.label}</Label>
+                  <SwatchPicker
+                    name={f.name}
+                    initialValue={String(initial[f.name] ?? "")}
+                  />
+                </>
               ) : (
                 <>
                   <Label htmlFor={f.name}>{f.label}</Label>

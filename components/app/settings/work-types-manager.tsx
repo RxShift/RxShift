@@ -13,6 +13,19 @@ export default function WorkTypesManager({ workTypes }: { workTypes: WorkType[] 
       emptyMessage="No work types yet. The onboarding wizard seeds the common ones; you can also add them here."
       columns={[
         {
+          label: "Color",
+          render: (r) =>
+            r.color ? (
+              <span
+                className="inline-block h-5 w-5 rounded-md align-middle"
+                style={{ backgroundColor: r.color }}
+                title={r.color}
+              />
+            ) : (
+              <span className="font-body text-xs text-steel">—</span>
+            ),
+        },
+        {
           label: "Name",
           render: (r) => <span className="font-medium">{r.name}</span>,
         },
@@ -36,6 +49,12 @@ export default function WorkTypesManager({ workTypes }: { workTypes: WorkType[] 
       ]}
       fields={[
         { name: "name", label: "Work type name", type: "text", required: true },
+        {
+          name: "color",
+          label: "Schedule color",
+          type: "color",
+          help: "Shifts on this work type show in this color on the schedule, live board, and staff calendars. Click a selected swatch again to clear it.",
+        },
         {
           name: "counts_as",
           label: "Counts as",
@@ -61,6 +80,7 @@ export default function WorkTypesManager({ workTypes }: { workTypes: WorkType[] 
       ]}
       toFormValues={(r) => ({
         name: r.name,
+        color: r.color ?? "",
         counts_as: r.counts_as,
         counting_default: r.counting_default,
         is_specialized: r.is_specialized,

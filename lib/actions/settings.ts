@@ -111,6 +111,10 @@ const SCHEMAS: Record<EntityName, z.ZodType> = {
     counts_as: z.enum(["pharmacist", "technician", "none"]),
     counting_default: z.coerce.boolean(),
     is_specialized: z.coerce.boolean(),
+    color: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/)
+      .nullish(),
   }),
   constraint_rule: z.object({
     scope_type: z.enum(["staff", "role"]),
