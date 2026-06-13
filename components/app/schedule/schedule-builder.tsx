@@ -5,14 +5,14 @@
 // the deterministic engines render as red/amber highlights plus a flag
 // panel; publishing with open flags requires a logged reason.
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/form";
-import { eachDate, fmtDay, fmtRange } from "@/lib/dates";
-import { copyForward, publishPeriod } from "@/lib/actions/schedule";
+import { eachDate, fmtRange } from "@/lib/dates";
+import { copyForward, createNextPeriod, publishPeriod } from "@/lib/actions/schedule";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
   RatioZone,
@@ -25,7 +25,8 @@ import type {
   WorkType,
 } from "@/lib/types";
 import ShiftModal from "./shift-modal";
-import ShiftBlock, { WorkTypeLegend } from "./shift-block";
+import { WorkTypeLegend } from "./shift-block";
+import ScheduleGrid from "./schedule-grid";
 
 interface ShiftWithSegments extends Shift {
   segments: ShiftSegment[];
@@ -46,12 +47,14 @@ export default function ScheduleBuilder({
   periods,
   bundle,
   validation,
+  today,
 }: {
   tenant: Tenant;
   locationId: string;
   periods: SchedulePeriod[];
   bundle: BuilderBundle;
   validation: ValidationOut;
+  today: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<{
@@ -64,6 +67,7 @@ export default function ScheduleBuilder({
   const [busy, setBusy] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [showFlags, setShowFlags] = useState(true);
+  const [confirmCopy, setConfirmCopy] = useState(false);
 
   const dates = useMemo(
     () => eachDate(bundle.period.start_date, bundle.period.end_date),
@@ -126,17 +130,19 @@ export default function ScheduleBuilder({
     return ids;
   }, [bundle.shifts]);
 
-  // Rows banded by role: pharmacists, then technicians, then everyone
-  // else (drivers, clerks…). Alphabetical within each band.
-  const staffBands = useMemo(() => {
-    const band = (rt: Staff["ratio_type"]) =>
-      bundle.staff.filter((s) => s.ratio_type === rt);
-    return [
-      { label: "Pharmacists", staff: band("pharmacist") },
-      { label: "Technicians", staff: band("technician") },
-      { label: "Other staff", staff: band("non_counting") },
-    ].filter((b) => b.staff.length > 0);
-  }, [bundle.staff]);
+  // Period navigation: periods arrive newest-first; sort oldest-first so the
+  // ◀ / ▶ steppers move chronologically.
+  const { prevPeriod, nextPeriod } = useMemo(() => {
+    const ordered = [...periods].sort((a, b) =>
+      a.start_date.localeCompare(b.start_date)
+    );
+    const idx = ordered.findIndex((p) => p.id === bundle.period.id);
+    return {
+      prevPeriod: idx > 0 ? ordered[idx - 1] : null,
+      nextPeriod:
+        idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null,
+    };
+  }, [periods, bundle.period.id]);
 
   // One line per (rule, person) in the flag panel — "Melissa Morse — 4×"
   // instead of four near-identical overtime lines
@@ -177,9 +183,28 @@ export default function ScheduleBuilder({
     setBusy(false);
   }
 
+  function goToPeriod(id: string) {
+    router.push(`/app/schedule?location=${locationId}&period=${id}`);
+  }
+
+  async function handleCreateNext() {
+    setBusy(true);
+    const result = await createNextPeriod(locationId);
+    if (result.ok && result.data) {
+      router.push(
+        `/app/schedule?location=${locationId}&period=${result.data.id}`
+      );
+      router.refresh();
+    } else if (!result.ok) {
+      alert(result.error);
+    }
+    setBusy(false);
+  }
+
   async function handleCopyForward() {
     setBusy(true);
     const result = await copyForward(bundle.period.id);
+    setConfirmCopy(false);
     if (result.ok && result.data) {
       router.refresh();
     } else if (!result.ok) {
@@ -221,22 +246,38 @@ export default function ScheduleBuilder({
     <div className="space-y-5">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={bundle.period.id}
-          onChange={(e) =>
-            router.push(
-              `/app/schedule?location=${locationId}&period=${e.target.value}`
-            )
-          }
-          className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
-        >
-          {periods.map((p) => (
-            <option key={p.id} value={p.id}>
-              {fmtRange(p.start_date, p.end_date)}
-              {p.status === "published" ? " ✓" : " (draft)"}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="secondary"
+            className="px-3"
+            onClick={() => prevPeriod && goToPeriod(prevPeriod.id)}
+            disabled={!prevPeriod}
+            aria-label="Previous period"
+          >
+            ←
+          </Button>
+          <select
+            value={bundle.period.id}
+            onChange={(e) => goToPeriod(e.target.value)}
+            className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
+          >
+            {periods.map((p) => (
+              <option key={p.id} value={p.id}>
+                {fmtRange(p.start_date, p.end_date)}
+                {p.status === "published" ? " ✓" : " (draft)"}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            className="px-3"
+            onClick={() => nextPeriod && goToPeriod(nextPeriod.id)}
+            disabled={!nextPeriod}
+            aria-label="Next period"
+          >
+            →
+          </Button>
+        </div>
 
         <Badge tone={isPublished ? "compliant" : "neutral"}>
           {isPublished ? "Published" : "Draft"}
@@ -244,10 +285,17 @@ export default function ScheduleBuilder({
 
         <div className="ml-auto flex items-center gap-3">
           {bundle.shifts.length === 0 && (
-            <Button variant="secondary" onClick={handleCopyForward} disabled={busy}>
-              Copy previous period
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmCopy(true)}
+              disabled={busy}
+            >
+              Copy last period&rsquo;s weekday pattern
             </Button>
           )}
+          <Button variant="secondary" onClick={handleCreateNext} disabled={busy}>
+            Create next period
+          </Button>
           <Button variant="secondary" onClick={exportCsv}>
             Export CSV
           </Button>
@@ -300,108 +348,25 @@ export default function ScheduleBuilder({
       )}
 
       {/* The grid */}
-      <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
-                Staff
-              </th>
-              {dates.map((d) => {
-                const day = fmtDay(d);
-                const isWeekend = day.dow === "Sat" || day.dow === "Sun";
-                return (
-                  <th
-                    key={d}
-                    className={`min-w-[92px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
-                      isWeekend ? "bg-cloud/60 text-steel/70" : "bg-cloud text-steel"
-                    }`}
-                  >
-                    {day.dow}
-                    <br />
-                    <span className="font-body text-[10px] font-medium normal-case tracking-normal">
-                      {day.label}
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {staffBands.map((band) => (
-              <Fragment key={band.label}>
-                <tr>
-                  <td className="sticky left-0 z-10 border-r border-t border-line bg-cloud px-3 py-1 font-brand text-[9px] font-bold uppercase tracking-[1.2px] text-steel">
-                    {band.label} ({band.staff.length})
-                  </td>
-                  <td
-                    colSpan={dates.length}
-                    className="border-t border-line bg-cloud"
-                  />
-                </tr>
-                {band.staff.map((person) => (
-                  <tr key={person.id}>
-                    <td className="sticky left-0 z-10 border-r border-t border-line bg-surface px-3 py-1.5">
-                      <span className="font-body text-[13px] font-medium text-navy">
-                        {person.full_name}
-                      </span>
-                      {person.ratio_type === "technician" && person.certified && (
-                        <span className="ml-1.5 font-body text-[10px] text-steel">
-                          CPhT
-                        </span>
-                      )}
-                    </td>
-                    {dates.map((d) => {
-                      const key = `${person.id}|${d}`;
-                      const cellShifts = shiftsByCell.get(key) ?? [];
-                      const hasPto = timeOffByCell.has(key);
-                      const shift = cellShifts[0] ?? null;
-                      const deficient = shift
-                        ? deficientShiftIds.has(shift.id)
-                        : false;
-                      const constrained = shift
-                        ? constraintShiftIds.has(shift.id)
-                        : false;
-
-                      return (
-                        <td
-                          key={d}
-                          onClick={() =>
-                            setEditing({ staff: person, date: d, shift })
-                          }
-                          className={`cursor-pointer border-t border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
-                            hasPto ? "bg-cloud" : ""
-                          }`}
-                        >
-                          {hasPto && (
-                            <span className="block font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel">
-                              PTO
-                            </span>
-                          )}
-                          {shift && (
-                            <ShiftBlock
-                              segments={shift.segments}
-                              workTypeById={workTypeById}
-                              deficient={deficient}
-                              constrained={constrained}
-                            />
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ScheduleGrid
+        dates={dates}
+        today={today}
+        staff={bundle.staff}
+        shiftsByCell={shiftsByCell}
+        timeOffByCell={timeOffByCell}
+        deficientShiftIds={deficientShiftIds}
+        constraintShiftIds={constraintShiftIds}
+        workTypeById={workTypeById}
+        onCellClick={(staff, date, shift) =>
+          setEditing({ staff, date, shift })
+        }
+      />
 
       <WorkTypeLegend workTypes={bundle.workTypes} usedIds={usedWorkTypeIds} />
 
       <p className="font-body text-xs text-steel">
         Click any cell to add or edit a shift. Blocks are colored by work
-        type (set colors in Settings → Work Types). A red ring with ⚠ marks
+        type (set colors in Settings → Work Types). A red ⚠ badge marks
         a shift in a deficient ratio slot; an amber ring marks a constraint
         flag; grey = approved time off. Flags are advisory — publishing past
         them requires a reason, which is logged.
@@ -423,6 +388,29 @@ export default function ScheduleBuilder({
           defaultBreakMinutes={tenant.default_break_minutes ?? 30}
         />
       )}
+
+      {/* Copy-forward confirm */}
+      <Modal
+        open={confirmCopy}
+        onClose={() => setConfirmCopy(false)}
+        title="Copy last period's weekday pattern?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmCopy(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCopyForward} disabled={busy}>
+              {busy ? "Copying…" : "Copy forward"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This copies every shift from the previous period into this one,
+          keeping the same day-of-week pattern and break times. It only works on
+          an empty period — nothing here will be overwritten.
+        </p>
+      </Modal>
 
       {/* Publish confirm */}
       <Modal

@@ -3,14 +3,41 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import ScheduleBuilder from "@/components/app/schedule/schedule-builder";
+import ScheduleRangeView from "@/components/app/schedule/schedule-range-view";
 import NewPeriodButton from "@/components/app/schedule/new-period-button";
 import AiCommandBar from "@/components/app/schedule/ai-command-bar";
 import AllLocationsOverview, {
   type OverviewSection,
 } from "@/components/app/schedule/all-locations-overview";
-import { loadPeriodBundle, validateBundle } from "@/lib/schedule-data";
-import { addDaysStr, fmtRange, nowInTimeZone } from "@/lib/dates";
+import {
+  loadPeriodBundle,
+  loadRangeBundle,
+  validateBundle,
+  validateRangeBundle,
+} from "@/lib/schedule-data";
+import {
+  addDaysStr,
+  fmtRange,
+  mondayOf,
+  monthStart,
+  nowInTimeZone,
+  periodEnd,
+} from "@/lib/dates";
 import type { Location, SchedulePeriod } from "@/lib/types";
+
+// View windows are decoupled from the build cycle: you can browse by week,
+// 2 weeks, or month regardless of how the schedule was built/published.
+const VIEW_MODES = ["week", "2week", "month"] as const;
+type ViewMode = (typeof VIEW_MODES)[number];
+
+function viewWindow(view: ViewMode, anchor: string): { start: string; end: string } {
+  if (view === "month") {
+    const start = monthStart(anchor);
+    return { start, end: periodEnd(start, "monthly") };
+  }
+  const start = mondayOf(anchor);
+  return { start, end: addDaysStr(start, view === "2week" ? 13 : 6) };
+}
 
 // Location switcher: "All locations" overview + one pill per location.
 function ViewNav({
@@ -48,6 +75,39 @@ function ViewNav({
   );
 }
 
+// Time-window selector for a single location: edit the built period, or browse
+// by week / 2 weeks / month. Building stays per-period; this only changes what
+// span you're looking at.
+function ViewModeNav({
+  locationId,
+  active,
+}: {
+  locationId: string;
+  active: ViewMode | "period";
+}) {
+  const pill = (on: boolean) =>
+    `whitespace-nowrap rounded-full border px-3 py-1 font-brand text-[12px] font-semibold transition-colors ${
+      on
+        ? "border-navy bg-navy text-white"
+        : "border-line bg-surface text-steel hover:text-navy"
+    }`;
+  const modes: { key: ViewMode | "period"; label: string; href: string }[] = [
+    { key: "period", label: "Edit period", href: `/app/schedule?location=${locationId}` },
+    { key: "week", label: "Week", href: `/app/schedule?location=${locationId}&view=week` },
+    { key: "2week", label: "2 weeks", href: `/app/schedule?location=${locationId}&view=2week` },
+    { key: "month", label: "Month", href: `/app/schedule?location=${locationId}&view=month` },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {modes.map((m) => (
+        <Link key={m.key} href={m.href} className={pill(active === m.key)}>
+          {m.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default async function SchedulePage({
   searchParams,
 }: {
@@ -56,6 +116,7 @@ export default async function SchedulePage({
     period?: string;
     view?: string;
     week?: string;
+    anchor?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -169,15 +230,85 @@ export default async function SchedulePage({
       )
     )?.id ?? locs[0].id;
   const locationId = params.location ?? defaultLocationId;
+  const locName = locs.find((l) => l.id === locationId)?.name ?? "";
+  const today = nowInTimeZone(tenant.timezone).date;
+
+  // ── View-by window (week / 2-week / month), decoupled from the build cycle ──
+  const viewMode = (VIEW_MODES as readonly string[]).includes(params.view ?? "")
+    ? (params.view as ViewMode)
+    : null;
+  if (viewMode) {
+    const anchor = params.anchor ?? today;
+    const { start, end } = viewWindow(viewMode, anchor);
+    const range = await loadRangeBundle(locationId, start, end);
+    const rangeValidation = validateRangeBundle(range, tenant);
+    const stepLen = viewMode === "2week" ? 14 : 7;
+    const prevAnchor =
+      viewMode === "month" ? addDaysStr(start, -1) : addDaysStr(start, -stepLen);
+    const nextAnchor =
+      viewMode === "month" ? addDaysStr(end, 1) : addDaysStr(start, stepLen);
+    const stepHref = (a: string) =>
+      `/app/schedule?location=${locationId}&view=${viewMode}&anchor=${a}`;
+    const stepLink =
+      "rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40";
+    return (
+      <>
+        <PageHeader title={`Schedule — ${locName} — ${fmtRange(start, end)}`} />
+        <div className="flex-1 space-y-5 p-8">
+          <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <ViewModeNav locationId={locationId} active={viewMode} />
+            <div className="flex items-center gap-3">
+              <Link href={stepHref(prevAnchor)} className={stepLink}>
+                ← Prev
+              </Link>
+              <Link
+                href={stepHref(today)}
+                className="font-body text-sm font-medium text-steel hover:text-navy"
+              >
+                Today
+              </Link>
+              <Link href={stepHref(nextAnchor)} className={stepLink}>
+                Next →
+              </Link>
+            </div>
+          </div>
+          <ScheduleRangeView
+            tenant={tenant}
+            locationId={locationId}
+            today={today}
+            viewStart={start}
+            viewEnd={end}
+            periods={range.periods}
+            shifts={range.shifts}
+            staff={range.staff}
+            workTypes={range.workTypes}
+            zones={range.zones}
+            approvedTimeOff={range.approvedTimeOff}
+            validation={rangeValidation}
+          />
+        </div>
+      </>
+    );
+  }
 
   const periodList = everyPeriod.filter((p) => p.location_id === locationId);
 
-  // Default period: published first (newest), then newest of any status
+  // Default period: the one containing today (published first), then newest
+  // published, then newest of any status — so you land on "now", not the 1st.
   const periodId =
     params.period ??
-    (periodList.find((p) => p.status === "published") ?? periodList[0])?.id;
-
-  const locName = locs.find((l) => l.id === locationId)?.name ?? "";
+    (
+      periodList.find(
+        (p) =>
+          p.start_date <= today &&
+          p.end_date >= today &&
+          p.status === "published"
+      ) ??
+      periodList.find((p) => p.start_date <= today && p.end_date >= today) ??
+      periodList.find((p) => p.status === "published") ??
+      periodList[0]
+    )?.id;
 
   if (!periodId) {
     return (
@@ -219,6 +350,7 @@ export default async function SchedulePage({
       />
       <div className="flex-1 space-y-5 p-8">
         <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
+        <ViewModeNav locationId={locationId} active="period" />
         <AiCommandBar periodId={bundle.period.id} />
         <ScheduleBuilder
           tenant={tenant}
@@ -233,6 +365,7 @@ export default async function SchedulePage({
             approvedTimeOff: bundle.approvedTimeOff,
           }}
           validation={validation}
+          today={today}
         />
       </div>
     </>

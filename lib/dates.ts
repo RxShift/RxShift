@@ -79,6 +79,17 @@ export function nextPeriodStart(prevEnd: string): string {
   return addDaysStr(prevEnd, 1);
 }
 
+/** Monday of the week containing the given date (UTC). */
+export function mondayOf(date: string): string {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return addDaysStr(date, dow === 0 ? -6 : 1 - dow);
+}
+
+/** First day of the month containing the given date (yyyy-mm-dd). */
+export function monthStart(date: string): string {
+  return `${date.slice(0, 7)}-01`;
+}
+
 /** Default first-period start: this week's Monday / first of this month. */
 export function defaultPeriodStart(cycle: "weekly" | "biweekly" | "monthly"): string {
   const now = new Date();

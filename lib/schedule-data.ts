@@ -121,6 +121,139 @@ export async function loadPeriodBundle(
   };
 }
 
+// ─── Range bundle (view selector: week / 2-week / month across periods) ──────
+//
+// Build is per-period (the publish unit); VIEW is decoupled. A range can span
+// several built periods, so we fetch shifts by date range + location instead of
+// by a single period id. Each shift keeps its schedule_period_id, so editing a
+// cell still resolves to the right underlying period.
+
+export interface RangeBundle {
+  locationId: string;
+  viewStart: string;
+  viewEnd: string;
+  periods: SchedulePeriod[]; // periods for this location overlapping the window
+  shifts: ShiftWithSegments[];
+  staff: Staff[];
+  workTypes: WorkType[];
+  zones: RatioZone[];
+  ratioRule: RatioRule | null;
+  constraints: ConstraintRule[];
+  approvedTimeOff: TimeOffRequest[];
+}
+
+export async function loadRangeBundle(
+  locationId: string,
+  viewStart: string,
+  viewEnd: string
+): Promise<RangeBundle> {
+  const supabase = await createClient();
+
+  const { data: shifts } = await supabase
+    .from("shift")
+    .select("*")
+    .eq("location_id", locationId)
+    .gte("date", viewStart)
+    .lte("date", viewEnd);
+  const shiftRows = (shifts ?? []) as Shift[];
+  const shiftIds = shiftRows.map((s) => s.id);
+
+  const [
+    { data: segments },
+    { data: staff },
+    { data: workTypes },
+    { data: zones },
+    { data: rules },
+    { data: constraints },
+    { data: timeOff },
+    { data: periods },
+  ] = await Promise.all([
+    shiftIds.length
+      ? supabase.from("shift_segment").select("*").in("shift_id", shiftIds)
+      : Promise.resolve({ data: [] as ShiftSegment[] }),
+    supabase.from("staff").select("*").order("full_name"),
+    supabase.from("work_type").select("*").order("name"),
+    supabase.from("ratio_zone").select("*").eq("location_id", locationId),
+    supabase.from("ratio_rule").select("*"),
+    supabase.from("constraint_rule").select("*").eq("active", true),
+    supabase
+      .from("time_off_request")
+      .select("*")
+      .eq("status", "approved")
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart),
+    supabase
+      .from("schedule_period")
+      .select("*")
+      .eq("location_id", locationId)
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart)
+      .order("start_date"),
+  ]);
+
+  const segsByShift = new Map<string, ShiftSegment[]>();
+  for (const seg of (segments ?? []) as ShiftSegment[]) {
+    const list = segsByShift.get(seg.shift_id) ?? [];
+    list.push(seg);
+    segsByShift.set(seg.shift_id, list);
+  }
+
+  const allRules = (rules ?? []) as RatioRule[];
+  const tenantRule = allRules.find((r) => r.tenant_id !== null) ?? null;
+
+  return {
+    locationId,
+    viewStart,
+    viewEnd,
+    periods: (periods ?? []) as SchedulePeriod[],
+    shifts: shiftRows.map((s) => ({
+      ...s,
+      segments: (segsByShift.get(s.id) ?? []).sort((a, b) =>
+        a.start_time.localeCompare(b.start_time)
+      ),
+    })),
+    staff: (staff ?? []) as Staff[],
+    workTypes: (workTypes ?? []) as WorkType[],
+    zones: (zones ?? []) as RatioZone[],
+    ratioRule: tenantRule,
+    constraints: (constraints ?? []) as ConstraintRule[],
+    approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
+  };
+}
+
+/**
+ * Validate a range the same way a period is validated. The engine works
+ * per-date/per-zone and never reads the period identity, so a synthetic period
+ * spanning the whole window is safe — no engine change needed.
+ */
+export function validateRangeBundle(
+  range: RangeBundle,
+  tenant: Tenant
+): ValidationOut {
+  const pseudo: PeriodBundle = {
+    period: {
+      id: "range",
+      tenant_id: tenant.id,
+      location_id: range.locationId,
+      cycle: tenant.schedule_cycle,
+      start_date: range.viewStart,
+      end_date: range.viewEnd,
+      status: "draft",
+      published_at: null,
+      published_by: null,
+      created_at: "",
+    },
+    shifts: range.shifts,
+    staff: range.staff,
+    workTypes: range.workTypes,
+    zones: range.zones,
+    ratioRule: range.ratioRule,
+    constraints: range.constraints,
+    approvedTimeOff: range.approvedTimeOff,
+  };
+  return validateBundle(pseudo, tenant);
+}
+
 /** Full rule subset for the engine — keeps additive-formula fields intact. */
 export function toEngineRule(rule: RatioRule) {
   return {
