@@ -267,7 +267,7 @@ export default function ShiftModal({
                     onClick={() =>
                       setSegments((prev) => prev.filter((_, idx) => idx !== i))
                     }
-                    className="mb-2 font-body text-xs font-medium text-[#C0392B] hover:underline"
+                    className="mb-2 font-body text-xs font-medium text-deficiency hover:underline"
                   >
                     Remove
                   </button>
@@ -296,7 +296,7 @@ export default function ShiftModal({
           )}
         </div>
 
-        {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+        {error && <p className="font-body text-sm text-deficiency">{error}</p>}
       </div>
     </Modal>
   );

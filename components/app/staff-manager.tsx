@@ -416,12 +416,12 @@ export default function StaffManager({
                 <button
                   type="button"
                   onClick={() => setConfirmOffboard(true)}
-                  className="font-body text-sm font-medium text-[#C0392B] underline-offset-2 hover:underline"
+                  className="font-body text-sm font-medium text-deficiency underline-offset-2 hover:underline"
                 >
                   Offboard {initial.full_name}…
                 </button>
               ) : (
-                <div className="rounded-md border border-[#C0392B]/30 bg-[#FEF0EF] p-4">
+                <div className="rounded-md border border-deficiency/30 bg-deficiency-bg p-4">
                   <p className="font-body text-sm text-navy">
                     <strong>No longer with the pharmacy?</strong> Offboarding
                     removes {initial.full_name} from scheduling and the live
@@ -462,7 +462,7 @@ export default function StaffManager({
               )}
             </div>
           )}
-          {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+          {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
     </div>

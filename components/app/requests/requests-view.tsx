@@ -140,14 +140,14 @@ export default function RequestsView({
   return (
     <div className="max-w-[1040px]">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg border border-line bg-white p-1">
+        <div className="flex gap-1 rounded-lg border border-line bg-surface p-1">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`rounded-md px-4 py-2 font-brand text-sm font-medium transition-colors ${
                 tab === t.key
-                  ? "bg-navy text-white"
+                  ? "bg-[#1C2F5E] text-white"
                   : "text-steel hover:text-navy"
               }`}
             >
@@ -222,7 +222,7 @@ export default function RequestsView({
                             onClick={() =>
                               act(() => decideTimeOff(t.id, "approved"))
                             }
-                            className="rounded bg-[#2E7D5E] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                            className="rounded bg-compliant px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                           >
                             Approve
                           </button>
@@ -231,7 +231,7 @@ export default function RequestsView({
                             onClick={() =>
                               act(() => decideTimeOff(t.id, "denied"))
                             }
-                            className="rounded bg-[#C0392B] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                            className="rounded bg-deficiency px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                           >
                             Deny
                           </button>
@@ -330,7 +330,7 @@ export default function RequestsView({
                               onClick={() =>
                                 act(() => respondToSwap(s.id, true))
                               }
-                              className="rounded bg-[#2E7D5E] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                              className="rounded bg-compliant px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                             >
                               Accept
                             </button>
@@ -339,7 +339,7 @@ export default function RequestsView({
                               onClick={() =>
                                 act(() => respondToSwap(s.id, false))
                               }
-                              className="rounded bg-[#C0392B] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                              className="rounded bg-deficiency px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                             >
                               Decline
                             </button>
@@ -350,14 +350,14 @@ export default function RequestsView({
                             <button
                               disabled={busy}
                               onClick={() => act(() => decideSwap(s.id, "approved"))}
-                              className="rounded bg-[#2E7D5E] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                              className="rounded bg-compliant px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                             >
                               Approve
                             </button>
                             <button
                               disabled={busy}
                               onClick={() => act(() => decideSwap(s.id, "denied"))}
-                              className="rounded bg-[#C0392B] px-2.5 py-1 font-brand text-[11px] font-bold text-white"
+                              className="rounded bg-deficiency px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                             >
                               Deny
                             </button>
@@ -373,7 +373,7 @@ export default function RequestsView({
         ))}
 
       {error && !modal && (
-        <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>
+        <p className="mt-3 font-body text-sm text-deficiency">{error}</p>
       )}
 
       {/* Request time off */}
@@ -416,7 +416,7 @@ export default function RequestsView({
             <Label htmlFor="staff_message">Note (optional)</Label>
             <Textarea id="staff_message" name="staff_message" rows={2} />
           </div>
-          {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+          {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
 
@@ -467,7 +467,7 @@ export default function RequestsView({
             <Label htmlFor="reason">Reason (optional)</Label>
             <Textarea id="reason" name="reason" rows={2} />
           </div>
-          {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+          {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
 
@@ -527,7 +527,7 @@ export default function RequestsView({
               Your colleague accepts first; a manager gives final approval.
             </HelpText>
           </div>
-          {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+          {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
     </div>

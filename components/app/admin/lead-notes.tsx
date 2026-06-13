@@ -71,7 +71,7 @@ export default function LeadNotes({
             Add Note
           </Button>
           {error && (
-            <span className="font-body text-sm text-[#C0392B]">{error}</span>
+            <span className="font-body text-sm text-deficiency">{error}</span>
           )}
         </div>
       </div>

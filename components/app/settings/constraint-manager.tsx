@@ -210,7 +210,7 @@ export default function ConstraintManager({
                     </button>
                     <button
                       onClick={() => remove(r)}
-                      className="font-body text-xs font-medium text-[#C0392B] underline-offset-2 hover:underline"
+                      className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
                     >
                       Delete
                     </button>
@@ -396,7 +396,7 @@ export default function ConstraintManager({
             </div>
           </div>
 
-          {error && <p className="font-body text-sm text-[#C0392B]">{error}</p>}
+          {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
     </div>

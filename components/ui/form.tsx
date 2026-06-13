@@ -6,7 +6,7 @@ import {
 } from "react";
 
 const FIELD_CLASS =
-  "w-full rounded-md border-[1.5px] border-line bg-white px-3 py-2.5 font-body text-sm text-navy placeholder:text-[#9BAABB] focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10 disabled:bg-cloud disabled:text-steel";
+  "w-full rounded-md border-[1.5px] border-line bg-surface px-3 py-2.5 font-body text-sm text-navy placeholder:text-steel-light focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10 disabled:bg-cloud disabled:text-steel";
 
 export function Label({
   className = "",
@@ -47,5 +47,5 @@ export function HelpText({ children }: { children: React.ReactNode }) {
 
 export function FieldError({ children }: { children: React.ReactNode }) {
   if (!children) return null;
-  return <p className="mt-1 font-body text-xs text-[#C0392B]">{children}</p>;
+  return <p className="mt-1 font-body text-xs text-deficiency">{children}</p>;
 }

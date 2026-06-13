@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
+/* Enable class-based dark: variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── RxShift Design Tokens ──────────────────────────────────────────────── */
 :root {
-  /* Brand palette */
+  /* Brand palette — light mode */
   --color-navy:   #1C2F5E;
   --color-amber:  #F07C30;
   --color-steel:  #4A5B7A;
   --color-cloud:  #F2F5FA;
-  --color-white:  #FFFFFF;
-  --color-border: #DDE5EF;
   --color-bg:     #F8FAFC;
+  --color-surface:#FFFFFF;     /* card / panel backgrounds */
+  --color-border: #DDE5EF;
+  --color-steel-light: #9BAABB; /* placeholder text in inputs */
 
   /* Grid mark colors — SVG use only, do not use in UI */
   --color-grid-inactive:      #C4D2E2;
@@ -51,19 +55,56 @@
   --shadow-dialog:   0 8px 32px rgba(28, 47, 94, 0.16);
 }
 
+/* ─── Dark mode overrides ─────────────────────────────────────────────────── */
+/* Applied when <html class="dark"> — toggled by ThemeToggle in the app shell. */
+/* Marketing pages always stay light (ThemeToggle only lives inside /app). */
+.dark {
+  color-scheme: dark;
+
+  --color-navy:   #E8EDF5;     /* primary text  →  off-white       */
+  --color-steel:  #8FA4C0;     /* secondary text →  muted blue-gray */
+  --color-cloud:  #1A2A47;     /* section / hover bg                */
+  --color-bg:     #0F1830;     /* page background                   */
+  --color-surface:#162645;     /* card / panel backgrounds          */
+  --color-border: #243552;     /* border lines                      */
+  --color-steel-light: #5E7A9A; /* placeholder — still muted        */
+
+  /* Status colors brightened for dark backgrounds */
+  --color-compliant:      #5DBF8A;
+  --color-alert:          #FFB347;
+  --color-deficiency:     #FF7272;
+  --color-compliant-bg:   rgba(46,  125, 94,  0.2);
+  --color-alert-bg:       rgba(212, 134, 10,  0.2);
+  --color-deficiency-bg:  rgba(192,  57, 43,  0.2);
+
+  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-dialog:   0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Tailwind theme (inline = utilities reference CSS vars dynamically) ─── */
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-navy);
 
-  /* Brand utilities: bg-navy, text-steel, border-line, bg-amber, etc. */
-  --color-navy:       #1C2F5E;
-  --color-amber:      #F07C30;
-  --color-amber-dark: #D96A22; /* primary button hover */
-  --color-steel:      #4A5B7A;
-  --color-cloud:      #F2F5FA;
-  --color-line:       #DDE5EF;
-  --color-page:       #F8FAFC;
-  --color-alert:      #D4860A;
+  /* All brand colors reference CSS vars so .dark overrides take effect */
+  --color-navy:       var(--color-navy);
+  --color-amber:      var(--color-amber);
+  --color-amber-dark: #D96A22;              /* hover — stays fixed */
+  --color-steel:      var(--color-steel);
+  --color-cloud:      var(--color-cloud);
+  --color-line:       var(--color-border);
+  --color-page:       var(--color-bg);
+  --color-surface:    var(--color-surface);
+  --color-steel-light:var(--color-steel-light);
+  --color-alert:      var(--color-alert);
+
+  /* Status colors (were in :root only; now exposed as Tailwind utilities) */
+  --color-compliant:     var(--color-compliant);
+  --color-deficiency:    var(--color-deficiency);
+  --color-compliant-bg:  var(--color-compliant-bg);
+  --color-alert-bg:      var(--color-alert-bg);
+  --color-deficiency-bg: var(--color-deficiency-bg);
 
   --font-brand: var(--font-space-grotesk), 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif;
   --font-body:  var(--font-inter), -apple-system, 'Helvetica Neue', sans-serif;

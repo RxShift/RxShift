@@ -15,7 +15,7 @@ const TABS = [
 export default function SettingsTabs() {
   const pathname = usePathname();
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-line bg-white px-8">
+    <div className="flex gap-1 overflow-x-auto border-b border-line bg-surface px-8">
       {TABS.map((tab) => {
         const active =
           tab.href === "/app/settings"

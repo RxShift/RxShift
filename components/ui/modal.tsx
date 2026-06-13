@@ -28,11 +28,11 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-navy/40 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1C2F5E]/60 p-4"
       onClick={onClose}
     >
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-xl bg-white p-8 shadow-[0_8px_32px_rgba(28,47,94,0.16)] ${
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-xl bg-surface p-8 shadow-[var(--shadow-dialog)] ${
           wide ? "max-w-[720px]" : "max-w-[480px]"
         }`}
         onClick={(e) => e.stopPropagation()}

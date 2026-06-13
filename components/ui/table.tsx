@@ -5,7 +5,7 @@ export function Table({
   ...props
 }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto rounded-[10px] border border-line bg-white shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+    <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[var(--shadow-card)]">
       <table className={`w-full ${className}`} {...props} />
     </div>
   );

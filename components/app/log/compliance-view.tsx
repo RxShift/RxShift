@@ -52,7 +52,7 @@ export default function ComplianceView({
         <select
           value={periodId}
           onChange={(e) => router.push(`/app/log?period=${e.target.value}`)}
-          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+          className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
         >
           {periods.map((p) => (
             <option key={p.id} value={p.id}>
@@ -71,8 +71,8 @@ export default function ComplianceView({
       </div>
 
       {streaks.boardReportTriggered && (
-        <div className="rounded-lg border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] p-4">
-          <p className="font-brand text-sm font-bold text-[#C0392B]">
+        <div className="rounded-lg border-l-[3px] border-l-deficiency bg-deficiency-bg p-4">
+          <p className="font-brand text-sm font-bold text-deficiency">
             3+ consecutive deficient days — a board report may be required
           </p>
           <p className="mt-1 font-body text-[13px] text-navy">
@@ -104,7 +104,7 @@ export default function ComplianceView({
             Deficient hours
           </p>
           <p
-            className={`mt-1 font-brand text-[28px] font-bold ${deficientHours > 0 ? "text-[#C0392B]" : "text-[#2E7D5E]"}`}
+            className={`mt-1 font-brand text-[28px] font-bold ${deficientHours > 0 ? "text-deficiency" : "text-compliant"}`}
           >
             {deficientHours}
           </p>
@@ -114,7 +114,7 @@ export default function ComplianceView({
             Hours &amp; caps flags
           </p>
           <p
-            className={`mt-1 font-brand text-[28px] font-bold ${constraintFlags.length > 0 ? "text-[#D4860A]" : "text-[#2E7D5E]"}`}
+            className={`mt-1 font-brand text-[28px] font-bold ${constraintFlags.length > 0 ? "text-alert" : "text-compliant"}`}
           >
             {constraintFlags.length}
           </p>
@@ -137,7 +137,7 @@ export default function ComplianceView({
             <h2 className="mb-3 font-brand text-base font-bold text-navy">
               {record.zoneName}
             </h2>
-            <div className="overflow-x-auto rounded-[10px] border border-line bg-white shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+            <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
               <table className="w-full">
                 <thead>
                   <tr>
@@ -163,7 +163,7 @@ export default function ComplianceView({
                     <tr
                       key={i}
                       className={
-                        r.ratio_status === "deficient" ? "bg-[#FEF0EF]" : ""
+                        r.ratio_status === "deficient" ? "bg-deficiency-bg" : ""
                       }
                     >
                       <td className="border-t border-line px-3 py-2 font-brand text-[11px] font-semibold text-steel">
@@ -202,7 +202,7 @@ export default function ComplianceView({
                           {r.ratio_status}
                         </Badge>
                         {r.deficiency_reason && (
-                          <p className="mt-1 font-body text-[11px] text-[#C0392B]">
+                          <p className="mt-1 font-body text-[11px] text-deficiency">
                             {r.deficiency_reason}
                           </p>
                         )}

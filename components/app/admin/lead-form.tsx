@@ -150,7 +150,7 @@ export default function LeadForm({ initial }: { initial: Lead | null }) {
           </Button>
           {message && (
             <span
-              className={`font-body text-sm ${message === "Saved." ? "text-[#2E7D5E]" : "text-[#C0392B]"}`}
+              className={`font-body text-sm ${message === "Saved." ? "text-compliant" : "text-deficiency"}`}
             >
               {message}
             </span>

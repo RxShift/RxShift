@@ -205,7 +205,7 @@ export default function StaffImport({ locations }: { locations: Location[] }) {
 
       {result && (
         <p
-          className={`font-body text-sm ${result.startsWith("Imported") ? "text-[#2E7D5E]" : "text-[#C0392B]"}`}
+          className={`font-body text-sm ${result.startsWith("Imported") ? "text-compliant" : "text-deficiency"}`}
         >
           {result}
         </p>

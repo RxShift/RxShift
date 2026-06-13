@@ -39,7 +39,7 @@ export default function MyStatusPicker({ current }: { current: string }) {
             className={`min-h-[44px] rounded-md px-4 py-2 font-brand text-sm font-bold transition-colors ${
               current === o.value
                 ? "bg-amber text-white"
-                : "border-[1.5px] border-line bg-white text-navy hover:border-steel/40"
+                : "border-[1.5px] border-line bg-surface text-navy hover:border-steel/40"
             }`}
           >
             {o.label}

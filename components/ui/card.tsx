@@ -7,7 +7,7 @@ export function Card({
 }: HTMLAttributes<HTMLDivElement> & { highlighted?: boolean }) {
   return (
     <div
-      className={`rounded-[10px] border border-line bg-white p-6 shadow-[0_1px_3px_rgba(28,47,94,0.08)] ${
+      className={`rounded-[10px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] ${
         highlighted ? "border-l-4 border-l-amber" : ""
       } ${className}`}
       {...props}
@@ -28,9 +28,9 @@ export function StatCard({
 }) {
   const valueColor = {
     default: "text-navy",
-    compliant: "text-[#2E7D5E]",
-    alert: "text-[#D4860A]",
-    deficiency: "text-[#C0392B]",
+    compliant: "text-compliant",
+    alert: "text-alert",
+    deficiency: "text-deficiency",
   }[tone];
 
   return (

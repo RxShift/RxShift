@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RxShiftMark from "@/components/rxshift-mark";
+import ThemeToggle from "@/components/ui/theme-toggle";
 import type { AppRole } from "@/lib/types";
 
 interface NavItem {
@@ -90,7 +91,7 @@ export default function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-navy">
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-[#1C2F5E]">
       <div className="flex h-[60px] items-center gap-2.5 bg-[#162650] px-5">
         <RxShiftMark size={30} variant="dark" />
         <span className="font-brand text-[17px] tracking-[-0.3px] text-white">
@@ -152,6 +153,7 @@ export default function Sidebar({
             Sign out
           </button>
         </form>
+        <ThemeToggle />
       </div>
     </aside>
   );

@@ -26,8 +26,8 @@ export default function DangerZone({ tenantName }: { tenantName: string }) {
   }
 
   return (
-    <div className="mt-10 rounded-[10px] border border-[#C0392B]/30 bg-white p-6">
-      <h2 className="font-brand text-base font-bold text-[#C0392B]">
+    <div className="mt-10 rounded-[10px] border border-deficiency/30 bg-surface p-6">
+      <h2 className="font-brand text-base font-bold text-deficiency">
         Danger zone
       </h2>
       <p className="mt-1 max-w-[420px] font-body text-sm leading-relaxed text-steel">
@@ -81,7 +81,7 @@ export default function DangerZone({ tenantName }: { tenantName: string }) {
             autoFocus
           />
         </div>
-        {error && <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>}
+        {error && <p className="mt-3 font-body text-sm text-deficiency">{error}</p>}
       </Modal>
     </div>
   );

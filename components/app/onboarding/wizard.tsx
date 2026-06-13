@@ -73,7 +73,7 @@ function CreatingOverlay({ failed }: { failed: boolean }) {
   }, []);
   if (failed) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-navy/95">
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#1C2F5E]/95">
       <RxShiftMark size={72} variant="dark" />
       <p className="mt-8 font-brand text-xl font-bold text-white">
         {CREATING_STAGES[stage]}
@@ -360,7 +360,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
           ))}
         </div>
 
-        <div className="rounded-[10px] border border-line bg-white p-8 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+        <div className="rounded-[10px] border border-line bg-surface p-8 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
           {step === 0 && (
             <div className="space-y-6">
               {/* AI quick-start */}
@@ -477,7 +477,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                       onClick={() =>
                         setLocations((prev) => prev.filter((_, idx) => idx !== i))
                       }
-                      className="mt-2 font-body text-xs font-medium text-[#C0392B] hover:underline"
+                      className="mt-2 font-body text-xs font-medium text-deficiency hover:underline"
                     >
                       Remove location
                     </button>
@@ -804,7 +804,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                       setStaffRows([]);
                       setCsvNote(null);
                     }}
-                    className="mt-2 font-body text-xs font-medium text-[#C0392B] hover:underline"
+                    className="mt-2 font-body text-xs font-medium text-deficiency hover:underline"
                   >
                     Clear
                   </button>
@@ -832,7 +832,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                 Everything here is changeable in Settings after setup.
               </p>
               {error && (
-                <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>
+                <p className="mt-3 font-body text-sm text-deficiency">{error}</p>
               )}
             </div>
           )}

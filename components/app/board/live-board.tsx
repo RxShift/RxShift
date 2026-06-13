@@ -76,7 +76,7 @@ export default function LiveBoard({
           <Card
             key={zone.zoneId}
             className={
-              zone.status === "deficient" ? "border-l-4 border-l-[#C0392B]" : ""
+              zone.status === "deficient" ? "border-l-4 border-l-deficiency" : ""
             }
           >
             <div className="mb-3 flex items-center justify-between">
@@ -102,7 +102,7 @@ export default function LiveBoard({
                   Techs counting
                 </p>
                 <p
-                  className={`font-brand text-[32px] font-bold ${zone.status === "deficient" ? "text-[#C0392B]" : "text-navy"}`}
+                  className={`font-brand text-[32px] font-bold ${zone.status === "deficient" ? "text-deficiency" : "text-navy"}`}
                 >
                   {zone.techsCounting.length}
                 </p>
@@ -113,7 +113,7 @@ export default function LiveBoard({
             </div>
 
             {zone.reason && (
-              <p className="mb-3 rounded bg-[#FEF0EF] p-2.5 font-body text-[13px] text-[#C0392B]">
+              <p className="mb-3 rounded bg-deficiency-bg p-2.5 font-body text-[13px] text-deficiency">
                 {zone.reason}
               </p>
             )}

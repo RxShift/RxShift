@@ -133,7 +133,7 @@ export default function EntityManager<Row extends { id: string }>({
                     <button
                       onClick={() => handleDelete(row)}
                       disabled={busy}
-                      className="font-body text-xs font-medium text-[#C0392B] underline-offset-2 hover:underline"
+                      className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
                     >
                       Delete
                     </button>
@@ -209,7 +209,7 @@ export default function EntityManager<Row extends { id: string }>({
             </div>
           ))}
           {error && (
-            <p className="font-body text-sm text-[#C0392B]">{error}</p>
+            <p className="font-body text-sm text-deficiency">{error}</p>
           )}
         </form>
       </Modal>

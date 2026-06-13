@@ -115,7 +115,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
           </Button>
           {message && (
             <span
-              className={`font-body text-sm ${message === "Saved." ? "text-[#2E7D5E]" : "text-[#C0392B]"}`}
+              className={`font-body text-sm ${message === "Saved." ? "text-compliant" : "text-deficiency"}`}
             >
               {message}
             </span>

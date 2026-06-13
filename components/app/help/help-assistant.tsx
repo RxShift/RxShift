@@ -23,7 +23,7 @@ export default function HelpAssistant() {
   }
 
   return (
-    <div className="rounded-[10px] border border-line bg-white p-5 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+    <div className="rounded-[10px] border border-line bg-surface p-5 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
       <p className="mb-3 font-brand text-sm font-bold text-navy">
         Ask the help assistant
       </p>
@@ -32,7 +32,7 @@ export default function HelpAssistant() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder='e.g. "How do I split a tech&apos;s shift between counting and inventory?"'
-          className="flex-1 rounded-md border-[1.5px] border-line bg-white px-3 py-2.5 font-body text-sm text-navy placeholder:text-[#9BAABB] focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10"
+          className="flex-1 rounded-md border-[1.5px] border-line bg-surface px-3 py-2.5 font-body text-sm text-navy placeholder:text-steel-light focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10"
         />
         <Button type="submit" disabled={busy || !question.trim()}>
           {busy ? "Thinking…" : "Ask"}
@@ -43,7 +43,7 @@ export default function HelpAssistant() {
           {answer}
         </div>
       )}
-      {error && <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>}
+      {error && <p className="mt-3 font-body text-sm text-deficiency">{error}</p>}
       <p className="mt-3 font-body text-[11px] text-steel">
         Answers come from the help articles below. For state-rule questions,
         verify with your board of pharmacy — the assistant doesn&rsquo;t give

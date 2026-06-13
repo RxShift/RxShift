@@ -1,7 +1,7 @@
 const TONES = {
-  compliant: "bg-[#EDF7F2] text-[#2E7D5E] border-l-[#2E7D5E]",
-  alert: "bg-[#FEF7ED] text-[#D4860A] border-l-[#D4860A]",
-  deficiency: "bg-[#FEF0EF] text-[#C0392B] border-l-[#C0392B]",
+  compliant: "bg-compliant-bg text-compliant border-l-compliant",
+  alert: "bg-alert-bg text-alert border-l-alert",
+  deficiency: "bg-deficiency-bg text-deficiency border-l-deficiency",
   neutral: "bg-cloud text-steel border-l-line",
 } as const;
 

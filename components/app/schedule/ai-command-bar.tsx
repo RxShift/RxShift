@@ -47,20 +47,20 @@ export default function AiCommandBar({ periodId }: { periodId: string }) {
   }
 
   return (
-    <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+    <div className="rounded-[10px] border border-line bg-surface p-4 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
       <form onSubmit={handleAsk} className="flex gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder='Ask or edit in plain English — "who is short Thursday?", "give Maria Fridays off this month"'
-          className="flex-1 rounded-md border-[1.5px] border-line bg-white px-3 py-2.5 font-body text-sm text-navy placeholder:text-[#9BAABB] focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10"
+          className="flex-1 rounded-md border-[1.5px] border-line bg-surface px-3 py-2.5 font-body text-sm text-navy placeholder:text-steel-light focus:border-navy focus:outline-none focus:ring-[3px] focus:ring-navy/10"
         />
         <Button type="submit" disabled={busy || !input.trim()}>
           {busy ? "Thinking…" : "Ask"}
         </Button>
       </form>
 
-      {error && <p className="mt-3 font-body text-sm text-[#C0392B]">{error}</p>}
+      {error && <p className="mt-3 font-body text-sm text-deficiency">{error}</p>}
 
       {result?.mode === "answer" && (
         <div className="mt-3 rounded-lg bg-cloud/60 p-4 font-body text-sm leading-relaxed text-navy">
@@ -69,7 +69,7 @@ export default function AiCommandBar({ periodId }: { periodId: string }) {
       )}
 
       {result?.mode === "proposal" && (
-        <div className="mt-3 rounded-lg border-l-[3px] border-l-amber bg-[#FEF7ED] p-4">
+        <div className="mt-3 rounded-lg border-l-[3px] border-l-amber bg-alert-bg p-4">
           <p className="font-brand text-sm font-bold text-navy">
             Proposed change ({result.operations?.length} operation
             {result.operations?.length === 1 ? "" : "s"})

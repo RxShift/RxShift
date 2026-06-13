@@ -202,7 +202,7 @@ export default function ScheduleBuilder({
           onChange={(e) =>
             router.push(`/app/schedule?location=${e.target.value}`)
           }
-          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+          className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
         >
           {locations.map((l) => (
             <option key={l.id} value={l.id}>
@@ -217,7 +217,7 @@ export default function ScheduleBuilder({
               `/app/schedule?location=${locationId}&period=${e.target.value}`
             )
           }
-          className="rounded-md border-[1.5px] border-line bg-white px-3 py-2 font-body text-sm text-navy"
+          className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
         >
           {periods.map((p) => (
             <option key={p.id} value={p.id}>
@@ -250,10 +250,10 @@ export default function ScheduleBuilder({
 
       {/* Flag summary */}
       {flagCount > 0 && (
-        <div className="rounded-lg border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] p-4">
+        <div className="rounded-lg border-l-[3px] border-l-deficiency bg-deficiency-bg p-4">
           <button
             onClick={() => setShowFlags(!showFlags)}
-            className="font-brand text-sm font-bold text-[#C0392B]"
+            className="font-brand text-sm font-bold text-deficiency"
           >
             {flagCount} open flag{flagCount === 1 ? "" : "s"}{" "}
             {showFlags ? "▾" : "▸"}
@@ -262,13 +262,13 @@ export default function ScheduleBuilder({
             <ul className="mt-2 space-y-1.5 font-body text-[13px] text-navy">
               {validation.ratioFlags.slice(0, 20).map((f, i) => (
                 <li key={`r${i}`}>
-                  <span className="font-medium text-[#C0392B]">Ratio</span> ·{" "}
+                  <span className="font-medium text-deficiency">Ratio</span> ·{" "}
                   {f.date} {f.slot_label} ({f.zone_name}): {f.reason}
                 </li>
               ))}
               {groupedConstraintFlags.slice(0, 20).map((g, i) => (
                 <li key={`c${i}`}>
-                  <span className="font-medium text-[#D4860A]">
+                  <span className="font-medium text-alert">
                     {g.rule_type.replace(/_/g, " ")}
                   </span>{" "}
                   ·{" "}
@@ -289,7 +289,7 @@ export default function ScheduleBuilder({
       )}
 
       {/* The grid */}
-      <div className="overflow-x-auto rounded-[10px] border border-line bg-white shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+      <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
         <table className="w-full border-collapse">
           <thead>
             <tr>
@@ -319,7 +319,7 @@ export default function ScheduleBuilder({
           <tbody>
             {bundle.staff.map((person) => (
               <tr key={person.id}>
-                <td className="sticky left-0 z-10 border-r border-t border-line bg-white px-3 py-1.5">
+                <td className="sticky left-0 z-10 border-r border-t border-line bg-surface px-3 py-1.5">
                   <span className="font-body text-[13px] font-medium text-navy">
                     {person.full_name}
                   </span>
@@ -356,10 +356,10 @@ export default function ScheduleBuilder({
                         <div
                           className={`rounded-[4px] px-1.5 py-1 font-body text-[11px] font-medium ${
                             deficient
-                              ? "border-l-[3px] border-l-[#C0392B] bg-[#FEF0EF] text-[#C0392B]"
+                              ? "border-l-[3px] border-l-deficiency bg-deficiency-bg text-deficiency"
                               : constrained
-                                ? "border-l-[3px] border-l-[#D4860A] bg-[#FEF7ED] text-[#8a5a06]"
-                                : "bg-[#EDF7F2] text-[#2E7D5E]"
+                                ? "border-l-[3px] border-l-alert bg-alert-bg text-amber"
+                                : "bg-compliant-bg text-compliant"
                           }`}
                         >
                           {shift.segments.map((seg) => (
@@ -425,7 +425,7 @@ export default function ScheduleBuilder({
         </p>
         {flagCount > 0 && (
           <div className="mt-4">
-            <p className="mb-2 font-medium text-[#C0392B]">
+            <p className="mb-2 font-medium text-deficiency">
               {flagCount} flag{flagCount === 1 ? "" : "s"} will be overridden.
               A reason is required and goes in the override log.
             </p>
@@ -438,7 +438,7 @@ export default function ScheduleBuilder({
           </div>
         )}
         {publishError && (
-          <p className="mt-3 font-body text-sm text-[#C0392B]">{publishError}</p>
+          <p className="mt-3 font-body text-sm text-deficiency">{publishError}</p>
         )}
       </Modal>
     </div>
