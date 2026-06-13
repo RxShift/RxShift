@@ -56,6 +56,8 @@ export default function ContactForm({
           email: data.get("email"),
           message: data.get("message"),
           source,
+          // Honeypot — humans never see or fill this field
+          website: data.get("website"),
         }),
       });
       setStatus(res.ok ? "success" : "error");
@@ -107,6 +109,17 @@ export default function ContactForm({
             onSubmit={handleSubmit}
             className="mt-8 rounded-xl bg-white/[0.06] p-6 text-left sm:p-8"
           >
+            {/* Honeypot: hidden from humans, irresistible to bots */}
+            <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </div>
             <div className="space-y-5">
               <div>
                 <label htmlFor="name" className={LABEL_CLASS}>

@@ -25,6 +25,8 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
     heading: "Company",
     links: [
       { label: "Log in", href: "https://app.rxshift.io" },
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
       { label: "info@rxshift.io", href: "mailto:info@rxshift.io" },
     ],
   },

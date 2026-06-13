@@ -5,6 +5,9 @@ import { brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Per-instance submission throttle (60s per email address)
+const lastContact = new Map<string, number>();
+
 /**
  * Best-effort CRM capture — a failed database write must never block the
  * email notification (the inbox is the operational fallback). Repeat
@@ -69,8 +72,13 @@ async function captureLead(input: {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, pharmacy, state, email, message, source } =
+    const { name, pharmacy, state, email, message, source, website } =
       await request.json();
+
+    // Honeypot: bots fill the hidden field; pretend success and do nothing
+    if (website) {
+      return NextResponse.json({ success: true });
+    }
 
     if (!name || !pharmacy || !state || !email) {
       return NextResponse.json(
@@ -78,6 +86,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Per-address throttle (per server instance — same pattern as login)
+    const norm = String(email).toLowerCase();
+    const last = lastContact.get(norm);
+    if (last && Date.now() - last < 60_000) {
+      return NextResponse.json({ success: true }); // already handled moments ago
+    }
+    lastContact.set(norm, Date.now());
 
     await captureLead({
       name,
