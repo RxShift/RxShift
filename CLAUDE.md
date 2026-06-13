@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 11, 2026
+# Last updated: June 12, 2026 (documentation discipline section added)
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -38,8 +38,8 @@ RxShift is a **B2B SaaS scheduling platform for retail pharmacies** — multi-te
 | CSS | Tailwind CSS 4 |
 | Database / Auth | Supabase (direct client — no Prisma) |
 | Email | Resend |
-| Hosting | Vercel (pending authorization — use local dev for now) |
-| AI | TBD — not yet integrated |
+| Hosting | Vercel (personal account active at app.rxshift.io; RxShift account pending phone verification) |
+| AI | OpenAI gpt-4o-mini (server-side only, `lib/ai.ts`) |
 
 **Local dev port:** `3200` (first in the JWC LLC port range 3200–3299)
 **Run with:** `npm run dev` (port pinned in package.json)
@@ -94,7 +94,7 @@ Full brand spec lives in `Brand Items/DESIGN.md`. Read it before building any UI
 
 ## Product Architecture (BUILT — June 11, 2026)
 
-The full v1 build is complete per `docs/RxShift-Product-Scoping.md` (the authoritative scope doc — read it). **The database schema is written but NOT yet applied to Supabase** (migrations in `supabase/migrations/`, application pending a personal access token from Jamison).
+The full v1 build is complete per `docs/RxShift-Product-Scoping.md` (the authoritative scope doc — read it). **Migrations 0001–0014 are applied and live in Supabase.** Note: 0001–0005 were applied via raw `execute_sql` before MCP migration tracking was configured — they do not appear in `list_migrations`; 0006+ are tracked normally.
 
 ### What exists
 - **Two-domain architecture:** marketing at `rxshift.io` (root routes), app at `app.rxshift.io` → host-based middleware rewrites to the `/app` route tree. Local dev: `http://localhost:3200/app/...` works directly.
@@ -107,7 +107,7 @@ The full v1 build is complete per `docs/RxShift-Product-Scoping.md` (the authori
 - **Compliance record** (`/app/log`): hourly per zone, CSV + print export, override log.
 - **Live ratio board** (`/app/board`, gated on `has_ratio`): schedule + live-status overlay, one-tap status from `/app/me`.
 - **Security pages:** marketing `/security` + in-app `/app/security-posture` (update its `LAST_REVIEWED` const when security-relevant code changes).
-- **Keep-alive cron:** `/api/cron/keep-alive` + `vercel.json` (activates when Vercel connects).
+- **Keep-alive cron:** `/api/cron/keep-alive` + `vercel.json` — in place; verify it is active in the personal Vercel account (Settings → Cron Jobs) until the RxShift Vercel account is authorized.
 
 This is a **multi-tenant** platform. Each tenant = one pharmacy organization (which may have multiple locations).
 
@@ -136,6 +136,40 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 
 ---
 
+## Documentation Discipline — MANDATORY
+
+**Every significant code pass ends with documentation updates. This is not optional and is not the last thing to remember — it is part of the definition of "done."**
+
+Documentation that goes stale is worse than no documentation: it creates false confidence and costs real time to untangle. We learned this the hard way. Do not push a commit without completing the checklist below.
+
+### The five files you must consider after every session
+
+| File | Update when… |
+|------|-------------|
+| **`CHANGELOG.md`** | Every session without exception. One H2 entry: date + summary heading, then Shipped / Schema / Infrastructure / Open sections. Bullets, not prose. This is what a future agent reads first to understand current state — keep it honest. |
+| **`CLAUDE.md`** (this file) | A feature ships, a route is added, the stack changes, TODOs are completed or discovered, architecture decisions are made, or any section becomes inaccurate. Update the `Last updated` date at the top. |
+| **`INFRASTRUCTURE.md`** | Any account, credential, DNS record, Vercel config, Supabase project, email routing, or hosting change. If Jamison makes an infra change outside Claude Code, he should tell you and you update this file. |
+| **`docs/decisions.md`** | A durable scope or architecture decision is made — something that explains WHY the code is the way it is, or rules out a future direction. Especially: deferred features, blocked items, and deliberate design choices. |
+| **`docs/PROJECT-STATUS.md`** | Milestone changes: new features reaching production, demo/customer readiness changes, blocking issues resolved or discovered. |
+
+### What "significant" means
+
+Almost everything qualifies. When in doubt, update. Skip only for:
+- Typo or copy fixes
+- Style-only changes (spacing, color tweaks)
+- Dependency bumps with no behavior change
+
+### The sequence
+
+1. Finish the code work
+2. Run through the table above — update every file that applies
+3. Commit everything together (docs + code in the same commit, or a follow-up commit in the same session)
+4. Then and only then ask Jamison to approve a push
+
+**If you realize mid-session that a previous session left docs stale, fix them now.** Don't leave it for later.
+
+---
+
 ## Development Rules
 
 - **Always `git pull` before starting work** — standard discipline.
@@ -144,8 +178,7 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - For any multi-step task, create a task list before starting.
 - Match the brand spec in `Brand Items/DESIGN.md` for all UI work — do not improvise colors or typography.
 - When adding new API routes, check whether the Supabase keep-alive cron is in place first (required for free-tier).
-- Do not use AI APIs until Jamison explicitly says to add them.
-- **After every build commit, update `CHANGELOG.md` before pushing.** One H2 entry per session: date + summary heading, then Shipped / Schema / Infrastructure / Open sections. Keep entries concise — bullets, not prose. This is the file a scheduled agent reads to stay current without reading all of CLAUDE.md.
+- **Documentation: see the Documentation Discipline section above. It is mandatory, not advisory.**
 
 ## Phase 2 (built June 12, 2026)
 
@@ -205,7 +238,7 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
 - [ ] Fill in legal entity name, address, governing law/venue in `/terms` + `/privacy` before first customer.
 - [ ] Delete test CRM leads: "Verification Pharmacy" (crm-test@rxshift.io) and "Branded Email Test Pharmacy" (email-test@rxshift.io).
-- [ ] README.md is still unmodified Next.js boilerplate — rewrite to describe RxShift before public launch.
+- [x] README.md rewritten — done June 13, 2026.
 
 ### Done (June 12, 2026)
 - [x] Dark mode (app-only, marketing stays light) — shipped
