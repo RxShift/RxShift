@@ -16,13 +16,22 @@ const STATUS_LABELS: Record<string, string> = {
   non_tech_function: "Non-tech work",
 };
 
+interface BoardPerson {
+  name: string;
+  staffId: string;
+  live: string;
+  color: string | null;
+  workType: string | null;
+}
+
 interface ZoneCard {
   zoneId: string;
   zoneName: string;
-  pharmacistsCounting: { name: string; staffId: string; live: string }[];
-  pharmacistsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
-  techsCounting: { name: string; staffId: string; live: string }[];
-  techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
+  pharmacistsCounting: BoardPerson[];
+  pharmacistsNotCounting: (BoardPerson & { reason: string })[];
+  techsCounting: BoardPerson[];
+  techsNotCounting: (BoardPerson & { reason: string })[];
+  othersOnNow: BoardPerson[];
   status: "compliant" | "deficient";
   reason: string | null;
   techLimit: number;
@@ -34,6 +43,17 @@ function GroupHead({ children }: { children: React.ReactNode }) {
     <p className="mt-2 font-brand text-[9px] font-bold uppercase tracking-[1px] text-steel first:mt-0">
       {children}
     </p>
+  );
+}
+
+// A small work-type color dot before a person's name on the board.
+function Dot({ color }: { color: string | null }) {
+  if (!color) return null;
+  return (
+    <span
+      className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle"
+      style={{ backgroundColor: color }}
+    />
   );
 }
 
@@ -122,28 +142,50 @@ export default function LiveBoard({
               <GroupHead>Pharmacists</GroupHead>
               {zone.pharmacistsCounting.map((p) => (
                 <p key={p.staffId}>
+                  <Dot color={p.color} />
                   <span className="font-medium">{p.name}</span>{" "}
-                  <span className="text-steel">RPh · counting</span>
+                  <span className="text-steel">
+                    RPh{p.workType ? ` · ${p.workType}` : " · counting"}
+                  </span>
                 </p>
               ))}
               <GroupHead>Techs — counting</GroupHead>
               {zone.techsCounting.map((t) => (
                 <p key={t.staffId}>
+                  <Dot color={t.color} />
                   <span className="font-medium">{t.name}</span>{" "}
-                  <span className="text-steel">Tech · counting</span>
+                  <span className="text-steel">
+                    Tech{t.workType ? ` · ${t.workType}` : " · counting"}
+                  </span>
                 </p>
               ))}
+              {zone.othersOnNow.length > 0 && (
+                <>
+                  <GroupHead>Other staff</GroupHead>
+                  {zone.othersOnNow.map((o) => (
+                    <p key={o.staffId}>
+                      <Dot color={o.color} />
+                      <span className="font-medium">{o.name}</span>{" "}
+                      <span className="text-steel">
+                        {o.workType ?? "non-counting"}
+                      </span>
+                    </p>
+                  ))}
+                </>
+              )}
               {(zone.pharmacistsNotCounting.length > 0 ||
                 zone.techsNotCounting.length > 0) && (
                 <>
                   <GroupHead>Not counting right now</GroupHead>
                   {zone.pharmacistsNotCounting.map((p) => (
                     <p key={p.staffId} className="text-steel">
+                      <Dot color={p.color} />
                       {p.name} · RPh · {p.reason}
                     </p>
                   ))}
                   {zone.techsNotCounting.map((t) => (
                     <p key={t.staffId} className="text-steel">
+                      <Dot color={t.color} />
                       {t.name} · {t.reason}
                     </p>
                   ))}

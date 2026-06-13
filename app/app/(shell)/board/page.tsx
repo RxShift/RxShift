@@ -50,13 +50,21 @@ export default async function LiveBoardPage() {
   // Build today's per-zone picture from the schedule, then overlay live
   // status: anyone currently off the floor / at lunch / in a meeting / on
   // non-tech work does NOT count right now, whatever the schedule says.
+  type BoardPerson = {
+    name: string;
+    staffId: string;
+    live: string;
+    color: string | null;
+    workType: string | null;
+  };
   const zoneCards: {
     zoneId: string;
     zoneName: string;
-    pharmacistsCounting: { name: string; staffId: string; live: string }[];
-    pharmacistsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
-    techsCounting: { name: string; staffId: string; live: string }[];
-    techsNotCounting: { name: string; staffId: string; live: string; reason: string }[];
+    pharmacistsCounting: BoardPerson[];
+    pharmacistsNotCounting: (BoardPerson & { reason: string })[];
+    techsCounting: BoardPerson[];
+    techsNotCounting: (BoardPerson & { reason: string })[];
+    othersOnNow: BoardPerson[];
     status: "compliant" | "deficient";
     reason: string | null;
     techLimit: number;
@@ -67,6 +75,12 @@ export default async function LiveBoardPage() {
     const bundle = await loadPeriodBundle(period.id);
     if (!bundle?.ratioRule) continue;
     const segments = toEngineSegments(bundle).filter((s) => s.date === today);
+
+    const wtColorById = new Map(
+      bundle.workTypes.map((w) => [w.id, w.color])
+    );
+    const colorOf = (s: (typeof segments)[number]) =>
+      s.work_type ? (wtColorById.get(s.work_type.id) ?? null) : null;
 
     for (const zone of bundle.zones) {
       const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
@@ -119,6 +133,8 @@ export default async function LiveBoardPage() {
           name: s.staff.full_name,
           staffId: s.staff.id,
           live: "present_counting",
+          color: colorOf(s),
+          workType: s.work_type?.name ?? null,
         }));
       const pharmacistsNotCounting = pharmacistsAll
         .filter(
@@ -131,6 +147,8 @@ export default async function LiveBoardPage() {
           staffId: s.staff.id,
           live: liveByStaff.get(s.staff.id)!,
           reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
+          color: colorOf(s),
+          workType: s.work_type?.name ?? null,
         }));
       const techs = onNow.filter((s) => s.staff.ratio_type === "technician");
       const techsCounting = techs
@@ -143,6 +161,8 @@ export default async function LiveBoardPage() {
           name: s.staff.full_name,
           staffId: s.staff.id,
           live: "present_counting",
+          color: colorOf(s),
+          workType: s.work_type?.name ?? null,
         }));
       const techsNotCounting = techs
         .filter(
@@ -155,6 +175,17 @@ export default async function LiveBoardPage() {
           staffId: s.staff.id,
           live: liveByStaff.get(s.staff.id)!,
           reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
+          color: colorOf(s),
+          workType: s.work_type?.name ?? null,
+        }));
+      const othersOnNow = onNow
+        .filter((s) => s.staff.ratio_type === "non_counting")
+        .map((s) => ({
+          name: s.staff.full_name,
+          staffId: s.staff.id,
+          live: liveByStaff.get(s.staff.id) ?? "present_counting",
+          color: colorOf(s),
+          workType: s.work_type?.name ?? null,
         }));
 
       const engineRule = toEngineRule(bundle.ratioRule);
@@ -165,6 +196,7 @@ export default async function LiveBoardPage() {
         pharmacistsNotCounting,
         techsCounting,
         techsNotCounting,
+        othersOnNow,
         status: currentSlot?.status ?? "compliant",
         reason: currentSlot?.deficiency_reason ?? null,
         techLimit: maxTechsAllowed(pharmacistsCounting.length, engineRule),

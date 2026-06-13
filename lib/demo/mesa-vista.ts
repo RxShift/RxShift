@@ -130,10 +130,10 @@ const NLV_LINES: ShiftLine[] = [
 ];
 
 const WORK_TYPES = [
-  { name: "Dispensing", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "Training", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "Inventory", counts_as: "technician", counting_default: false, is_specialized: false },
-  { name: "Meeting", counts_as: "none", counting_default: false, is_specialized: false },
+  { name: "Dispensing", counts_as: "technician", counting_default: true, is_specialized: false, color: "#3B6EA5" },
+  { name: "Training", counts_as: "technician", counting_default: true, is_specialized: false, color: "#2BA39A" },
+  { name: "Inventory", counts_as: "technician", counting_default: false, is_specialized: false, color: "#5B6B82" },
+  { name: "Meeting", counts_as: "none", counting_default: false, is_specialized: false, color: "#6A5ACD" },
 ];
 
 /** Monday of the current week in the demo tenant's timezone. */

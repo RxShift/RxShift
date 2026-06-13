@@ -106,22 +106,24 @@ const STAFF: StaffSeed[] = [
   { name: "Maria Lim", title: "Tech — Multi-Department", ratio: "technician", dept: "Hospice" },
 ];
 
-// Work types — Optum's table mapped to the RxShift model
+// Work types — Optum's table mapped to the RxShift model. Colors mirror
+// the When I Work palette (utility green, hospice rose, SPC purple, IV
+// magenta); off-floor types (Remote, Meeting) stay neutral.
 const WORK_TYPES = [
-  { name: "Working (on floor)", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "Training", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "IV / TPN", counts_as: "technician", counting_default: true, is_specialized: true },
-  { name: "Hospice Shift", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "Runner (Homeside)", counts_as: "technician", counting_default: true, is_specialized: false },
-  { name: "SPC Compounding", counts_as: "technician", counting_default: true, is_specialized: true },
-  { name: "Charts / Clinical", counts_as: "pharmacist", counting_default: true, is_specialized: false },
-  { name: "CCC (Clinical Call Center)", counts_as: "pharmacist", counting_default: false, is_specialized: false },
-  { name: "Utility / Project", counts_as: "technician", counting_default: false, is_specialized: false },
-  { name: "Inventory", counts_as: "technician", counting_default: false, is_specialized: false },
-  { name: "Billing", counts_as: "technician", counting_default: false, is_specialized: false },
-  { name: "Remote", counts_as: "none", counting_default: false, is_specialized: false },
-  { name: "Meeting", counts_as: "none", counting_default: false, is_specialized: false },
-  { name: "Supervisor", counts_as: "none", counting_default: false, is_specialized: false },
+  { name: "Working (on floor)", counts_as: "technician", counting_default: true, is_specialized: false, color: "#3B6EA5" },
+  { name: "Training", counts_as: "technician", counting_default: true, is_specialized: false, color: "#2BA39A" },
+  { name: "IV / TPN", counts_as: "technician", counting_default: true, is_specialized: true, color: "#C2459E" },
+  { name: "Hospice Shift", counts_as: "technician", counting_default: true, is_specialized: false, color: "#C94F7C" },
+  { name: "Runner (Homeside)", counts_as: "technician", counting_default: true, is_specialized: false, color: "#6B8E23" },
+  { name: "SPC Compounding", counts_as: "technician", counting_default: true, is_specialized: true, color: "#9B4DCA" },
+  { name: "Charts / Clinical", counts_as: "pharmacist", counting_default: true, is_specialized: false, color: "#2C7A7B" },
+  { name: "CCC (Clinical Call Center)", counts_as: "pharmacist", counting_default: false, is_specialized: false, color: "#0E7C86" },
+  { name: "Utility / Project", counts_as: "technician", counting_default: false, is_specialized: false, color: "#3FA34D" },
+  { name: "Inventory", counts_as: "technician", counting_default: false, is_specialized: false, color: "#5B6B82" },
+  { name: "Billing", counts_as: "technician", counting_default: false, is_specialized: false, color: "#6A5ACD" },
+  { name: "Remote", counts_as: "none", counting_default: false, is_specialized: false, color: null },
+  { name: "Meeting", counts_as: "none", counting_default: false, is_specialized: false, color: null },
+  { name: "Supervisor", counts_as: "none", counting_default: false, is_specialized: false, color: "#4C5FD5" },
 ] as const;
 
 // ── schedule pattern helpers ────────────────────────────────────────────────

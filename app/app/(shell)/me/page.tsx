@@ -6,6 +6,7 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
 import { addDaysStr, eachDate, fmtDay, todayStr } from "@/lib/dates";
+import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
 
 /** Compact 12-hour label: 08:00 → 8a, 17:30 → 5:30p (fits a calendar cell) */
 function compactTime(t: string): string {
@@ -46,8 +47,13 @@ export default async function MePage() {
   const today = todayStr();
   const horizon = addDaysStr(today, 14);
 
-  const [{ data: me }, { data: myShifts }, { data: myRequests }, { data: myLive }] =
-    await Promise.all([
+  const [
+    { data: me },
+    { data: myShifts },
+    { data: myRequests },
+    { data: myLive },
+    { data: workTypes },
+  ] = await Promise.all([
       supabase.from("staff").select("*").eq("id", appUser.staff_id).single(),
       supabase
         .from("shift")
@@ -69,7 +75,15 @@ export default async function MePage() {
         .eq("staff_id", appUser.staff_id)
         .is("effective_to", null)
         .maybeSingle(),
+      supabase.from("work_type").select("id, color"),
     ]);
+
+  const wtColorById = new Map(
+    ((workTypes ?? []) as { id: string; color: string | null }[]).map((w) => [
+      w.id,
+      w.color,
+    ])
+  );
 
   const staff = me as Staff;
   const shifts = (myShifts ?? []) as (Shift & { shift_segment: ShiftSegment[] })[];
@@ -152,20 +166,27 @@ export default async function MePage() {
                         >
                           {dayNum}
                         </p>
-                        {dayShifts.map((s) => (
-                          <p
-                            key={s.id}
-                            className="mt-0.5 rounded bg-[#FEF7ED] px-0.5 font-body text-[10px] font-medium leading-4 text-[#B05A12]"
-                          >
-                            {(s.shift_segment ?? [])
-                              .slice(0, 1)
-                              .map(
-                                (seg) =>
-                                  `${compactTime(seg.start_time)}–${compactTime(seg.end_time)}`
-                              )}
-                            {(s.shift_segment ?? []).length > 1 && " +"}
-                          </p>
-                        ))}
+                        {dayShifts.map((s) => {
+                          const seg0 = (s.shift_segment ?? [])[0];
+                          const wtColor = seg0?.work_type_id
+                            ? (wtColorById.get(seg0.work_type_id) ?? null)
+                            : null;
+                          const bg = wtColor ?? NEUTRAL_SHIFT_BG;
+                          return (
+                            <p
+                              key={s.id}
+                              className="mt-0.5 rounded px-0.5 font-body text-[10px] font-medium leading-4"
+                              style={{
+                                backgroundColor: bg,
+                                color: readableTextColor(bg),
+                              }}
+                            >
+                              {seg0 &&
+                                `${compactTime(seg0.start_time)}–${compactTime(seg0.end_time)}`}
+                              {(s.shift_segment ?? []).length > 1 && " +"}
+                            </p>
+                          );
+                        })}
                       </div>
                     );
                   })}
