@@ -1,5 +1,5 @@
 # RxShift: Infrastructure Setup
-Tag: [JWC] | Last updated: June 11, 2026 | Status: Mostly complete — Vercel pending
+Tag: [JWC] | Last updated: June 12, 2026 | Status: Live — Vercel RxShift account authorization still pending (phone issue)
 
 > This file is the source of truth for RxShift accounts, DNS, and email flow.
 > Jamison drops updates here from outside Claude Code; Claude Code keeps it
@@ -43,7 +43,7 @@ Tag: [JWC] | Last updated: June 11, 2026 | Status: Mostly complete — Vercel pe
 | Account login | resend@rxshift.io |
 | Sending domain | rxshift.io |
 | From address | hello@rxshift.io (site emails); demo requests land at info@rxshift.io |
-| Status | Verified (DKIM, SPF verified; DMARC **not yet added** — see to-dos) |
+| Status | Verified (DKIM, SPF verified; DMARC added June 12, 2026 ✓) |
 | DNS provider | Cloudflare (auto-configured via Resend integration) |
 | Region | us-east-1 (North Virginia) |
 | Free tier | 3,000 emails/month, 100/day |
@@ -177,10 +177,11 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [ ] Configure Cloudflare DNS A/CNAME records pointing rxshift.io and app.rxshift.io to Vercel
 - [x] Add DMARC record in Cloudflare: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` — added June 12, 2026
 - [ ] M365 send-as-hello@rxshift.io setup (steps above) — so replies to demo requests come from the brand domain
-- [ ] Push the repo to GitHub (needs a personal access token from the RxShift account)
-- [ ] Supabase schema design (to be done via Claude Code)
+- [x] Push the repo to GitHub — jamisonwest-ship-it added as collaborator on RxShift/RxShift; both remotes (`vercel` + `origin`) current as of June 12, 2026
+- [x] Supabase schema — migrations 0001–0014 applied; full v1 schema live
 - [x] Scaffold Next.js repo — done June 11, 2026
-- [x] Marketing website built (homepage, /pricing, /features, working demo form) — done June 11, 2026
+- [x] Full v1 app + marketing site built and live — June 11–12, 2026
+- [x] Branded Supabase magic-link template — pasted by Jamison in dashboard, June 12, 2026
 
 ---
 

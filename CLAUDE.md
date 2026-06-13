@@ -145,6 +145,7 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - Match the brand spec in `Brand Items/DESIGN.md` for all UI work — do not improvise colors or typography.
 - When adding new API routes, check whether the Supabase keep-alive cron is in place first (required for free-tier).
 - Do not use AI APIs until Jamison explicitly says to add them.
+- **After every build commit, update `CHANGELOG.md` before pushing.** One H2 entry per session: date + summary heading, then Shipped / Schema / Infrastructure / Open sections. Keep entries concise — bullets, not prose. This is the file a scheduled agent reads to stay current without reading all of CLAUDE.md.
 
 ## Phase 2 (built June 12, 2026)
 
@@ -165,7 +166,7 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - **Board containment** (policy, see decisions.md): RxShift never contacts a board. Publish-time 3-day-streak alerts notify the pharmacy's own managers (in-app + gated email).
 - **Reports** (`/app/reports` + `/api/reports/[type]`, xlsx): compliance log, staff roster, schedule export, audit (owner-only).
 - **Billing scaffold:** `lib/pricing.ts` (single price truth) + tenant billing columns (migration 0011) + `lib/billing.ts` (`isTenantEntitled` enforcement point, permissive until Stripe) + Go Live opens a manual subscription + admin console billing controls.
-- **Legal drafts:** `/terms` + `/privacy` (TimeZest-structure-emulated, controller/processor split, compliance-export guarantee) — pending attorney review; entity/venue placeholders flagged.
+- **Legal:** `/terms` + `/privacy` — attorney-reviewed and approved (June 12, 2026); "Draft" notices removed. Entity name, address, governing law/venue are placeholder text — fill in before first customer.
 - **Spam:** honeypot + per-address throttle on the demo form.
 
 ## Dark mode + work-type colors pass (built June 12, 2026, late)
@@ -196,17 +197,22 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 ## Pending TODOs (as of June 12, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
-- [ ] **Website interactive demo / screenshots** — now UNBLOCKED by the Mesa Vista demo tenant. Needs a decision on format (screenshots, video, or interactive embed) and imagery production. The homepage/pricing currently have no product visuals.
-- [ ] **Compliance engine roadmap** (marketing already frames these honestly as roadmap): scripts-per-hour volume minimums (R113-24 — read `volume_data`, new "understaffed for volume" deficiency type), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
-- [ ] Push to the RxShift-account GitHub repo (`origin` → RxShift/RxShift) — needs that account's PAT; `vercel` remote (jamisonwest-ship-it/rx-shift) is the deploy path and works.
-- [ ] Owner-facing alias management UI + real rate limiting (shared store) on `/api/auth/login-link` and `/api/contact` before public launch.
-- [ ] **Dark mode** (Jamison wants it) — execute on Sonnet 4.6 per the step-by-step plan in the session plan file: `.dark` token variants in globals.css, hex→token sweep (emails excluded), class-strategy toggle, app-only (marketing stays light).
-- [ ] CRM v2 polish after Susie uses it (it's deliberately basic: no pagination, no stage analytics, client-side filter only).
-- [ ] **Sentry + uptime monitoring — the day the first customer signs** (Jamison's trigger). Also Supabase Pro upgrade (backups/PITR) and moving Vercel hosting off the personal account at the same milestone.
-- [ ] Attorney review of /terms + /privacy (drafts posted June 12; entity name, address, governing law/venue are placeholders).
-- [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on verifying TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
-- [ ] DMARC TXT record in Cloudflare (INFRASTRUCTURE.md has the value).
-- [ ] Paste branded Supabase signup template (docs/supabase-email-templates.md) — Jamison, dashboard action.
+- [ ] **Website interactive demo / screenshots** — UNBLOCKED by Mesa Vista demo tenant. Format decision pending (screenshots, video, or interactive embed). Homepage/pricing have no product visuals yet.
+- [ ] **Compliance engine roadmap** (marketing frames these as roadmap): scripts-per-hour volume minimums (R113-24), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
+- [ ] Owner-facing alias management UI + shared rate limiting on `/api/auth/login-link` and `/api/contact` — before public launch.
+- [ ] CRM v2 polish after Susie uses it (no pagination, no stage analytics, client-side filter only — deliberately basic for now).
+- [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account.
+- [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
+- [ ] Fill in legal entity name, address, governing law/venue in `/terms` + `/privacy` before first customer.
+- [ ] Delete test CRM leads: "Verification Pharmacy" (crm-test@rxshift.io) and "Branded Email Test Pharmacy" (email-test@rxshift.io).
+- [ ] README.md is still unmodified Next.js boilerplate — rewrite to describe RxShift before public launch.
+
+### Done (June 12, 2026)
+- [x] Dark mode (app-only, marketing stays light) — shipped
+- [x] Both GitHub remotes current: `vercel` (deploy path) + `origin` (RxShift/RxShift) — collaborator added
+- [x] Attorney reviewed /terms + /privacy — approved, "Draft" notices removed
+- [x] DMARC TXT record — added by Jamison in Cloudflare
+- [x] Branded Supabase magic-link template — pasted by Jamison in dashboard
 
 ### v1 simplifications to revisit
 - Location operating hours: schema supports per-day hours; no UI editor yet (engine doesn't need it).
