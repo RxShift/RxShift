@@ -15,7 +15,6 @@ import { eachDate, fmtDay, fmtRange } from "@/lib/dates";
 import { copyForward, publishPeriod } from "@/lib/actions/schedule";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
-  Location,
   RatioZone,
   SchedulePeriod,
   Shift,
@@ -43,14 +42,12 @@ export interface BuilderBundle {
 
 export default function ScheduleBuilder({
   tenant,
-  locations,
   locationId,
   periods,
   bundle,
   validation,
 }: {
   tenant: Tenant;
-  locations: Location[];
   locationId: string;
   periods: SchedulePeriod[];
   bundle: BuilderBundle;
@@ -224,19 +221,6 @@ export default function ScheduleBuilder({
     <div className="space-y-5">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={locationId}
-          onChange={(e) =>
-            router.push(`/app/schedule?location=${e.target.value}`)
-          }
-          className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
-        >
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
         <select
           value={bundle.period.id}
           onChange={(e) =>

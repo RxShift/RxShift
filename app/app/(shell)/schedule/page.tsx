@@ -5,14 +5,58 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import ScheduleBuilder from "@/components/app/schedule/schedule-builder";
 import NewPeriodButton from "@/components/app/schedule/new-period-button";
 import AiCommandBar from "@/components/app/schedule/ai-command-bar";
+import AllLocationsOverview, {
+  type OverviewSection,
+} from "@/components/app/schedule/all-locations-overview";
 import { loadPeriodBundle, validateBundle } from "@/lib/schedule-data";
-import { fmtRange } from "@/lib/dates";
+import { addDaysStr, fmtRange, nowInTimeZone } from "@/lib/dates";
 import type { Location, SchedulePeriod } from "@/lib/types";
+
+// Location switcher: "All locations" overview + one pill per location.
+function ViewNav({
+  locations,
+  activeLocationId,
+  isAll,
+}: {
+  locations: Location[];
+  activeLocationId: string | null;
+  isAll: boolean;
+}) {
+  const pill = (active: boolean) =>
+    `whitespace-nowrap rounded-full border px-3.5 py-1.5 font-brand text-[13px] font-semibold transition-colors ${
+      active
+        ? "border-navy bg-navy text-white"
+        : "border-line bg-surface text-steel hover:text-navy"
+    }`;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {locations.length > 1 && (
+        <Link href="/app/schedule?view=all" className={pill(isAll)}>
+          All locations
+        </Link>
+      )}
+      {locations.map((l) => (
+        <Link
+          key={l.id}
+          href={`/app/schedule?location=${l.id}`}
+          className={pill(!isAll && l.id === activeLocationId)}
+        >
+          {l.name}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ location?: string; period?: string }>;
+  searchParams: Promise<{
+    location?: string;
+    period?: string;
+    view?: string;
+    week?: string;
+  }>;
 }) {
   const params = await searchParams;
   const session = await getSession();
@@ -54,6 +98,70 @@ export default async function SchedulePage({
     .order("start_date", { ascending: false });
   const everyPeriod = (allPeriods ?? []) as SchedulePeriod[];
 
+  // ── All-locations read-only overview ──────────────────────────────────
+  if (params.view === "all" && locs.length > 1) {
+    const today = nowInTimeZone(tenant.timezone).date;
+    const target = params.week ?? today;
+
+    // For each location, the period covering the target week (prefer
+    // published), then load its bundle + validation read-only.
+    const sections: OverviewSection[] = await Promise.all(
+      locs.map(async (l) => {
+        const covering = everyPeriod
+          .filter(
+            (p) =>
+              p.location_id === l.id &&
+              p.start_date <= target &&
+              p.end_date >= target
+          )
+          .sort((a, b) =>
+            a.status === b.status ? 0 : a.status === "published" ? -1 : 1
+          );
+        const period = covering[0] ?? null;
+        if (!period)
+          return { location: l, bundle: null, validation: null };
+        const bundle = await loadPeriodBundle(period.id);
+        return {
+          location: l,
+          bundle,
+          validation: bundle ? validateBundle(bundle, tenant) : null,
+        };
+      })
+    );
+
+    return (
+      <>
+        <PageHeader title="Schedule — All locations" />
+        <div className="flex-1 space-y-5 p-8">
+          <ViewNav locations={locs} activeLocationId={null} isAll />
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/app/schedule?view=all&week=${addDaysStr(target, -7)}`}
+              className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
+            >
+              ← Prev week
+            </Link>
+            <span className="font-body text-sm font-medium text-steel">
+              Week of {target}
+            </span>
+            <Link
+              href={`/app/schedule?view=all&week=${addDaysStr(target, 7)}`}
+              className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
+            >
+              Next week →
+            </Link>
+          </div>
+          <AllLocationsOverview
+            sections={sections}
+            workTypes={
+              sections.find((s) => s.bundle)?.bundle?.workTypes ?? []
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
   const defaultLocationId =
     locs.find((l) =>
       everyPeriod.some(
@@ -69,13 +177,20 @@ export default async function SchedulePage({
     params.period ??
     (periodList.find((p) => p.status === "published") ?? periodList[0])?.id;
 
+  const locName = locs.find((l) => l.id === locationId)?.name ?? "";
+
   if (!periodId) {
     return (
       <>
-        <PageHeader title="Schedule" />
-        <div className="flex-1 p-8">
+        <PageHeader title={`Schedule — ${locName}`} />
+        <div className="flex-1 space-y-5 p-8">
+          <ViewNav
+            locations={locs}
+            activeLocationId={locationId}
+            isAll={false}
+          />
           <EmptyState
-            message={`No schedule periods yet for ${locs.find((l) => l.id === locationId)?.name}. Create the first ${tenant.schedule_cycle} period to start scheduling.`}
+            message={`No schedule periods yet for ${locName}. Create the first ${tenant.schedule_cycle} period to start scheduling.`}
             action={<NewPeriodButton locationId={locationId} />}
           />
         </div>
@@ -100,13 +215,13 @@ export default async function SchedulePage({
   return (
     <>
       <PageHeader
-        title={`Schedule — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
+        title={`Schedule — ${locName} — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
       />
       <div className="flex-1 space-y-5 p-8">
+        <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
         <AiCommandBar periodId={bundle.period.id} />
         <ScheduleBuilder
           tenant={tenant}
-          locations={locs}
           locationId={locationId}
           periods={periodList}
           bundle={{
