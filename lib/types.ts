@@ -289,6 +289,18 @@ export interface LiveStatus {
   effective_to: string | null;
 }
 
+/** Per-tenant decoration of the fixed live statuses: show/hide, rename, and
+ *  whether each counts toward the ratio. No row = built-in default. */
+export interface LiveStatusConfig {
+  id: string;
+  tenant_id: string;
+  status: LiveStatusValue;
+  enabled: boolean;
+  label: string | null;
+  counts_toward_ratio: boolean;
+  created_at: string;
+}
+
 export interface VolumeData {
   id: string;
   tenant_id: string;

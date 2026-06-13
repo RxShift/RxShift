@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { evaluateZone, minutesToTime, segmentCounts } from "@/lib/engine/ratio";
 import { evaluateConstraints } from "@/lib/engine/constraints";
@@ -52,9 +53,10 @@ export interface ValidationOut {
 }
 
 export async function loadPeriodBundle(
-  periodId: string
+  periodId: string,
+  client?: SupabaseClient
 ): Promise<PeriodBundle | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   const { data: period } = await supabase
     .from("schedule_period")

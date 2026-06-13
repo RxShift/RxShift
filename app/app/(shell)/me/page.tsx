@@ -6,6 +6,7 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
 import { addDaysStr, eachDate, fmtDay, todayStr } from "@/lib/dates";
+import { resolveStatuses } from "@/lib/live-status-config";
 import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
 
 /** Compact 12-hour label: 08:00 → 8a, 17:30 → 5:30p (fits a calendar cell) */
@@ -17,6 +18,7 @@ function compactTime(t: string): string {
 }
 import type {
   LiveStatus,
+  LiveStatusConfig,
   Shift,
   ShiftSegment,
   Staff,
@@ -53,6 +55,7 @@ export default async function MePage() {
     { data: myRequests },
     { data: myLive },
     { data: workTypes },
+    { data: statusCfg },
   ] = await Promise.all([
       supabase.from("staff").select("*").eq("id", appUser.staff_id).single(),
       supabase
@@ -76,7 +79,12 @@ export default async function MePage() {
         .is("effective_to", null)
         .maybeSingle(),
       supabase.from("work_type").select("id, color"),
+      supabase.from("live_status_config").select("*"),
     ]);
+
+  const statusOptions = resolveStatuses((statusCfg ?? []) as LiveStatusConfig[])
+    .filter((s) => s.enabled)
+    .map((s) => ({ value: s.value, label: s.label, counts: s.counts }));
 
   const wtColorById = new Map(
     ((workTypes ?? []) as { id: string; color: string | null }[]).map((w) => [
@@ -109,7 +117,10 @@ export default async function MePage() {
       <div className="flex-1 space-y-5 p-4 sm:p-8">
         <div className="max-w-[640px] space-y-5">
           {tenant.has_ratio && (
-            <MyStatusPicker current={live?.status ?? "present_counting"} />
+            <MyStatusPicker
+              current={live?.status ?? "present_counting"}
+              options={statusOptions}
+            />
           )}
 
           <Card>
@@ -121,6 +132,62 @@ export default async function MePage() {
                 No published shifts in the next 14 days.
               </p>
             )}
+
+            {/* Mobile: a simple agenda list (days off are just omitted) */}
+            {shifts.length > 0 && (
+              <ul className="space-y-2 sm:hidden">
+                {shifts.map((s) => {
+                  const day = fmtDay(s.date);
+                  const segs = s.shift_segment ?? [];
+                  const seg0 = segs[0];
+                  const wtColor = seg0?.work_type_id
+                    ? (wtColorById.get(seg0.work_type_id) ?? null)
+                    : null;
+                  const bar = wtColor ?? NEUTRAL_SHIFT_BG;
+                  const isToday = s.date === today;
+                  return (
+                    <li
+                      key={s.id}
+                      className={`flex items-stretch gap-3 rounded-lg border p-3 ${
+                        isToday ? "border-amber ring-1 ring-amber" : "border-line"
+                      }`}
+                    >
+                      <span
+                        className="w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: bar }}
+                      />
+                      <div className="w-[54px] shrink-0">
+                        <p className="font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
+                          {day.dow}
+                        </p>
+                        <p className="font-brand text-[15px] font-bold text-navy">
+                          {day.label}
+                        </p>
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        {segs.map((seg) => (
+                          <p
+                            key={seg.id}
+                            className="font-body text-sm font-medium text-navy"
+                          >
+                            {compactTime(seg.start_time)}–
+                            {compactTime(seg.end_time)}
+                          </p>
+                        ))}
+                        {isToday && (
+                          <span className="font-brand text-[10px] font-bold uppercase tracking-[0.5px] text-amber">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Desktop: month-style calendar grid */}
+            <div className="hidden sm:block">
             {(() => {
               // Calendar weeks (Mon–Sun) covering today → today+14
               const todayDow = new Date(`${today}T00:00:00Z`).getUTCDay();
@@ -196,6 +263,7 @@ export default async function MePage() {
             <p className="mt-2 font-body text-[11px] text-steel">
               Blank days are days off. Today is outlined.
             </p>
+            </div>
           </Card>
 
           <Card>

@@ -39,6 +39,62 @@ export async function updateTenant(input: unknown): Promise<ActionResult> {
   });
 }
 
+// ─── Live-board statuses ──────────────────────────────────────────────────────
+
+const liveStatusConfigSchema = z.object({
+  statuses: z
+    .array(
+      z.object({
+        status: z.enum([
+          "present_counting",
+          "on_lunch",
+          "off_floor",
+          "in_meeting",
+          "non_tech_function",
+        ]),
+        enabled: z.coerce.boolean(),
+        label: z.string().max(40).nullish(),
+        counts_toward_ratio: z.coerce.boolean(),
+      })
+    )
+    .max(5),
+});
+
+/** Save the per-tenant status decorations (show/hide, label, counts). */
+export async function updateLiveStatusConfig(
+  input: unknown
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const { statuses } = liveStatusConfigSchema.parse(input);
+    const supabase = await createClient();
+
+    for (const s of statuses) {
+      // "Working" is the default fallback status — keep it shown + counting.
+      const locked = s.status === "present_counting";
+      const { error } = await supabase.from("live_status_config").upsert(
+        {
+          tenant_id: ctx.tenantId,
+          status: s.status,
+          enabled: locked ? true : s.enabled,
+          label: s.label?.trim() ? s.label.trim() : null,
+          counts_toward_ratio: locked ? true : s.counts_toward_ratio,
+        },
+        { onConflict: "tenant_id,status" }
+      );
+      if (error) throw new ActionError(error.message);
+    }
+
+    await logActivity(ctx, "update", "live_status_config", ctx.tenantId, {
+      count: statuses.length,
+    });
+    revalidatePath("/app/board");
+    revalidatePath("/app/me");
+    revalidatePath("/app/settings/statuses");
+    return undefined;
+  });
+}
+
 /**
  * Trial → live: the deliberate, owner-only switch that turns on email to
  * the whole roster. Clears the allowlist (it would otherwise keep

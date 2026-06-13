@@ -5,8 +5,19 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import LiveBoard from "@/components/app/board/live-board";
 import { loadPeriodBundle, toEngineRule, toEngineSegments } from "@/lib/schedule-data";
 import { evaluateZone, maxTechsAllowed, timeToMinutes } from "@/lib/engine/ratio";
+import { adjustSegmentsForLive, currentSlotOf } from "@/lib/live-board";
+import {
+  countsByStatus,
+  labelByStatus,
+  resolveStatuses,
+} from "@/lib/live-status-config";
 import { nowInTimeZone } from "@/lib/dates";
-import type { LiveStatus, SchedulePeriod, Staff } from "@/lib/types";
+import type {
+  LiveStatus,
+  LiveStatusConfig,
+  SchedulePeriod,
+  Staff,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -40,12 +51,27 @@ export default async function LiveBoardPage() {
     );
   }
 
-  const [{ data: liveStatuses }, { data: staff }] = await Promise.all([
-    supabase.from("live_status").select("*").is("effective_to", null),
-    supabase.from("staff").select("*").eq("active", true).order("full_name"),
-  ]);
+  const [{ data: liveStatuses }, { data: staff }, { data: statusCfg }] =
+    await Promise.all([
+      supabase.from("live_status").select("*").is("effective_to", null),
+      supabase.from("staff").select("*").eq("active", true).order("full_name"),
+      supabase.from("live_status_config").select("*"),
+    ]);
   const live = (liveStatuses ?? []) as LiveStatus[];
   const liveByStaff = new Map(live.map((l) => [l.staff_id, l.status]));
+
+  // Statuses are configurable per tenant (which to show, labels, and whether
+  // each counts toward ratio). No config rows = the original built-in behavior.
+  const cfgRows = (statusCfg ?? []) as LiveStatusConfig[];
+  const countsCfg = countsByStatus(cfgRows);
+  const labels = labelByStatus(cfgRows);
+  const statusOptions = resolveStatuses(cfgRows)
+    .filter((s) => s.enabled)
+    .map((s) => ({ value: s.value, label: s.label }));
+  // "Counting right now" = the person's current status isn't one this tenant
+  // marks as non-counting (default fallback "Working" counts).
+  const liveCounts = (staffId: string) =>
+    countsCfg[liveByStaff.get(staffId) ?? "present_counting"] !== false;
 
   // Build today's per-zone picture from the schedule, then overlay live
   // status: anyone currently off the floor / at lunch / in a meeting / on
@@ -86,30 +112,16 @@ export default async function LiveBoardPage() {
       const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
       if (zoneSegs.length === 0) continue;
 
-      // Apply live-status overrides for the current moment
-      const adjusted = zoneSegs.map((seg) => {
-        const liveStatus = liveByStaff.get(seg.staff.id);
-        if (
-          liveStatus &&
-          liveStatus !== "present_counting" &&
-          seg.staff.ratio_type !== "non_counting"
-        ) {
-          return { ...seg, counts_override: false };
-        }
-        return seg;
-      });
+      // Apply live-status overrides for the current moment (shared with the
+      // alert cron so the badge and the alert always agree).
+      const adjusted = adjustSegmentsForLive(zoneSegs, liveByStaff, countsCfg);
 
       const evals = evaluateZone(
         adjusted,
         toEngineRule(bundle.ratioRule),
         tenant.ratio_slot_minutes
       );
-      const slots = evals.get(today) ?? [];
-      const currentSlot = slots.find(
-        (s) =>
-          s.slot_start <= nowMinutes &&
-          nowMinutes < s.slot_start + s.slot_minutes
-      );
+      const currentSlot = currentSlotOf(evals.get(today) ?? [], nowMinutes);
 
       const onNow = zoneSegs.filter((seg) => {
         const start = timeToMinutes(seg.start_time);
@@ -124,60 +136,50 @@ export default async function LiveBoardPage() {
         (s) => s.staff.ratio_type === "pharmacist"
       );
       const pharmacistsCounting = pharmacistsAll
-        .filter(
-          (s) =>
-            (liveByStaff.get(s.staff.id) ?? "present_counting") ===
-            "present_counting"
-        )
+        .filter((s) => liveCounts(s.staff.id))
         .map((s) => ({
           name: s.staff.full_name,
           staffId: s.staff.id,
-          live: "present_counting",
+          live: liveByStaff.get(s.staff.id) ?? "present_counting",
           color: colorOf(s),
           workType: s.work_type?.name ?? null,
         }));
       const pharmacistsNotCounting = pharmacistsAll
-        .filter(
-          (s) =>
-            (liveByStaff.get(s.staff.id) ?? "present_counting") !==
-            "present_counting"
-        )
-        .map((s) => ({
-          name: s.staff.full_name,
-          staffId: s.staff.id,
-          live: liveByStaff.get(s.staff.id)!,
-          reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
-          color: colorOf(s),
-          workType: s.work_type?.name ?? null,
-        }));
+        .filter((s) => !liveCounts(s.staff.id))
+        .map((s) => {
+          const live = liveByStaff.get(s.staff.id)!;
+          return {
+            name: s.staff.full_name,
+            staffId: s.staff.id,
+            live,
+            reason: labels[live] ?? live.replace(/_/g, " "),
+            color: colorOf(s),
+            workType: s.work_type?.name ?? null,
+          };
+        });
       const techs = onNow.filter((s) => s.staff.ratio_type === "technician");
       const techsCounting = techs
-        .filter(
-          (s) =>
-            (liveByStaff.get(s.staff.id) ?? "present_counting") ===
-            "present_counting"
-        )
+        .filter((s) => liveCounts(s.staff.id))
         .map((s) => ({
           name: s.staff.full_name,
           staffId: s.staff.id,
-          live: "present_counting",
+          live: liveByStaff.get(s.staff.id) ?? "present_counting",
           color: colorOf(s),
           workType: s.work_type?.name ?? null,
         }));
       const techsNotCounting = techs
-        .filter(
-          (s) =>
-            (liveByStaff.get(s.staff.id) ?? "present_counting") !==
-            "present_counting"
-        )
-        .map((s) => ({
-          name: s.staff.full_name,
-          staffId: s.staff.id,
-          live: liveByStaff.get(s.staff.id)!,
-          reason: liveByStaff.get(s.staff.id)!.replace(/_/g, " "),
-          color: colorOf(s),
-          workType: s.work_type?.name ?? null,
-        }));
+        .filter((s) => !liveCounts(s.staff.id))
+        .map((s) => {
+          const live = liveByStaff.get(s.staff.id)!;
+          return {
+            name: s.staff.full_name,
+            staffId: s.staff.id,
+            live,
+            reason: labels[live] ?? live.replace(/_/g, " "),
+            color: colorOf(s),
+            workType: s.work_type?.name ?? null,
+          };
+        });
       const othersOnNow = onNow
         .filter((s) => s.staff.ratio_type === "non_counting")
         .map((s) => ({
@@ -222,6 +224,8 @@ export default async function LiveBoardPage() {
           isManager={["owner_admin", "scheduler", "supervisor"].includes(
             session!.appUser!.role
           )}
+          statusOptions={statusOptions}
+          labels={labels}
         />
       </div>
     </>

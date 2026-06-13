@@ -8,14 +8,6 @@ import { Select } from "@/components/ui/form";
 import { EmptyState } from "@/components/ui/page-header";
 import { setLiveStatus } from "@/lib/actions/live";
 
-const STATUS_LABELS: Record<string, string> = {
-  present_counting: "Working (counts)",
-  on_lunch: "Lunch",
-  off_floor: "Off floor",
-  in_meeting: "Meeting",
-  non_tech_function: "Non-tech work",
-};
-
 interface BoardPerson {
   name: string;
   staffId: string;
@@ -61,10 +53,14 @@ export default function LiveBoard({
   zones,
   staff,
   isManager,
+  statusOptions,
+  labels,
 }: {
   zones: ZoneCard[];
   staff: { id: string; name: string; live: string }[];
   isManager: boolean;
+  statusOptions: { value: string; label: string }[];
+  labels: Record<string, string>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -219,9 +215,15 @@ export default function LiveBoard({
                 onChange={(e) => changeStatus(s.id, e.target.value)}
                 className="!w-40 !py-1.5 text-xs"
               >
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
+                {(statusOptions.some((o) => o.value === s.live)
+                  ? statusOptions
+                  : [
+                      { value: s.live, label: labels[s.live] ?? s.live },
+                      ...statusOptions,
+                    ]
+                ).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </Select>

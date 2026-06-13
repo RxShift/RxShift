@@ -8,6 +8,7 @@ const TABS = [
   { label: "Locations", href: "/app/settings/locations" },
   { label: "Ratio", href: "/app/settings/ratio" },
   { label: "Work Types", href: "/app/settings/work-types" },
+  { label: "Statuses", href: "/app/settings/statuses" },
   { label: "Constraint Rules", href: "/app/settings/constraints" },
   { label: "Import Staff", href: "/app/settings/import" },
 ];

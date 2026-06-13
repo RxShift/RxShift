@@ -5,15 +5,13 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { setLiveStatus } from "@/lib/actions/live";
 
-const OPTIONS = [
-  { value: "present_counting", label: "Working" },
-  { value: "on_lunch", label: "Lunch" },
-  { value: "in_meeting", label: "Meeting" },
-  { value: "off_floor", label: "Off floor" },
-  { value: "non_tech_function", label: "Non-tech" },
-];
-
-export default function MyStatusPicker({ current }: { current: string }) {
+export default function MyStatusPicker({
+  current,
+  options,
+}: {
+  current: string;
+  options: { value: string; label: string; counts: boolean }[];
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -25,13 +23,15 @@ export default function MyStatusPicker({ current }: { current: string }) {
     setBusy(false);
   }
 
+  const counting = options.filter((o) => o.counts).map((o) => o.label);
+
   return (
     <Card>
       <h2 className="mb-3 font-brand text-base font-bold text-navy">
         My status now
       </h2>
       <div className="flex flex-wrap gap-2">
-        {OPTIONS.map((o) => (
+        {options.map((o) => (
           <button
             key={o.value}
             disabled={busy}
@@ -47,8 +47,10 @@ export default function MyStatusPicker({ current }: { current: string }) {
         ))}
       </div>
       <p className="mt-3 font-body text-xs text-steel">
-        One tap updates the live ratio board instantly. &ldquo;Working&rdquo;
-        counts toward ratio; everything else doesn&rsquo;t.
+        One tap updates the live ratio board instantly.{" "}
+        {counting.length > 0
+          ? `${counting.join(", ")} count toward ratio; the rest don't.`
+          : "None of these count toward ratio."}
       </p>
     </Card>
   );
