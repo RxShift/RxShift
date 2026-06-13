@@ -176,15 +176,50 @@ export default function AdminConsole({
                         </button>
                       </Td>
                       <Td>
-                        {!isActive && (
-                          <button
-                            disabled={busy}
-                            onClick={() => act(() => switchActiveTenant(t.id))}
-                            className="font-body text-xs font-medium text-navy underline-offset-2 hover:underline"
-                          >
-                            Switch into →
-                          </button>
-                        )}
+                        <div className="flex flex-col items-start gap-1">
+                          {!isActive && (
+                            <button
+                              disabled={busy}
+                              onClick={() => act(() => switchActiveTenant(t.id))}
+                              className="font-body text-xs font-medium text-navy underline-offset-2 hover:underline"
+                            >
+                              Switch into →
+                            </button>
+                          )}
+                          {t.is_demo && (
+                            confirmRestore === t.id ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-body text-xs text-steel">Confirm?</span>
+                                <button
+                                  disabled={busy}
+                                  onClick={() =>
+                                    act(() => resetDemoTenant(t.id)).then(() =>
+                                      setConfirmRestore(null)
+                                    )
+                                  }
+                                  className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
+                                >
+                                  {busy ? "Restoring…" : "Yes"}
+                                </button>
+                                <button
+                                  disabled={busy}
+                                  onClick={() => setConfirmRestore(null)}
+                                  className="font-body text-xs text-steel underline-offset-2 hover:underline"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                disabled={busy}
+                                onClick={() => setConfirmRestore(t.id)}
+                                className="font-body text-xs font-medium text-amber underline-offset-2 hover:underline"
+                              >
+                                Restore demo data
+                              </button>
+                            )
+                          )}
+                        </div>
                       </Td>
                     </Tr>
                     {isEditing && (

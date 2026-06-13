@@ -82,7 +82,7 @@ Visitor submits form on rxshift.io/#demo
 | TXT rxshift.io | `v=spf1 include:_spf.mx.cloudflare.net ~all` | SPF for Cloudflare forwarding |
 | TXT send.rxshift.io | `v=spf1 include:amazonses.com ~all` | SPF for Resend bounce domain |
 | TXT resend._domainkey.rxshift.io | (DKIM key) | Resend DKIM — present ✓ |
-| TXT _dmarc.rxshift.io | **MISSING** | Add: `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` |
+| TXT _dmarc.rxshift.io | `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` | DMARC — added by Jamison June 12, 2026 |
 
 (The DMARC `rua` reports go to dmarc@rxshift.io, which the catch-all
 forwards to Jamison — no extra setup needed.)
@@ -175,7 +175,7 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [ ] Vercel account verification response from registration@vercel.com
 - [ ] Once Vercel resolves: connect GitHub repo, create project, add domains, env vars, keep-alive cron
 - [ ] Configure Cloudflare DNS A/CNAME records pointing rxshift.io and app.rxshift.io to Vercel
-- [ ] Add DMARC record in Cloudflare: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io`
+- [x] Add DMARC record in Cloudflare: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` — added June 12, 2026
 - [ ] M365 send-as-hello@rxshift.io setup (steps above) — so replies to demo requests come from the brand domain
 - [ ] Push the repo to GitHub (needs a personal access token from the RxShift account)
 - [ ] Supabase schema design (to be done via Claude Code)

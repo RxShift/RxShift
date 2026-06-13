@@ -102,8 +102,8 @@ export default function PrivacyPage() {
             ))}
           </div>
 
-          <p className="mt-12 border-t border-line pt-6 font-body text-xs italic text-steel">
-            Draft — pending attorney review. Questions: privacy@rxshift.io.
+          <p className="mt-12 border-t border-line pt-6 font-body text-xs text-steel">
+            Questions about this policy: privacy@rxshift.io.
           </p>
         </div>
       </main>

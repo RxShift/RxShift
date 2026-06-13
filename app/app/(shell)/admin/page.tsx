@@ -26,6 +26,19 @@ export default async function AdminPage() {
     "id" | "tenant_id" | "full_name" | "login_email"
   >[];
 
+  // Build a fallback email map for app_users with no linked staff record
+  // (e.g. demo owners whose staff_id is intentionally null).
+  const noStaffUsers = allUsers.filter((u) => !u.staff_id);
+  let authEmailMap: Record<string, string> = {};
+  if (noStaffUsers.length > 0) {
+    const { data: authList } = await service.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (authList) {
+      for (const au of authList.users) {
+        authEmailMap[au.id] = au.email ?? "";
+      }
+    }
+  }
+
   const tenantSummaries = allTenants.map((t) => ({
     id: t.id,
     name: t.name,
@@ -45,15 +58,17 @@ export default async function AdminPage() {
     user_count: allUsers.filter((u) => u.tenant_id === t.id).length,
   }));
 
-  const userSummaries = allUsers.map((u) => ({
-    id: u.id,
-    tenant_id: u.tenant_id,
-    role: u.role,
-    label:
-      allStaff.find((s) => s.id === u.staff_id)?.full_name ??
-      "(no staff record)",
-    email: allStaff.find((s) => s.id === u.staff_id)?.login_email ?? null,
-  }));
+  const userSummaries = allUsers.map((u) => {
+    const linkedStaff = allStaff.find((s) => s.id === u.staff_id);
+    const authEmail = authEmailMap[u.supabase_user_id];
+    return {
+      id: u.id,
+      tenant_id: u.tenant_id,
+      role: u.role,
+      label: linkedStaff?.full_name ?? authEmail ?? "(no staff record)",
+      email: linkedStaff?.login_email ?? authEmail ?? null,
+    };
+  });
 
   return (
     <>

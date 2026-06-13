@@ -139,8 +139,8 @@ export default function TermsPage() {
             ))}
           </div>
 
-          <p className="mt-12 border-t border-line pt-6 font-body text-xs italic text-steel">
-            Draft — pending attorney review. Questions: legal@rxshift.io.
+          <p className="mt-12 border-t border-line pt-6 font-body text-xs text-steel">
+            Questions about these terms: legal@rxshift.io.
           </p>
         </div>
       </main>
