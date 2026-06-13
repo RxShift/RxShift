@@ -1,9 +1,12 @@
 // The colored shift block — the schedule's core visual unit.
 //
-// Two independent color channels, never competing:
-//   FILL  = the segment's work type (what the person is doing)
-//   RING  = compliance (red ring + ⚠ = deficient ratio slot;
-//           amber ring = constraint flag)
+// Two independent channels, never competing:
+//   FILL        = the segment's work type (what the person is doing)
+//   COMPLIANCE  = a deficient slot gets a high-contrast red ⚠ corner badge
+//                 (white/surface outline so it reads on ANY fill color, light
+//                 or dark) plus a red ring; a constraint flag gets an amber
+//                 ring. The badge is fill-independent so a reddish work-type
+//                 color can never hide the deficiency cue.
 //
 // Shared by the schedule builder grid and the all-locations overview.
 
@@ -28,41 +31,51 @@ export default function ShiftBlock({
   showWorkTypeName?: boolean;
 }) {
   return (
-    <div
-      className={`overflow-hidden rounded-[5px] ${
-        deficient
-          ? "ring-2 ring-deficiency"
-          : constrained
-            ? "ring-2 ring-alert"
-            : ""
-      }`}
-    >
-      {segments.map((seg, i) => {
-        const wt = seg.work_type_id
-          ? workTypeById.get(seg.work_type_id)
-          : undefined;
-        const bg = wt?.color ?? NEUTRAL_SHIFT_BG;
-        const fg = readableTextColor(bg);
-        return (
-          <div
-            key={seg.id}
-            className="px-1.5 py-1 text-left font-body text-[10.5px] font-semibold leading-tight"
-            style={{ backgroundColor: bg, color: fg }}
-          >
-            <div className="whitespace-nowrap">
-              {deficient && i === 0 && (
-                <span aria-label="deficient ratio slot">⚠ </span>
-              )}
-              {fmtT(seg.start_time)}–{fmtT(seg.end_time)}
-            </div>
-            {showWorkTypeName && wt && (
-              <div className="truncate text-[9px] font-medium uppercase tracking-[0.4px] opacity-80">
-                {wt.name}
+    <div className="relative">
+      <div
+        className={`overflow-hidden rounded-[5px] ${
+          deficient
+            ? "ring-2 ring-deficiency"
+            : constrained
+              ? "ring-2 ring-alert"
+              : ""
+        }`}
+      >
+        {segments.map((seg) => {
+          const wt = seg.work_type_id
+            ? workTypeById.get(seg.work_type_id)
+            : undefined;
+          const bg = wt?.color ?? NEUTRAL_SHIFT_BG;
+          const fg = readableTextColor(bg);
+          return (
+            <div
+              key={seg.id}
+              className="px-1.5 py-1 text-left font-body text-[10.5px] font-semibold leading-tight"
+              style={{ backgroundColor: bg, color: fg }}
+            >
+              <div className="whitespace-nowrap">
+                {fmtT(seg.start_time)}–{fmtT(seg.end_time)}
               </div>
-            )}
-          </div>
-        );
-      })}
+              {showWorkTypeName && wt && (
+                <div className="truncate text-[9px] font-medium uppercase tracking-[0.4px] opacity-80">
+                  {wt.name}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fill-independent compliance badge — outlined so it pops on any color */}
+      {deficient && (
+        <span
+          aria-label="deficient ratio slot"
+          title="In a deficient ratio slot"
+          className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-deficiency text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-surface"
+        >
+          ⚠
+        </span>
+      )}
     </div>
   );
 }
