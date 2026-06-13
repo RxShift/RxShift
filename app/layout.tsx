@@ -38,11 +38,14 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${inter.variable} h-full`}
     >
-      {/* No-flash script: sets .dark on <html> before first paint if preferred */}
+      {/* No-flash script: sets .dark on <html> before first paint — APP ONLY.
+          Marketing (rxshift.io root paths) always renders light; the hostname
+          check covers production (app.rxshift.io), the pathname check covers
+          local dev (localhost:3200/app). */}
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+            __html: `(function(){try{var isApp=location.hostname.indexOf('app.')===0||location.pathname.indexOf('/app')===0;if(!isApp)return;var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
       </head>

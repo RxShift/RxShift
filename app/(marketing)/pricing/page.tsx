@@ -119,12 +119,6 @@ export default function PricingPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-10 rounded-md bg-white px-5 py-4 text-center font-brand text-[13px] font-semibold text-steel">
-              On the roadmap: Scripts-per-hour volume minimums (R113-24) ·
-              Certified vs. non-certified tech tracking · Trainee supervision
-              limits · Cert expiration tracking · PMS data import · Float pool
-              scheduling · Volume forecasting · Additional state configurations
-            </p>
           </div>
         </section>
 
