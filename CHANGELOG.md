@@ -7,6 +7,33 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-13 — Documentation thoroughness pass (no app changes)
+
+### Shipped
+- `CHANGELOG.md` created and backfilled with all June 11–12 build history
+- `README.md` rewritten — replaces Next.js boilerplate with RxShift-specific content (port, stack, scripts, accounts, docs map)
+- `docs/SCRIPTS.md` created — documents all 4 operational scripts with flags and examples
+- `docs/decisions.md` — added 3 entries for June 12 late session (work-type two-channel, curated palette, dark mode app-only)
+- `supabase/migrations/0008_break_minutes.sql` created — local file was missing (migration was already live in Supabase since June 12)
+- CHANGELOG.md fixed: `0006_tenant_status.sql` → `0006_email_safety.sql` (wrong name backfilled from CoWork flag)
+- INFRASTRUCTURE.md: migrations 0001–0005 tracking gap documented; status line updated
+
+### Schema
+- No new migrations (0008 file creation only — schema already applied June 12)
+
+### Infrastructure
+- No infrastructure changes
+
+### Open (status after this session)
+- Susie's platform-admin account: needs her admin email → `npx tsx scripts/provision-user.ts --platform-admin --email <addr>`
+- Website screenshots/demo content: format decision pending (screenshots/video/embed)
+- Vercel RxShift account authorization: phone verification pending with Vercel support
+- **Jamison action:** verify keep-alive cron is active in Vercel personal account → rx-shift project → Settings → Cron Jobs
+- Tennessee ratio enforcement: BLOCKED (contradictory rule research)
+- CRM test leads to delete: "Verification Pharmacy" and "Branded Email Test Pharmacy"
+
+---
+
 ## 2026-06-12 (late) — Dark mode + work-type colors + schedule UX
 
 ### Shipped
@@ -113,7 +140,7 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 - Schedule defaults to the published period for the first location
 
 ### Schema
-- `0006_tenant_status.sql` — `tenant.status` + `tenant.email_allowlist`
+- `0006_email_safety.sql` — `tenant.status` + `tenant.email_allowlist`
 - `0007_login_alias.sql` — `login_alias` table
 - `0008_break_minutes.sql` — `shift.break_minutes` + `tenant.default_break_minutes`
 

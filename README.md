@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RxShift
 
-## Getting Started
+Compliance-ready pharmacy scheduling for retail pharmacies (1–25 locations).
 
-First, run the development server:
+RxShift embeds state ratio rules (pharmacist-to-technician requirements) into the schedule
+so deficiencies surface before they become violations. Built as a multi-tenant B2B SaaS
+under JWC LLC (Jamison West).
+
+**Live:** app.rxshift.io · rxshift.io
+
+---
+
+## Local Development
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in Supabase + Resend + OpenAI keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs at **http://localhost:3200/app/...** (port pinned in `package.json`).
+Marketing pages are at http://localhost:3200/.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Stack
 
-## Learn More
+| Layer | Choice |
+|-------|--------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| CSS | Tailwind CSS 4 |
+| Database / Auth | Supabase (direct client — no Prisma) |
+| Email | Resend |
+| AI | OpenAI gpt-4o-mini (server-side only) |
+| Hosting | Vercel |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supabase
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Project:** `cnhpaxucnbgxazpbvtod` (supabase@rxshift.io)
+- **Migrations:** `supabase/migrations/` — numbered `0001`–`0014+`
+- Migrations are applied via the Supabase MCP (`mcp__supabase-rxshift__apply_migration`) or the Supabase dashboard SQL editor. The Supabase CLI is not configured.
+- `list_migrations` shows history from 0006+ (0001–0005 were applied before MCP tracking began; schema is live).
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Key Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See **[docs/SCRIPTS.md](docs/SCRIPTS.md)** for full documentation. Quick reference:
+
+```bash
+npx tsx scripts/seed-demo.ts                    # seed OptumRx demo tenant
+npx tsx scripts/seed-mesa-vista.ts --reset      # reset Mesa Vista demo tenant
+npx tsx scripts/provision-user.ts --help        # provision a user (see docs/SCRIPTS.md)
+npx tsx scripts/seed-live-now.ts                # seed live board status for demo
+```
+
+---
+
+## Repo & Accounts
+
+This repo is **separate** from Jamison's personal, TimeZest, and MSP+ accounts.
+
+| Service | Account |
+|---------|---------|
+| GitHub | `RxShift` (github@rxshift.io) — repo `RxShift/RxShift` |
+| Supabase | supabase@rxshift.io |
+| Resend | resend@rxshift.io — sends from hello@rxshift.io |
+| Vercel | github@rxshift.io (personal account hosts app.rxshift.io in the interim) |
+
+Deploy path: push to the `vercel` remote (`jamisonwest-ship-it/rx-shift`) — Vercel
+auto-deploys from there. Push `origin` (`RxShift/RxShift`) to keep the canonical repo
+current. Both remotes after every ship.
+
+---
+
+## Documentation
+
+| File | What it covers |
+|------|---------------|
+| `CLAUDE.md` | Master context: architecture, accounts, phases, open TODOs |
+| `CHANGELOG.md` | What shipped, schema changes, infra updates — updated after every build |
+| `INFRASTRUCTURE.md` | DNS, email routing, service accounts, Vercel setup steps |
+| `docs/decisions.md` | Why things were built the way they were |
+| `docs/SCRIPTS.md` | How to run every operational script |
+| `Brand Items/DESIGN.md` | Full design system (colors, typography, components) |
+

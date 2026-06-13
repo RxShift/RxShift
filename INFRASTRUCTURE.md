@@ -179,6 +179,7 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [ ] M365 send-as-hello@rxshift.io setup (steps above) — so replies to demo requests come from the brand domain
 - [x] Push the repo to GitHub — jamisonwest-ship-it added as collaborator on RxShift/RxShift; both remotes (`vercel` + `origin`) current as of June 12, 2026
 - [x] Supabase schema — migrations 0001–0014 applied; full v1 schema live
+  - Note: migrations 0001–0005 were applied via raw `execute_sql` before MCP migration tracking was configured — they do not appear in `list_migrations`. Schema is correct; 0006+ are tracked normally.
 - [x] Scaffold Next.js repo — done June 11, 2026
 - [x] Full v1 app + marketing site built and live — June 11–12, 2026
 - [x] Branded Supabase magic-link template — pasted by Jamison in dashboard, June 12, 2026

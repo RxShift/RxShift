@@ -3,6 +3,28 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 12, 2026 (late) — Work-type colors + dark mode
+
+**Work-type colors: two visual channels (Susie/Optum feedback):** Shift blocks use
+work-type color as the fill — not compliance. Compliance status is a separate ring:
+red ring + ⚠ for deficient, amber ring for constraint violations. The fill never
+changes based on compliance — it stays the work-type color. This matches the When I
+Work pattern Optum relies on. Red and amber are reserved for compliance across the
+whole product; the color palette for work types deliberately excludes them.
+
+**Work-type palette is curated, not free-form:** 16 mid-dark swatches in
+`lib/work-type-colors.ts`, all rendering white text legibly in both light and dark
+mode. A `readableTextColor()` WCAG-luminance util exists for future custom hex input.
+Reds and ambers excluded. Curating the palette keeps the UI coherent and prevents
+accidental compliance-signal collisions.
+
+**Dark mode is app-only; marketing always renders light:** The no-flash script in
+`app/layout.tsx` is gated: it only applies `.dark` when `hostname` starts with `app.`
+or `pathname` starts with `/app`. Marketing pages never receive the `.dark` class.
+Decided because: (a) navy-on-white is the brand identity for the marketing site;
+(b) the initial dark mode implementation leaked `.dark` onto marketing via the root
+layout, making navy text invisible on white cards.
+
 ## June 12, 2026
 
 **Scope boundary (from the Phase 2 amendment, confirmed by Jamison):**
