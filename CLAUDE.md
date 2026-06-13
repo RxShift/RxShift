@@ -168,6 +168,31 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - **Legal drafts:** `/terms` + `/privacy` (TimeZest-structure-emulated, controller/processor split, compliance-export guarantee) — pending attorney review; entity/venue placeholders flagged.
 - **Spam:** honeypot + per-address throttle on the demo form.
 
+## Dark mode + work-type colors pass (built June 12, 2026, late)
+
+- **Dark mode (app only):** `.dark` token overrides in `globals.css`; `ThemeToggle`
+  in the sidebar footer; no-flash inline script in `app/layout.tsx` is **gated to the
+  app context** (hostname `app.*` or path `/app`) so marketing always renders light.
+- **Manager Settings access:** Settings opens to `scheduler`/`supervisor` (sidebar
+  `CONFIG` set; settings layout `canManage`; `updateTenant`/`upsertRatioRule` →
+  `requireManager`). Danger Zone wrapped in `isOwner`. Go-live, delete, role assignment,
+  offboarding stay owner-only.
+- **Work-type colors** (the When I Work pattern Susie/Optum needed): `work_type.color`
+  (migration 0014, backfilled for all seeded types incl. OptumRx) + curated palette in
+  `lib/work-type-colors.ts` (16 mid-dark swatches, white-text-safe in both modes,
+  red/amber reserved for compliance) + `readableTextColor()`. Color picker = swatch grid
+  (`"color"` field type in `EntityManager`).
+- **Schedule grid redesign** (`shift-block.tsx`, shared): shift fill = work-type color +
+  name + time; **compliance is now a separate channel** — deficient = red ring + ⚠,
+  constraint = amber ring (fill stays the work-type color). Rows banded
+  **Pharmacists → Technicians → Other**; work-type legend.
+- **Location clarity:** pill switcher + location name in the header; read-only
+  **"All locations" overview** (`?view=all`, weekly, per-location sections reusing the
+  block renderer) — editing stays per-location (periods/zones/compliance are per-location).
+- **Live board + My Schedule:** per-person work-type color dots (+ "Other" group on the
+  board); colored shift cells on `/app/me`.
+- Marketing pricing page: removed the R113-24 roadmap paragraph.
+
 ## Pending TODOs (as of June 12, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
