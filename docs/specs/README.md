@@ -13,5 +13,9 @@ into `docs/specs/` for Claude Code to ingest and build from.
    reality required it (deltas are noted in commit messages and CLAUDE.md).
 
 Archived June 2026: the original marketing-page and kickoff prompts
-(built June 11) and the phase-2 trio — website expansion, internal CRM,
-Mesa Vista demo tenant (built June 12).
+(built June 11); the phase-2 trio — website expansion, internal CRM,
+Mesa Vista demo tenant (built June 12); and the phase-2 amendment
+(honesty corrections + CA/TN/cert code tasks — built June 12, with
+implementation deltas recorded in `docs/decisions.md`: the 3-day-alert
+claims were KEPT because the feature is real, and TN enforcement was
+deferred over contradictory rule research).

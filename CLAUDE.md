@@ -155,7 +155,18 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - **Website:** interactive `/pricing` calculator, `/nevada` R113-24 deep-dive, `/states/california` + `/states/tennessee` stubs (Coming Soon), `/vs/when-i-work` battle card, States nav dropdown, columned footer. Marketing copy is HONEST about engine scope: volume minimums, certified/non-certified, trainee limits are ROADMAP, not shipped.
 - **Mesa Vista Pharmacy demo tenant:** fully fictional, 3 NV locations, 14 staff, 7 date-anchored weeks, engine-real Henderson Thursday 2–4 PM deficiency. Login: `demo@rxshift.io` (alias → Frank DiMaggio, catch-all delivers to Jamison). Reset: admin console "Restore demo data" or `npx tsx scripts/seed-mesa-vista.ts --reset` (core in `lib/demo/mesa-vista.ts`).
 
-**Spec workflow:** feature specs land in `docs/specs/`; once implemented they move to `docs/specs/_archive/` (see `docs/specs/README.md`). Archived specs are history — code + this file are the source of truth.
+**Spec workflow:** feature specs land in `docs/specs/`; once implemented they move to `docs/specs/_archive/` (see `docs/specs/README.md`). Archived specs are history — code + this file are the source of truth. Durable scope decisions live in `docs/decisions.md`.
+
+## Retail-ready pass (built June 12, 2026, evening)
+
+- **Branded email everywhere:** one layout (`brandedEmailHtml` in `lib/email.ts`) for notifications, sign-in links, and demo requests. ALL known-user logins are sent by RxShift via Resend (`/api/auth/login-link` handles aliases AND direct emails); Supabase's template only touches brand-new signups — paste-in HTML in `docs/supabase-email-templates.md`.
+- **AI shift creation:** the command bar's `create_shifts` op makes "Marcus works 8–5 Mon–Fri for three weeks" real — expanded/clamped/PTO-aware, engine-validated, confirm-to-apply. Copy-forward now copies `break_minutes` (was silently dropping them).
+- **California enforcement:** additive formula (BPC 4115, 2P−1) in the engine with tests; CA seed rule; formula selector in ratio settings; CA page live (no Coming Soon). **CPhT tracking** on staff (informational; TN cert-dependent enforcement DEFERRED — see decisions.md).
+- **Board containment** (policy, see decisions.md): RxShift never contacts a board. Publish-time 3-day-streak alerts notify the pharmacy's own managers (in-app + gated email).
+- **Reports** (`/app/reports` + `/api/reports/[type]`, xlsx): compliance log, staff roster, schedule export, audit (owner-only).
+- **Billing scaffold:** `lib/pricing.ts` (single price truth) + tenant billing columns (migration 0011) + `lib/billing.ts` (`isTenantEntitled` enforcement point, permissive until Stripe) + Go Live opens a manual subscription + admin console billing controls.
+- **Legal drafts:** `/terms` + `/privacy` (TimeZest-structure-emulated, controller/processor split, compliance-export guarantee) — pending attorney review; entity/venue placeholders flagged.
+- **Spam:** honeypot + per-address throttle on the demo form.
 
 ## Pending TODOs (as of June 12, 2026)
 
@@ -163,9 +174,14 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 - [ ] **Website interactive demo / screenshots** — now UNBLOCKED by the Mesa Vista demo tenant. Needs a decision on format (screenshots, video, or interactive embed) and imagery production. The homepage/pricing currently have no product visuals.
 - [ ] **Compliance engine roadmap** (marketing already frames these honestly as roadmap): scripts-per-hour volume minimums (R113-24 — read `volume_data`, new "understaffed for volume" deficiency type), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
 - [ ] Push to the RxShift-account GitHub repo (`origin` → RxShift/RxShift) — needs that account's PAT; `vercel` remote (jamisonwest-ship-it/rx-shift) is the deploy path and works.
-- [ ] Owner-facing alias management UI + real rate limiting on `/api/auth/login-link` before public launch.
-- [ ] **Dark mode** (Jamison wants it) — needs a real theming pass: brand tokens in `globals.css` get a `.dark` variant AND the many hardcoded hex values (`#FEF7ED`, `#C0392B`, shadows, email-style colors) move to tokens first. Do as its own pass; don't rush it.
+- [ ] Owner-facing alias management UI + real rate limiting (shared store) on `/api/auth/login-link` and `/api/contact` before public launch.
+- [ ] **Dark mode** (Jamison wants it) — execute on Sonnet 4.6 per the step-by-step plan in the session plan file: `.dark` token variants in globals.css, hex→token sweep (emails excluded), class-strategy toggle, app-only (marketing stays light).
 - [ ] CRM v2 polish after Susie uses it (it's deliberately basic: no pagination, no stage analytics, client-side filter only).
+- [ ] **Sentry + uptime monitoring — the day the first customer signs** (Jamison's trigger). Also Supabase Pro upgrade (backups/PITR) and moving Vercel hosting off the personal account at the same milestone.
+- [ ] Attorney review of /terms + /privacy (drafts posted June 12; entity name, address, governing law/venue are placeholders).
+- [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on verifying TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
+- [ ] DMARC TXT record in Cloudflare (INFRASTRUCTURE.md has the value).
+- [ ] Paste branded Supabase signup template (docs/supabase-email-templates.md) — Jamison, dashboard action.
 
 ### v1 simplifications to revisit
 - Location operating hours: schema supports per-day hours; no UI editor yet (engine doesn't need it).
