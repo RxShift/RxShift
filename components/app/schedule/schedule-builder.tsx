@@ -5,7 +5,7 @@
 // the deterministic engines render as red/amber highlights plus a flag
 // panel; publishing with open flags requires a logged reason.
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -26,6 +26,7 @@ import type {
   WorkType,
 } from "@/lib/types";
 import ShiftModal from "./shift-modal";
+import ShiftBlock, { WorkTypeLegend } from "./shift-block";
 
 interface ShiftWithSegments extends Shift {
   segments: ShiftSegment[];
@@ -113,6 +114,32 @@ export default function ScheduleBuilder({
       ),
     [validation.constraintFlags]
   );
+
+  const workTypeById = useMemo(
+    () => new Map(bundle.workTypes.map((w) => [w.id, w])),
+    [bundle.workTypes]
+  );
+
+  // Work types actually scheduled this period — drives the legend
+  const usedWorkTypeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of bundle.shifts)
+      for (const seg of s.segments)
+        ids.add(seg.work_type_id ?? "__none__");
+    return ids;
+  }, [bundle.shifts]);
+
+  // Rows banded by role: pharmacists, then technicians, then everyone
+  // else (drivers, clerks…). Alphabetical within each band.
+  const staffBands = useMemo(() => {
+    const band = (rt: Staff["ratio_type"]) =>
+      bundle.staff.filter((s) => s.ratio_type === rt);
+    return [
+      { label: "Pharmacists", staff: band("pharmacist") },
+      { label: "Technicians", staff: band("technician") },
+      { label: "Other staff", staff: band("non_counting") },
+    ].filter((b) => b.staff.length > 0);
+  }, [bundle.staff]);
 
   // One line per (rule, person) in the flag panel — "Melissa Morse — 4×"
   // instead of four near-identical overtime lines
@@ -317,73 +344,83 @@ export default function ScheduleBuilder({
             </tr>
           </thead>
           <tbody>
-            {bundle.staff.map((person) => (
-              <tr key={person.id}>
-                <td className="sticky left-0 z-10 border-r border-t border-line bg-surface px-3 py-1.5">
-                  <span className="font-body text-[13px] font-medium text-navy">
-                    {person.full_name}
-                  </span>
-                  <span className="ml-1.5 font-body text-[10px] text-steel">
-                    {person.ratio_type === "pharmacist"
-                      ? "RPh"
-                      : person.ratio_type === "technician"
-                        ? "Tech"
-                        : ""}
-                  </span>
-                </td>
-                {dates.map((d) => {
-                  const key = `${person.id}|${d}`;
-                  const cellShifts = shiftsByCell.get(key) ?? [];
-                  const hasPto = timeOffByCell.has(key);
-                  const shift = cellShifts[0] ?? null;
-                  const deficient = shift ? deficientShiftIds.has(shift.id) : false;
-                  const constrained = shift ? constraintShiftIds.has(shift.id) : false;
-
-                  return (
-                    <td
-                      key={d}
-                      onClick={() => setEditing({ staff: person, date: d, shift })}
-                      className={`cursor-pointer border-t border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
-                        hasPto ? "bg-cloud" : ""
-                      }`}
-                    >
-                      {hasPto && (
-                        <span className="block font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel">
-                          PTO
+            {staffBands.map((band) => (
+              <Fragment key={band.label}>
+                <tr>
+                  <td className="sticky left-0 z-10 border-r border-t border-line bg-cloud px-3 py-1 font-brand text-[9px] font-bold uppercase tracking-[1.2px] text-steel">
+                    {band.label} ({band.staff.length})
+                  </td>
+                  <td
+                    colSpan={dates.length}
+                    className="border-t border-line bg-cloud"
+                  />
+                </tr>
+                {band.staff.map((person) => (
+                  <tr key={person.id}>
+                    <td className="sticky left-0 z-10 border-r border-t border-line bg-surface px-3 py-1.5">
+                      <span className="font-body text-[13px] font-medium text-navy">
+                        {person.full_name}
+                      </span>
+                      {person.ratio_type === "technician" && person.certified && (
+                        <span className="ml-1.5 font-body text-[10px] text-steel">
+                          CPhT
                         </span>
                       )}
-                      {shift && (
-                        <div
-                          className={`rounded-[4px] px-1.5 py-1 font-body text-[11px] font-medium ${
-                            deficient
-                              ? "border-l-[3px] border-l-deficiency bg-deficiency-bg text-deficiency"
-                              : constrained
-                                ? "border-l-[3px] border-l-alert bg-alert-bg text-amber"
-                                : "bg-compliant-bg text-compliant"
+                    </td>
+                    {dates.map((d) => {
+                      const key = `${person.id}|${d}`;
+                      const cellShifts = shiftsByCell.get(key) ?? [];
+                      const hasPto = timeOffByCell.has(key);
+                      const shift = cellShifts[0] ?? null;
+                      const deficient = shift
+                        ? deficientShiftIds.has(shift.id)
+                        : false;
+                      const constrained = shift
+                        ? constraintShiftIds.has(shift.id)
+                        : false;
+
+                      return (
+                        <td
+                          key={d}
+                          onClick={() =>
+                            setEditing({ staff: person, date: d, shift })
+                          }
+                          className={`cursor-pointer border-t border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
+                            hasPto ? "bg-cloud" : ""
                           }`}
                         >
-                          {shift.segments.map((seg) => (
-                            <div key={seg.id}>
-                              {String(seg.start_time).slice(0, 5)}–
-                              {String(seg.end_time).slice(0, 5)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
+                          {hasPto && (
+                            <span className="block font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel">
+                              PTO
+                            </span>
+                          )}
+                          {shift && (
+                            <ShiftBlock
+                              segments={shift.segments}
+                              workTypeById={workTypeById}
+                              deficient={deficient}
+                              constrained={constrained}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
 
+      <WorkTypeLegend workTypes={bundle.workTypes} usedIds={usedWorkTypeIds} />
+
       <p className="font-body text-xs text-steel">
-        Click any cell to add or edit a shift. Green = scheduled, red = in a
-        deficient ratio slot, amber = constraint flag, grey = approved time
-        off. Flags are advisory — publishing past them requires a reason,
-        which is logged.
+        Click any cell to add or edit a shift. Blocks are colored by work
+        type (set colors in Settings → Work Types). A red ring with ⚠ marks
+        a shift in a deficient ratio slot; an amber ring marks a constraint
+        flag; grey = approved time off. Flags are advisory — publishing past
+        them requires a reason, which is logged.
       </p>
 
       {/* Shift editor */}
