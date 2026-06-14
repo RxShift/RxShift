@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RxShiftMark from "@/components/rxshift-mark";
@@ -83,24 +84,40 @@ export default function Sidebar({
   hasRatio,
   userEmail,
   isPlatformAdmin = false,
+  tenantLogoUrl = null,
 }: {
   tenantName: string;
   role: AppRole;
   hasRatio: boolean;
   userEmail: string;
   isPlatformAdmin?: boolean;
+  tenantLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
+  const [logoOk, setLogoOk] = useState(true);
+  const showTenantLogo = Boolean(tenantLogoUrl) && logoOk;
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-[#1C2F5E]">
+      {/* RxShift mark always stays — the tenant logo (if set) sits beside it */}
       <div className="flex h-[60px] items-center gap-2.5 bg-[#162650] px-5">
         <RxShiftMark size={30} variant="dark" />
-        <span className="font-brand text-[17px] tracking-[-0.3px] text-white">
-          <span className="font-bold">Rx</span>
-          <span className="font-bold text-amber"> · </span>
-          <span className="font-medium">Shift</span>
-        </span>
+        {showTenantLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={tenantLogoUrl!}
+            alt={tenantName}
+            className="max-h-7 max-w-[120px] object-contain"
+            referrerPolicy="no-referrer"
+            onError={() => setLogoOk(false)}
+          />
+        ) : (
+          <span className="font-brand text-[17px] tracking-[-0.3px] text-white">
+            <span className="font-bold">Rx</span>
+            <span className="font-bold text-amber"> · </span>
+            <span className="font-medium">Shift</span>
+          </span>
+        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
@@ -144,6 +161,11 @@ export default function Sidebar({
         <p className="truncate font-brand text-xs font-medium text-white/80">
           {tenantName}
         </p>
+        {showTenantLogo && (
+          <p className="font-body text-[10px] text-white/35">
+            powered by RxShift
+          </p>
+        )}
         <p className="mt-0.5 truncate font-body text-[11px] text-white/40">
           {userEmail}
         </p>

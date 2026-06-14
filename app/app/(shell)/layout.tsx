@@ -18,14 +18,30 @@ export default async function ShellLayout({
     session.platform.activeTenantId !== null ||
     session.platform.emulatingAppUserId !== null;
 
+  // Light per-tenant branding: a single validated accent color overrides only
+  // --color-amber for this subtree (buttons/highlights), in both light and dark
+  // mode. Rendered server-side so there's no flash, and scoped to the app shell
+  // so marketing/auth screens are untouched. The color is regex-validated
+  // before it reaches CSS — never interpolate the logo URL into styles.
+  const branding = session.tenant.branding;
+  const accent =
+    branding?.primary_color && /^#[0-9A-Fa-f]{6}$/.test(branding.primary_color)
+      ? branding.primary_color
+      : null;
+  const logoUrl = branding?.logo_url || null;
+
   return (
-    <div className="flex min-h-screen">
+    <div className={`flex min-h-screen${accent ? " rx-tenant" : ""}`}>
+      {accent && (
+        <style>{`.rx-tenant{--color-amber:${accent};}`}</style>
+      )}
       <Sidebar
         tenantName={session.tenant.name}
         role={session.appUser.role}
         hasRatio={session.tenant.has_ratio}
         userEmail={session.email}
         isPlatformAdmin={session.platform.isPlatformAdmin}
+        tenantLogoUrl={logoUrl}
       />
       <div className="ml-60 flex min-h-screen flex-1 flex-col">
         {showBanner && (

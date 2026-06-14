@@ -39,6 +39,40 @@ export async function updateTenant(input: unknown): Promise<ActionResult> {
   });
 }
 
+// ─── Branding ─────────────────────────────────────────────────────────────────
+
+const brandingSchema = z.object({
+  primary_color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
+  logo_url: z.string().url().max(500).nullish(),
+});
+
+/** Owner-only light branding: one accent color + a logo URL. The accent
+ *  overrides only --color-amber (buttons/highlights) so a tenant can't make
+ *  the UI unreadable, and the RxShift mark always stays in the sidebar. */
+export async function updateBranding(input: unknown): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireAdmin();
+    const data = brandingSchema.parse(input);
+    const branding: { primary_color?: string; logo_url?: string } = {};
+    if (data.primary_color) branding.primary_color = data.primary_color;
+    if (data.logo_url) branding.logo_url = data.logo_url;
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("tenant")
+      .update({ branding: Object.keys(branding).length ? branding : null })
+      .eq("id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+
+    await logActivity(ctx, "update", "tenant", ctx.tenantId, { branding });
+    revalidatePath("/app", "layout");
+    return undefined;
+  });
+}
+
 // ─── Live-board statuses ──────────────────────────────────────────────────────
 
 const liveStatusConfigSchema = z.object({

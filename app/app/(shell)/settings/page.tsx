@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import OrgSettingsForm from "@/components/app/settings/org-form";
+import BrandingForm from "@/components/app/settings/branding-form";
 import GoLiveCard from "@/components/app/settings/go-live-card";
 import DangerZone from "@/components/app/settings/danger-zone";
 
@@ -11,6 +12,7 @@ export default async function OrganizationSettingsPage() {
   return (
     <div className="max-w-[560px]">
       <OrgSettingsForm tenant={tenant} />
+      {isOwner && <BrandingForm tenant={tenant} />}
       {tenant.status !== "live" && isOwner && !tenant.is_demo && (
         <GoLiveCard status={tenant.status} />
       )}
