@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-12";
+const LAST_REVIEWED = "2026-06-13";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -42,7 +42,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     items: [
       "AI (OpenAI, server-side) drafts, explains, and proposes. The deterministic ratio/constraints engine is the only source of compliance truth.",
       "Every compliance-affecting AI proposal is validated by the engine and requires explicit human confirmation before it commits.",
-      "The help assistant answers only from RxShift's own help articles and does not give regulatory advice.",
+      "The help assistant answers only from RxShift's own help articles and does not give regulatory advice. Its source articles are read with the caller's own permissions, so platform-admin documentation is never exposed to a pharmacy user or fed to their assistant.",
     ],
   },
   {
@@ -52,6 +52,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
       "Tenants have a lifecycle (setup → trial → live). Trial tenants are fully functional but send no email to staff; going live is an explicit owner action with a confirmation warning, recorded in the audit log.",
       "Demo and test tenants are seeded with no staff email addresses, the kill switch off, and trial status — four independent locks against accidental email to real people.",
       "Demo-mode tenants hold entirely fictional rosters; every email they would send is either rewritten to one configured demo inbox or suppressed outright, and demo tenants can never be switched live.",
+      "Live out-of-ratio alerts to managers pass through the same send-time gate as every other notification — trial and demo tenants never email real staff. RxShift never contacts a board of pharmacy; whether to report is always the pharmacy's decision.",
     ],
   },
   {

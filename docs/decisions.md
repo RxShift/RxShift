@@ -3,6 +3,62 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 13, 2026 — Schedule UX, live board, branding & help
+
+**View is decoupled from build; build cycle stays the publish unit.** You build and
+publish one period at a time (weekly/biweekly/monthly), but a separate view selector
+(week / 2-week / month) lets anyone browse any window — fetched by date range across
+periods (`loadRangeBundle`), validated via a synthetic period so the engine is
+unchanged. Editing a cell still resolves to the period that covers that date. Chosen
+over making *building* flexible too, which would re-engineer the period/publish model
+for little gain — exactly the complexity Jamison asked to avoid.
+
+**Configurable live statuses decorate a fixed enum; they don't replace it.** The five
+status *values* stay a Postgres enum (no risky type change). A new `live_status_config`
+table holds per-tenant show/hide, label, and counts-toward-ratio; no row = built-in
+default, so existing tenants are unchanged with zero backfill. Stored in its own table,
+**not** a `tenant` JSONB column, because the `tenant` UPDATE policy is owner-only while
+the settings action uses `requireManager()` — a manager write to `tenant` silently
+no-ops under RLS today (latent, pre-existing; documented here, not fixed in this pass).
+A dedicated table gets a manager-friendly policy.
+
+**A status that counts is left to the engine; we never force-count.** On the board, a
+non-counting live status forces `counts_override=false`; a counting status is left
+untouched so the normal work-type/staff rule still applies (we never make a
+non-counting work type count just because the person's status counts).
+
+**Live out-of-ratio alerts are cron-driven with grace + cooldown.** One code path
+(`evaluateLiveZones`, shared with the board so they can't disagree) evaluates the
+current slot; a 5-minute grace absorbs accidental mis-clicks and a 60-minute cooldown
+prevents re-nagging, both stored in `live_ratio_alert_state` so correctness is
+independent of cron cadence. Per-minute delivery needs a paid Vercel plan; until then
+it runs ~daily and the on-screen badge is the real-time signal. "About to be out of
+ratio" (predictive) is **deferred** — mixing live "now" status with next-slot scheduled
+assumptions risks false alarms.
+
+**Compliance cue is a fill-independent corner badge (supersedes the June-12 ring).** A
+deficient shift gets a red ⚠ badge with a surface-colored outline in the corner, so it
+reads on any work-type fill including reddish ones — the ring alone could vanish. The
+red ring stays as a backup; the amber constraint ring is unchanged.
+
+**Branding is one accent color + a logo URL, owner-only, RxShift always visible.** Only
+`--color-amber` is overridable (buttons/highlights), server-rendered and scoped to the
+app shell, in both modes; text/background tokens stay fixed so a tenant can't make the
+UI unreadable. The RxShift mark always shows in the sidebar (plus "powered by RxShift"
+when a tenant logo is set). Logo is by hosted URL; in-app upload stays deferred pending
+Supabase Storage. A second/third brand color is deferred (single accent is the 80/20).
+
+**Admin-only help is gated in RLS on one page, not a separate route.** A single
+`admin_only` flag + an `help_select` policy that checks `platform_admin` keeps admin
+docs out of the tenant help index *and* the AI assistant's corpus (both query with the
+caller's client), with no app-code gating to forget. The help page already groups
+categories dynamically, so admins just see an extra "Platform Admin" section.
+
+**Per-person "standard schedule" templates deferred; department filter deferred.**
+Copy-forward ("same as last period") covers ~90% of templating with no new model. The
+schedule has no department filter because onboarding skips departments, so there's no
+data to filter on.
+
 ## June 12, 2026 (late) — Work-type colors + dark mode
 
 **Work-type colors: two visual channels (Susie/Optum feedback):** Shift blocks use

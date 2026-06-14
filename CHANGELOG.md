@@ -7,6 +7,33 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-13 — Schedule UX, live board, branding & help overhaul
+
+### Shipped
+- **Schedule navigation:** always-visible **Create next period** button + prev/next steppers (you could not create a future period once one had shifts — the core bug). Sticky staff column **and** date header (the staff column was silently broken by `border-collapse`; grid is now `border-separate`). Opens on the period containing today and scrolls to today's column.
+- **View selector (week / 2-week / month)** decoupled from the build cycle — browse any window with a clear published / draft / no-period column cutoff; editing still resolves to the underlying period. Grid extracted to a shared `ScheduleGrid`. Copy-forward relabeled "Copy last period's weekday pattern" with a confirm.
+- **Out-of-ratio indicator:** fill-independent red ⚠ corner badge (the old ring vanished on reddish work-type colors).
+- **Configurable live statuses:** per-tenant show/hide, rename, and counts-toward-ratio, in Settings → Statuses. Single source of truth in `lib/live-status-config.ts`; board + picker + alerts all read it. Defaults reproduce prior behavior.
+- **Live out-of-ratio alerts:** new cron evaluates each zone's current slot (shared `lib/live-board.ts`), notifies managers in-app + gated email, with a 5-min grace + 60-min cooldown (`live_ratio_alert_state`).
+- **Mobile-first My Schedule:** stacked agenda on phones, calendar grid at `sm:`+.
+- **Light tenant branding:** owner-set accent color (overrides only the amber token, both modes, server-rendered, regex-validated) + logo URL in the sidebar; RxShift mark always shown + "powered by RxShift". No migration (branding JSONB existed).
+- **Help:** `admin_only` column + RLS so platform-admin docs never reach tenants or the AI assistant; rewrote the misleading "Building a schedule" article; added 5 tenant + 4 admin articles.
+
+### Schema
+- `0015_live_status_config` — `live_status_config` + `live_ratio_alert_state` tables (RLS, grants) — applied
+- `0016_help_admin_only` — `help_article.admin_only` column + `help_select` RLS rewrite — applied
+- `0017_help_content_overhaul` — rewrite + new help articles — applied
+
+### Infrastructure
+- `vercel.json`: added `/api/cron/live-ratio-check` (`* * * * *`). NOTE: per-minute delivery needs a paid Vercel plan; on the free plan it runs ~daily, so live email alerts are delayed until the RxShift Vercel account is on Pro. The on-screen board badge stays real-time. Grace/cooldown state makes a slower cadence only delay alerts, never duplicate or misfire them.
+
+### Open (status after this session)
+- Pre-existing lint: 2 errors unrelated to this work (`app/app/(shell)/admin/page.tsx` prefer-const; `components/ui/theme-toggle.tsx` set-state-in-effect) — flag, not fixed.
+- Browser/visual walkthrough of the new surfaces recommended before the next demo.
+- Paid-plan upgrade (Vercel + Supabase) at first customer / confident deep trial → unlocks per-minute alert cadence, backups, uptime.
+
+---
+
 ## 2026-06-13 — Documentation thoroughness pass (no app changes)
 
 ### Shipped

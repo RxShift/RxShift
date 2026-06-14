@@ -1,5 +1,5 @@
 # RxShift: Infrastructure Setup
-Tag: [JWC] | Last updated: June 12, 2026 | Status: Live — Vercel RxShift account authorization still pending (phone issue)
+Tag: [JWC] | Last updated: June 13, 2026 | Status: Live — Vercel RxShift account authorization still pending (phone issue)
 
 > This file is the source of truth for RxShift accounts, DNS, and email flow.
 > Jamison drops updates here from outside Claude Code; Claude Code keeps it
@@ -197,3 +197,24 @@ Marketing site and application live in the same Next.js repo. No need to split u
 | Supabase | Free (under usage limits) |
 | Vercel | Free (under usage limits) |
 | **Total today** | **$50/year** |
+
+### Crons (vercel.json)
+
+| Path | Schedule | Notes |
+|---|---|---|
+| `/api/cron/keep-alive` | every 3 days | Keeps the free-tier Supabase project awake |
+| `/api/cron/live-ratio-check` | `* * * * *` (every minute) | Live out-of-ratio alerts to managers (in-app + gated email), with a 5-min grace + 60-min cooldown. **Per-minute cadence requires a paid Vercel plan** — on the free/Hobby plan crons run only ~once a day, so live email alerts are delayed until the upgrade. The on-screen board badge stays real-time regardless; the grace/cooldown state means a slower cadence only delays alerts, never duplicates or misfires them. |
+
+### Planned upgrade (free → paid) — at first customer / confident deep trial
+
+Stay on free tiers through development and early trials. When there's a live customer
+(or a confident deep trial — e.g. a discounted opt-in 2-location first customer), move
+**both Vercel and Supabase to paid starter tiers (~$20/mo each)**. That covers:
+
+- Supabase: automatic backups / point-in-time recovery, no auto-pause, more capacity.
+- Vercel: uptime headroom **and per-minute cron cadence** (unlocks near-real-time live
+  out-of-ratio email alerts), plus moving hosting off the personal account to the
+  dedicated RxShift account.
+
+Jamison may also re-evaluate the platform choice wholesale at full-live (currently
+expects to stay on Vercel + Supabase). Nothing in the app assumes paid plans to ship.

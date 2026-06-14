@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 12, 2026 (documentation discipline section added)
+# Last updated: June 13, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -227,14 +227,54 @@ Almost everything qualifies. When in doubt, update. Skip only for:
   board); colored shift cells on `/app/me`.
 - Marketing pricing page: removed the R113-24 roadmap paragraph.
 
-## Pending TODOs (as of June 12, 2026)
+## Schedule UX + live board + branding + help pass (built June 13, 2026)
+
+- **Schedule navigation:** always-visible **Create next period** button + ◀/▶ steppers
+  (`schedule-builder.tsx`) — previously you could not open a future period once one had
+  shifts. Grid extracted to shared `schedule-grid.tsx`; switched to `border-separate` so
+  the sticky **staff column** actually freezes (Chrome ignores sticky cells under
+  `border-collapse`) and the **date header** freezes on vertical scroll. Opens on the
+  period containing today and centers today's column.
+- **View selector (week / 2-week / month),** decoupled from the build cycle:
+  `?view=…&anchor=…` in `schedule/page.tsx` → `loadRangeBundle` (fetch by date range
+  across periods) → read-mostly `schedule-range-view.tsx` with a published / draft /
+  no-period column cutoff. Validation reuses the engine via a synthetic period
+  (`validateRangeBundle`). Editing still resolves to each shift's own period.
+- **Copy-forward** relabeled "Copy last period's weekday pattern" + confirm dialog.
+- **Out-of-ratio indicator:** fill-independent red ⚠ corner badge in `shift-block.tsx`
+  (supersedes the red-ring-only cue, which vanished on reddish work-type colors).
+- **Configurable live statuses:** `live_status_config` (migration 0015) — per-tenant
+  show/hide, label, counts-toward-ratio; Settings → **Statuses**. Single source of truth
+  `lib/live-status-config.ts`; board, picker, and alerts all read it; no config = prior
+  behavior. Stored in its own table (not `tenant` JSONB) — see decisions.md re the
+  owner-only `tenant` UPDATE policy vs `requireManager` mismatch.
+- **Live out-of-ratio alerts:** `lib/live-board.ts` `evaluateLiveZones` (shared with the
+  board so they can't disagree) + cron `/api/cron/live-ratio-check` → managers in-app +
+  gated email, with a 5-min grace + 60-min cooldown in `live_ratio_alert_state`
+  (migration 0015). Cron is in `vercel.json` at `* * * * *`, but **per-minute delivery
+  needs a paid Vercel plan**; on free it runs ~daily (the board badge stays real-time).
+- **Mobile-first My Schedule:** stacked agenda on phones, calendar grid at `sm:`+.
+- **Light tenant branding:** owner-set accent color (overrides only `--color-amber`, both
+  modes, server-rendered + regex-validated in the app-shell layout) + logo URL in the
+  sidebar; RxShift mark always shown + "powered by RxShift". Settings → **Branding**
+  (`updateBranding`, owner-only). No migration (branding JSONB existed). Logo upload still
+  deferred (needs Supabase Storage).
+- **Help:** `help_article.admin_only` + RLS (migration 0016) so platform-admin docs never
+  reach tenants or the AI assistant; content overhaul (migration 0017) rewrote the
+  misleading "Building a schedule" article and added 5 tenant + 4 admin articles. Admins
+  see a "Platform Admin" category on `/app/help`; gating is RLS-only (no app-code change).
+- **New routes:** `/app/settings/statuses`, `/api/cron/live-ratio-check`. Migrations
+  0015–0017 applied. Verified: `tsc` clean, 45 vitest tests pass, `next build` clean.
+
+## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
 - [ ] **Website interactive demo / screenshots** — UNBLOCKED by Mesa Vista demo tenant. Format decision pending (screenshots, video, or interactive embed). Homepage/pricing have no product visuals yet.
 - [ ] **Compliance engine roadmap** (marketing frames these as roadmap): scripts-per-hour volume minimums (R113-24), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
 - [ ] Owner-facing alias management UI + shared rate limiting on `/api/auth/login-link` and `/api/contact` — before public launch.
 - [ ] CRM v2 polish after Susie uses it (no pagination, no stage analytics, client-side filter only — deliberately basic for now).
-- [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account.
+- [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account. The Vercel paid plan also **unlocks per-minute cron cadence** so live out-of-ratio email alerts fire in near-real-time (today they run ~daily on the free plan).
+- [ ] **Browser/visual walkthrough of the June 13 surfaces before the next demo** — create-next-period, sticky headers, view selector + published/draft cutoff, Settings → Statuses, live alert path, branding (color + logo, both modes), help (tenant vs platform-admin). Build + tests are green; this is the visual pass.
 - [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
 - [ ] Fill in legal entity name, address, governing law/venue in `/terms` + `/privacy` before first customer.
 - [ ] Delete test CRM leads: "Verification Pharmacy" (crm-test@rxshift.io) and "Branded Email Test Pharmacy" (email-test@rxshift.io).
