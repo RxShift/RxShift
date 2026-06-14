@@ -6,7 +6,11 @@ import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/form";
 import { updateLiveStatusConfig } from "@/lib/actions/settings";
-import { LOCKED_STATUS, type ResolvedStatus } from "@/lib/live-status-config";
+import {
+  BUILTIN_STATUSES,
+  LOCKED_STATUS,
+  type ResolvedStatus,
+} from "@/lib/live-status-config";
 
 export default function LiveStatusesManager({
   initial,
@@ -25,11 +29,15 @@ export default function LiveStatusesManager({
   async function handleSave() {
     setSaving(true);
     setMessage(null);
+    const builtin = (v: string) =>
+      BUILTIN_STATUSES.find((b) => b.value === v)?.label ?? "";
     const result = await updateLiveStatusConfig({
       statuses: rows.map((r) => ({
         status: r.value,
         enabled: r.enabled,
-        label: r.label,
+        // Store null when unchanged so the row keeps tracking the built-in
+        // default label rather than freezing today's copy.
+        label: r.label.trim() === builtin(r.value) ? null : r.label,
         counts_toward_ratio: r.counts,
       })),
     });

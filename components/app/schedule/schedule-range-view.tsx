@@ -120,10 +120,16 @@ export default function ScheduleRangeView({
   }, [shifts]);
 
   // The period covering a given date (used for the column tint AND to bind the
-  // shift editor to the correct underlying period).
+  // shift editor to the correct underlying period). If two periods ever overlap
+  // a date, prefer the published one — it's what staff see, and an edit should
+  // land there, not in a stale draft.
   const periodForDate = useMemo(() => {
-    return (date: string) =>
-      periods.find((p) => p.start_date <= date && p.end_date >= date) ?? null;
+    return (date: string) => {
+      const matches = periods.filter(
+        (p) => p.start_date <= date && p.end_date >= date
+      );
+      return matches.find((p) => p.status === "published") ?? matches[0] ?? null;
+    };
   }, [periods]);
 
   const dateStatus = useMemo(() => {

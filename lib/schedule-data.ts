@@ -80,17 +80,33 @@ export async function loadPeriodBundle(
       .from("shift_segment")
       .select("*, shift!inner(schedule_period_id)")
       .eq("shift.schedule_period_id", periodId),
-    supabase.from("staff").select("*").order("full_name"),
-    supabase.from("work_type").select("*").order("name"),
+    // tenant_id filters are redundant under RLS (auth client) but REQUIRED when
+    // this runs with the service-role client (the live-ratio cron), which
+    // bypasses RLS — without them these would return every tenant's rows.
+    supabase
+      .from("staff")
+      .select("*")
+      .eq("tenant_id", period.tenant_id)
+      .order("full_name"),
+    supabase
+      .from("work_type")
+      .select("*")
+      .eq("tenant_id", period.tenant_id)
+      .order("name"),
     supabase
       .from("ratio_zone")
       .select("*")
       .eq("location_id", period.location_id),
-    supabase.from("ratio_rule").select("*"),
-    supabase.from("constraint_rule").select("*").eq("active", true),
+    supabase.from("ratio_rule").select("*").eq("tenant_id", period.tenant_id),
+    supabase
+      .from("constraint_rule")
+      .select("*")
+      .eq("tenant_id", period.tenant_id)
+      .eq("active", true),
     supabase
       .from("time_off_request")
       .select("*")
+      .eq("tenant_id", period.tenant_id)
       .eq("status", "approved")
       .lte("start_date", period.end_date)
       .gte("end_date", period.start_date),

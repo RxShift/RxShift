@@ -82,9 +82,24 @@ export default async function MePage() {
       supabase.from("live_status_config").select("*"),
     ]);
 
-  const statusOptions = resolveStatuses((statusCfg ?? []) as LiveStatusConfig[])
+  const resolvedStatuses = resolveStatuses(
+    (statusCfg ?? []) as LiveStatusConfig[]
+  );
+  const statusOptions = resolvedStatuses
     .filter((s) => s.enabled)
     .map((s) => ({ value: s.value, label: s.label, counts: s.counts }));
+  // If a manager disabled the status this person currently holds, still show it
+  // so they can see it and switch — otherwise the picker would look blank.
+  const heldStatus = (myLive as LiveStatus | null)?.status ?? "present_counting";
+  if (!statusOptions.some((o) => o.value === heldStatus)) {
+    const held = resolvedStatuses.find((s) => s.value === heldStatus);
+    if (held)
+      statusOptions.unshift({
+        value: held.value,
+        label: held.label,
+        counts: held.counts,
+      });
+  }
 
   const wtColorById = new Map(
     ((workTypes ?? []) as { id: string; color: string | null }[]).map((w) => [

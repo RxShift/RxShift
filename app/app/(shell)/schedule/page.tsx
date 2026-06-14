@@ -238,7 +238,12 @@ export default async function SchedulePage({
     ? (params.view as ViewMode)
     : null;
   if (viewMode) {
-    const anchor = params.anchor ?? today;
+    // Anchor comes from internal links, but guard against a hand-edited URL so a
+    // malformed date never reaches the Postgres date filters.
+    const anchor =
+      params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
+        ? params.anchor
+        : today;
     const { start, end } = viewWindow(viewMode, anchor);
     const range = await loadRangeBundle(locationId, start, end);
     const rangeValidation = validateRangeBundle(range, tenant);

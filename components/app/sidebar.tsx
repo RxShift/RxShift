@@ -94,8 +94,11 @@ export default function Sidebar({
   tenantLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
-  const [logoOk, setLogoOk] = useState(true);
-  const showTenantLogo = Boolean(tenantLogoUrl) && logoOk;
+  // Track the specific URL that failed, not a sticky boolean — so when the owner
+  // corrects a bad logo URL, the new one shows without a hard reload.
+  const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+  const showTenantLogo =
+    Boolean(tenantLogoUrl) && failedLogoUrl !== tenantLogoUrl;
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-[#1C2F5E]">
@@ -109,7 +112,7 @@ export default function Sidebar({
             alt={tenantName}
             className="max-h-7 max-w-[120px] object-contain"
             referrerPolicy="no-referrer"
-            onError={() => setLogoOk(false)}
+            onError={() => setFailedLogoUrl(tenantLogoUrl!)}
           />
         ) : (
           <span className="font-brand text-[17px] tracking-[-0.3px] text-white">
