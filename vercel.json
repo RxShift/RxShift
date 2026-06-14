@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/live-ratio-check",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
