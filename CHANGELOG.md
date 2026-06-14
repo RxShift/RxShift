@@ -25,7 +25,7 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 - `0017_help_content_overhaul` — rewrite + new help articles — applied
 
 ### Infrastructure
-- `vercel.json`: added `/api/cron/live-ratio-check` (`* * * * *`). NOTE: per-minute delivery needs a paid Vercel plan; on the free plan it runs ~daily, so live email alerts are delayed until the RxShift Vercel account is on Pro. The on-screen board badge stays real-time. Grace/cooldown state makes a slower cadence only delay alerts, never duplicate or misfire them.
+- `vercel.json`: added `/api/cron/live-ratio-check` (`0 9 * * *`, daily). **Hobby rejects sub-daily crons and fails the whole deploy** — an every-minute schedule was the real cause of the "deploy won't start" troubleshooting on June 13 (PENDING hook job, no build). Keep it daily until the Vercel account is on Pro, then change to `* * * * *` for near-real-time alerts. The board badge stays real-time meanwhile; grace/cooldown state means a slower cadence only delays alerts.
 
 ### Review (multi-agent code review, fixes applied)
 - **Tenant isolation in the alert cron:** `loadPeriodBundle` now scopes staff/work_type/ratio_rule/constraint_rule/time_off by the period's `tenant_id` — they relied on RLS, which the service-role cron bypasses, so the cron could have used another tenant's ratio rule. Fixed before any second ratio tenant exists.

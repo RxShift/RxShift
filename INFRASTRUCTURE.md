@@ -203,7 +203,7 @@ Marketing site and application live in the same Next.js repo. No need to split u
 | Path | Schedule | Notes |
 |---|---|---|
 | `/api/cron/keep-alive` | every 3 days | Keeps the free-tier Supabase project awake |
-| `/api/cron/live-ratio-check` | `* * * * *` (every minute) | Live out-of-ratio alerts to managers (in-app + gated email), with a 5-min grace + 60-min cooldown. **Per-minute cadence requires a paid Vercel plan** — on the free/Hobby plan crons run only ~once a day, so live email alerts are delayed until the upgrade. The on-screen board badge stays real-time regardless; the grace/cooldown state means a slower cadence only delays alerts, never duplicates or misfires them. |
+| `/api/cron/live-ratio-check` | `0 9 * * *` (daily) | Live out-of-ratio alerts to managers (in-app + gated email), with a 5-min grace + 60-min cooldown. **MUST be daily (or less) on Hobby** — Vercel REJECTS the whole deployment if any cron runs more than once/day (learned June 13: an every-minute schedule silently failed every deploy with a PENDING-but-no-build). Change to `* * * * *` for near-real-time alerts ONLY after upgrading to Pro. The on-screen board badge stays real-time regardless; grace/cooldown state means a slower cadence only delays alerts, never duplicates or misfires them. |
 
 ### Planned upgrade (free → paid) — at first customer / confident deep trial
 

@@ -251,8 +251,10 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - **Live out-of-ratio alerts:** `lib/live-board.ts` `evaluateLiveZones` (shared with the
   board so they can't disagree) + cron `/api/cron/live-ratio-check` → managers in-app +
   gated email, with a 5-min grace + 60-min cooldown in `live_ratio_alert_state`
-  (migration 0015). Cron is in `vercel.json` at `* * * * *`, but **per-minute delivery
-  needs a paid Vercel plan**; on free it runs ~daily (the board badge stays real-time).
+  (migration 0015). Cron is in `vercel.json` at `0 9 * * *` (daily) — **Hobby rejects
+  sub-daily crons and fails the entire deploy**, so do NOT set it to `* * * * *` until
+  the Vercel account is on Pro (that every-minute value blocked all deploys on June 13).
+  The board badge stays real-time; the cron only drives the alert emails.
 - **Mobile-first My Schedule:** stacked agenda on phones, calendar grid at `sm:`+.
 - **Light tenant branding:** owner-set accent color (overrides only `--color-amber`, both
   modes, server-rendered + regex-validated in the app-shell layout) + logo URL in the
@@ -273,7 +275,7 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - [ ] **Compliance engine roadmap** (marketing frames these as roadmap): scripts-per-hour volume minimums (R113-24), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
 - [ ] Owner-facing alias management UI + shared rate limiting on `/api/auth/login-link` and `/api/contact` — before public launch.
 - [ ] CRM v2 polish after Susie uses it (no pagination, no stage analytics, client-side filter only — deliberately basic for now).
-- [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account. The Vercel paid plan also **unlocks per-minute cron cadence** so live out-of-ratio email alerts fire in near-real-time (today they run ~daily on the free plan).
+- [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account. The Vercel paid plan also **unlocks sub-daily cron cadence** — only then change `/api/cron/live-ratio-check` in `vercel.json` to `* * * * *` for near-real-time live out-of-ratio email alerts (Hobby caps crons at daily and rejects the deploy otherwise).
 - [ ] **Browser/visual walkthrough of the June 13 surfaces before the next demo** — create-next-period, sticky headers, view selector + published/draft cutoff, Settings → Statuses, live alert path, branding (color + logo, both modes), help (tenant vs platform-admin). Build + tests are green; this is the visual pass.
 - [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
 - [ ] Fill in legal entity name, address, governing law/venue in `/terms` + `/privacy` before first customer.
