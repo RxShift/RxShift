@@ -27,6 +27,11 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 ### Infrastructure
 - `vercel.json`: added `/api/cron/live-ratio-check` (`* * * * *`). NOTE: per-minute delivery needs a paid Vercel plan; on the free plan it runs ~daily, so live email alerts are delayed until the RxShift Vercel account is on Pro. The on-screen board badge stays real-time. Grace/cooldown state makes a slower cadence only delay alerts, never duplicate or misfire them.
 
+### Review (multi-agent code review, fixes applied)
+- **Tenant isolation in the alert cron:** `loadPeriodBundle` now scopes staff/work_type/ratio_rule/constraint_rule/time_off by the period's `tenant_id` — they relied on RLS, which the service-role cron bypasses, so the cron could have used another tenant's ratio rule. Fixed before any second ratio tenant exists.
+- Range view `periodForDate` prefers the published period on overlap; `?anchor` date validated; statuses manager stores `null` when a label matches the built-in default; My Schedule still shows a held-but-disabled status; sidebar recovers when a bad logo URL is corrected.
+- Verified clean: `tsc`, 45 vitest tests, `next build`.
+
 ### Open (status after this session)
 - Pre-existing lint: 2 errors unrelated to this work (`app/app/(shell)/admin/page.tsx` prefer-const; `components/ui/theme-toggle.tsx` set-state-in-effect) — flag, not fixed.
 - Browser/visual walkthrough of the new surfaces recommended before the next demo.
