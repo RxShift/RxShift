@@ -52,7 +52,7 @@ function ViewNav({
   const pill = (active: boolean) =>
     `whitespace-nowrap rounded-full border px-3.5 py-1.5 font-brand text-[13px] font-semibold transition-colors ${
       active
-        ? "border-navy bg-navy text-white"
+        ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
         : "border-line bg-surface text-steel hover:text-navy"
     }`;
   return (
@@ -88,7 +88,7 @@ function ViewModeNav({
   const pill = (on: boolean) =>
     `whitespace-nowrap rounded-full border px-3 py-1 font-brand text-[12px] font-semibold transition-colors ${
       on
-        ? "border-navy bg-navy text-white"
+        ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
         : "border-line bg-surface text-steel hover:text-navy"
     }`;
   const modes: { key: ViewMode | "period"; label: string; href: string }[] = [
@@ -193,7 +193,7 @@ export default async function SchedulePage({
     return (
       <>
         <PageHeader title="Schedule — All locations" />
-        <div className="flex-1 space-y-5 p-8">
+        <div className="flex-1 min-w-0 space-y-5 p-8">
           <ViewNav locations={locs} activeLocationId={null} isAll />
           <div className="flex items-center gap-3">
             <Link
@@ -259,7 +259,7 @@ export default async function SchedulePage({
     return (
       <>
         <PageHeader title={`Schedule — ${locName} — ${fmtRange(start, end)}`} />
-        <div className="flex-1 space-y-5 p-8">
+        <div className="flex-1 min-w-0 space-y-5 p-8">
           <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <ViewModeNav locationId={locationId} active={viewMode} />
@@ -319,7 +319,7 @@ export default async function SchedulePage({
     return (
       <>
         <PageHeader title={`Schedule — ${locName}`} />
-        <div className="flex-1 space-y-5 p-8">
+        <div className="flex-1 min-w-0 space-y-5 p-8">
           <ViewNav
             locations={locs}
             activeLocationId={locationId}
@@ -353,7 +353,7 @@ export default async function SchedulePage({
       <PageHeader
         title={`Schedule — ${locName} — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
       />
-      <div className="flex-1 space-y-5 p-8">
+      <div className="flex-1 min-w-0 space-y-5 p-8">
         <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
         <ViewModeNav locationId={locationId} active="period" />
         <AiCommandBar periodId={bundle.period.id} />

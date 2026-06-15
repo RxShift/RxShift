@@ -6,7 +6,7 @@ import RxShiftMark from "./rxshift-mark";
 
 function Wordmark() {
   return (
-    <span className="font-brand text-[20px] tracking-[-0.3px] text-navy">
+    <span className="font-brand text-[20px] tracking-[-0.3px] text-white">
       <span className="font-bold">Rx</span>
       <span className="font-bold text-amber"> · </span>
       <span className="font-medium">Shift</span>
@@ -44,10 +44,10 @@ export default function Nav() {
   }, [statesOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-white">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-navy">
       <nav className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <RxShiftMark size={38} />
+          <RxShiftMark size={38} variant="dark" />
           <Wordmark />
         </Link>
 
@@ -58,7 +58,7 @@ export default function Nav() {
               type="button"
               aria-expanded={statesOpen}
               onClick={() => setStatesOpen(!statesOpen)}
-              className="flex items-center gap-1 rounded-md px-3 py-2 font-body text-sm font-medium text-steel hover:text-navy"
+              className="flex items-center gap-1 rounded-md px-3 py-2 font-body text-sm font-medium text-white/70 hover:text-white"
             >
               States
               <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
@@ -83,7 +83,7 @@ export default function Nav() {
           </div>
           <Link
             href="/pricing"
-            className="rounded-md px-3 py-2 font-body text-sm font-medium text-steel hover:text-navy"
+            className="rounded-md px-3 py-2 font-body text-sm font-medium text-white/70 hover:text-white"
           >
             Pricing
           </Link>
@@ -95,7 +95,7 @@ export default function Nav() {
           </Link>
           <a
             href="https://app.rxshift.io"
-            className="ml-4 font-body text-sm font-medium text-steel hover:text-navy"
+            className="ml-4 font-body text-sm font-medium text-white/70 hover:text-white"
           >
             Log in
           </a>
@@ -111,9 +111,9 @@ export default function Nav() {
         >
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
             {open ? (
-              <path d="M4 4l14 14M18 4L4 18" stroke="#1C2F5E" strokeWidth="2" strokeLinecap="round" />
+              <path d="M4 4l14 14M18 4L4 18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
             ) : (
-              <path d="M3 6h16M3 11h16M3 16h16" stroke="#1C2F5E" strokeWidth="2" strokeLinecap="round" />
+              <path d="M3 6h16M3 11h16M3 16h16" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
             )}
           </svg>
         </button>
