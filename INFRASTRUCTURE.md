@@ -1,9 +1,13 @@
 # RxShift: Infrastructure Setup
 Tag: [JWC] | Last updated: June 13, 2026 | Status: Live — Vercel RxShift account authorization still pending (phone issue)
 
-> This file is the source of truth for RxShift accounts, DNS, and email flow.
-> Jamison drops updates here from outside Claude Code; Claude Code keeps it
+> **This file is the RxShift operational runbook** — DNS, email flow, M365 send-as, troubleshooting, cost. It stays in
+> the repo so it travels with the product. Jamison drops updates here from outside Claude Code; Claude Code keeps it
 > current and folds anything code-relevant into CLAUDE.md.
+>
+> The **cross-entity account/tier fingerprint** (which GitHub/Vercel/Supabase account + plan, MCP reach, deploy
+> mechanics) is canonical in **`C:\dev\INFRASTRUCTURE.md`** (rx-shift section). If the two disagree on an account
+> fact, that master wins.
 
 ---
 

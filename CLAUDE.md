@@ -27,6 +27,10 @@ RxShift is a **B2B SaaS scheduling platform for retail pharmacies** — multi-te
 - **Business entity:** JWC LLC — not a separate company yet. Will become one if the product takes off.
 - This is NOT a TimeZest or MSP+ project. Keep accounts, keys, and infrastructure fully separate.
 
+> **Two parent docs hold the rest:** universal working rules → `C:\dev\CLAUDE.md`; the cross-entity account/tier
+> fingerprint → `C:\dev\INFRASTRUCTURE.md` (rx-shift section). The repo's own `INFRASTRUCTURE.md` is the **RxShift
+> operational runbook** (DNS, email flow, M365 send-as, troubleshooting) — kept here so it travels with the product.
+
 ---
 
 ## Tech Stack
@@ -48,22 +52,17 @@ RxShift is a **B2B SaaS scheduling platform for retail pharmacies** — multi-te
 
 ## Accounts & Credentials
 
-**Full infrastructure detail lives in `INFRASTRUCTURE.md`** — accounts, DNS
-records, the demo-request email flow, and email troubleshooting steps. Keep
-that file current; Jamison drops updates into it from outside Claude Code.
+**Which account hosts what** (the cross-entity fingerprint) is canonical in **`C:\dev\INFRASTRUCTURE.md`** (rx-shift
+section): GitHub `RxShift`, Supabase `supabase@rxshift.io` (`cnhpaxucnbgxazpbvtod`), Resend `resend@rxshift.io`,
+Cloudflare `jamison@jamisonwest.com`, Vercel (dedicated RxShift account pending; deploys via personal Hobby).
 
-| Service | Account | Notes |
-|---------|---------|-------|
-| GitHub | RxShift (`github@rxshift.io`) | Repo: RxShift/RxShift. Separate from Jamison's personal/MSP+/TimeZest |
-| Supabase | `supabase@rxshift.io` | Project ID: `cnhpaxucnbgxazpbvtod` |
-| Resend | `resend@rxshift.io` | Sends from hello@rxshift.io; domain verified |
-| Cloudflare | `jamison@jamisonwest.com` | DNS + Email Routing: catch-all `*@rxshift.io` → jamison@jamisonwest.com (M365) |
-| Vercel | `github@rxshift.io` | NOT YET AUTHORIZED (phone verification pending with Vercel support) |
+The **detailed operational runbook** — DNS records, the demo-request email flow, email troubleshooting, and the M365
+send-as setup — lives in **this repo's `INFRASTRUCTURE.md`** (it travels with the product). Keep it current; Jamison
+drops updates into it from outside Claude Code.
 
 **Environment variables** are in `.env.local` (gitignored). See `.env.example` for the template.
 
-**Supabase project:** `https://cnhpaxucnbgxazpbvtod.supabase.co`
-**Free tier** — keep-alive cron required (every 3 days). Standard pattern: `/api/cron/keep-alive` route + `vercel.json` entry. **Add this when Vercel is connected.**
+**Supabase project:** `https://cnhpaxucnbgxazpbvtod.supabase.co` — **free tier**; keep-alive cron (`/api/cron/keep-alive`, every 3 days) is in place.
 
 ---
 

@@ -7,6 +7,14 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-15 — Docs: infra fingerprint moved to the C:\dev master doc
+
+### Infrastructure
+- Adopted `C:\dev\INFRASTRUCTURE.md` as the cross-entity source of truth for accounts/tiers/connectivity. This repo's `CLAUDE.md` now points there for the account fingerprint; the repo's own `INFRASTRUCTURE.md` stays as the RxShift **operational runbook** (DNS, email flow, M365 send-as, troubleshooting) so it travels with the product.
+- RxShift account added to the `gh` CLI (SSH key `RxShiftGit`). Push nuance: `origin` is HTTPS — `gh auth switch --user RxShift` before pushing to `RxShift/RxShift`, or repoint `origin` to the SSH URL `git@github.com:RxShift/RxShift.git`.
+
+---
+
 ## 2026-06-13 — Schedule UX, live board, branding & help overhaul
 
 ### Shipped
