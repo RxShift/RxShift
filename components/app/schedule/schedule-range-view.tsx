@@ -7,7 +7,7 @@
 // period yet. Clicking a cell still edits — it resolves to the period that
 // actually covers that date.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { eachDate } from "@/lib/dates";
 import ShiftModal from "./shift-modal";
 import { WorkTypeLegend } from "./shift-block";
@@ -63,6 +63,20 @@ export default function ScheduleRangeView({
     shift: ShiftWithSegments | null;
     period: SchedulePeriod;
   } | null>(null);
+
+  // Fixed-frame: only the grid scrolls (single scroll region).
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top;
+      el.style.height = `${Math.max(360, window.innerHeight - top - 24)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   const dates = useMemo(() => eachDate(viewStart, viewEnd), [viewStart, viewEnd]);
 
@@ -143,8 +157,8 @@ export default function ScheduleRangeView({
   }, [dates, periodForDate]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-body text-[11px] text-steel">
+    <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
+      <div className="flex-none flex flex-wrap items-center gap-x-5 gap-y-2 font-body text-[11px] text-steel">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-5 rounded-sm border-b-2 border-b-compliant bg-cloud" />
           Published — staff can see it
@@ -159,30 +173,27 @@ export default function ScheduleRangeView({
         </span>
       </div>
 
-      <ScheduleGrid
-        dates={dates}
-        today={today}
-        staff={activeStaff}
-        shiftsByCell={shiftsByCell}
-        timeOffByCell={timeOffByCell}
-        deficientShiftIds={deficientShiftIds}
-        constraintShiftIds={constraintShiftIds}
-        workTypeById={workTypeById}
-        dateStatus={dateStatus}
-        onCellClick={(person, date, shift) => {
-          const period = periodForDate(date);
-          if (period) setEditing({ staff: person, date, shift, period });
-        }}
-      />
+      <div className="mt-3 min-h-0 flex-1">
+        <ScheduleGrid
+          dates={dates}
+          today={today}
+          staff={activeStaff}
+          shiftsByCell={shiftsByCell}
+          timeOffByCell={timeOffByCell}
+          deficientShiftIds={deficientShiftIds}
+          constraintShiftIds={constraintShiftIds}
+          workTypeById={workTypeById}
+          dateStatus={dateStatus}
+          onCellClick={(person, date, shift) => {
+            const period = periodForDate(date);
+            if (period) setEditing({ staff: person, date, shift, period });
+          }}
+        />
+      </div>
 
-      <WorkTypeLegend workTypes={workTypes} usedIds={usedWorkTypeIds} />
-
-      <p className="font-body text-xs text-steel">
-        This is a view across periods — building and publishing still happen one
-        period at a time. Click any cell inside a published or draft period to
-        edit it; the change saves to that period. A red ⚠ badge marks a deficient
-        ratio slot.
-      </p>
+      <div className="flex-none pt-3">
+        <WorkTypeLegend workTypes={workTypes} usedIds={usedWorkTypeIds} />
+      </div>
 
       {editing && (
         <ShiftModal

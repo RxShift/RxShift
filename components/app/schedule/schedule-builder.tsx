@@ -5,7 +5,7 @@
 // the deterministic engines render as red/amber highlights plus a flag
 // panel; publishing with open flags requires a logged reason.
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -58,11 +58,11 @@ export default function ScheduleBuilder({
   bundle: BuilderBundle;
   validation: ValidationOut;
   today: string;
-  /** Location/view pills, rendered at the top of the chrome (condenses on scroll). */
+  /** Location/view pills, rendered at the top of the (always-visible) chrome. */
   nav?: ReactNode;
-  /** AI command bar, rendered in the chrome (condenses on scroll). */
+  /** AI command bar, rendered in the chrome. */
   aiBar?: ReactNode;
-  /** Location name, shown in the condensed slim strip. */
+  /** Location name, shown as context in the shift editor. */
   locationName: string;
 }) {
   const router = useRouter();
@@ -77,9 +77,21 @@ export default function ScheduleBuilder({
   const [publishError, setPublishError] = useState<string | null>(null);
   const [showFlags, setShowFlags] = useState(true);
   const [confirmCopy, setConfirmCopy] = useState(false);
-  // Driven by the grid's scroll: collapses the top chrome to a slim strip so the
-  // grid gets more room. Chrome is hidden (not unmounted) to keep AI-bar state.
-  const [condensed, setCondensed] = useState(false);
+
+  // Fixed-frame: the page fills the viewport below the chrome and only the grid
+  // scrolls (single scroll region — no page scroll, no scroll-driven condense).
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top;
+      el.style.height = `${Math.max(360, window.innerHeight - top - 24)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   const dates = useMemo(
     () => eachDate(bundle.period.start_date, bundle.period.end_date),
@@ -254,14 +266,12 @@ export default function ScheduleBuilder({
   }
 
   return (
-    <div className="space-y-5">
-      {/* Top chrome — location/view pills, AI bar, period toolbar, open-flag
-          list. Hidden (not unmounted) while the grid is scrolled so it condenses
-          to the slim strip below and the grid gains the vertical space. */}
-      <div className={condensed ? "hidden" : "space-y-5"}>
-        {/* Keyed so React doesn't flag these prop-passed children as a keyless list. */}
-        <Fragment key="nav">{nav}</Fragment>
-        <Fragment key="aibar">{aiBar}</Fragment>
+    <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
+      {/* Chrome — compact and always visible; the grid below is the only
+          scroll region (no page scroll, no scroll-driven condense). */}
+      <div className="flex-none space-y-4">
+        {nav}
+        {aiBar}
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
@@ -337,7 +347,7 @@ export default function ScheduleBuilder({
             {showFlags ? "▾" : "▸"}
           </button>
           {showFlags && (
-            <ul className="mt-2 space-y-1.5 font-body text-[13px] text-navy">
+            <ul className="mt-2 max-h-28 space-y-1.5 overflow-auto font-body text-[13px] text-navy">
               {validation.ratioFlags.slice(0, 20).map((f, i) => (
                 <li key={`r${i}`}>
                   <span className="font-medium text-deficiency">Ratio</span> ·{" "}
@@ -367,58 +377,27 @@ export default function ScheduleBuilder({
       )}
       </div>
 
-      {/* Condensed slim strip — pinned context while you scroll the grid.
-          Click to bring the full controls + flag list back. */}
-      {condensed && (
-        <button
-          type="button"
-          onClick={() => setCondensed(false)}
-          title="Show schedule controls"
-          className="sticky top-0 z-30 flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] border border-line bg-surface px-4 py-2 text-left shadow-[0_1px_3px_rgba(28,47,94,0.08)] hover:border-steel/40"
-        >
-          <span className="font-brand text-sm font-bold text-navy">
-            {locationName}
-          </span>
-          <span className="text-steel/60">·</span>
-          <span className="font-body text-sm text-steel">
-            {fmtRange(bundle.period.start_date, bundle.period.end_date)}
-          </span>
-          <Badge tone={isPublished ? "compliant" : "neutral"}>
-            {isPublished ? "Published" : "Draft"}
-          </Badge>
-          {flagCount > 0 && (
-            <span className="ml-auto font-body text-sm font-semibold text-deficiency">
-              ⚠ {flagCount} flag{flagCount === 1 ? "" : "s"} ▸
-            </span>
-          )}
-        </button>
-      )}
+      {/* The grid — the single scroll region, fills the remaining height */}
+      <div className="mt-4 min-h-0 flex-1">
+        <ScheduleGrid
+          dates={dates}
+          today={today}
+          staff={bundle.staff}
+          shiftsByCell={shiftsByCell}
+          timeOffByCell={timeOffByCell}
+          deficientShiftIds={deficientShiftIds}
+          constraintShiftIds={constraintShiftIds}
+          workTypeById={workTypeById}
+          onCellClick={(staff, date, shift) =>
+            setEditing({ staff, date, shift })
+          }
+        />
+      </div>
 
-      {/* The grid */}
-      <ScheduleGrid
-        dates={dates}
-        today={today}
-        staff={bundle.staff}
-        shiftsByCell={shiftsByCell}
-        timeOffByCell={timeOffByCell}
-        deficientShiftIds={deficientShiftIds}
-        constraintShiftIds={constraintShiftIds}
-        workTypeById={workTypeById}
-        onCondensedChange={setCondensed}
-        onCellClick={(staff, date, shift) =>
-          setEditing({ staff, date, shift })
-        }
-      />
-
-      <WorkTypeLegend workTypes={bundle.workTypes} usedIds={usedWorkTypeIds} />
-
-      <p className="font-body text-xs text-steel">
-        Click any cell to add or edit a shift. Blocks are colored by work
-        type (set colors in Settings → Work Types). A red ⚠ badge marks
-        a shift in a deficient ratio slot; an amber ring marks a constraint
-        flag; grey = approved time off. Flags are advisory — publishing past
-        them requires a reason, which is logged.
-      </p>
+      {/* Footer legend */}
+      <div className="flex-none pt-3">
+        <WorkTypeLegend workTypes={bundle.workTypes} usedIds={usedWorkTypeIds} />
+      </div>
 
       {/* Shift editor */}
       {editing && (
