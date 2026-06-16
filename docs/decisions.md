@@ -42,8 +42,14 @@ Jamison-directed future build.** Jamison is comfortable reusing the Squeeze *con
 we are NOT auto-implementing the full product. Per-tenant manager visibility of the email
 log is likewise a future build (their audit needs).
 
-**Still deferred:** (1) make the shared mailbox *receive* (Cloudflare `hello@` forward —
-infra, Jamison); (2) paid seats for Susie/RT when they need mailbox access.
+**Done June 16:** the shared mailbox now *receives* `hello@` — a Cloudflare custom routing
+rule forwards `hello@rxshift.io` → the mailbox's `…@jamisonwest.onmicrosoft.com` address
+(overriding the catch-all for hello@ only). Verified: app demo-alerts and external mail to
+hello@ both land in the shared mailbox.
+
+**Still deferred:** (1) a full MX move to M365 (only if *all* rxshift.io mail should live in
+M365 — the per-address Cloudflare forward is sufficient for now); (2) paid seats for
+Susie/RT when they need mailbox access.
 
 ## June 15, 2026 — Per-location ratio + unified person-centric schedule
 

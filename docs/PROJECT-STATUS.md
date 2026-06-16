@@ -117,6 +117,7 @@ Project: `cnhpaxucnbgxazpbvtod` (supabase@rxshift.io)
 
 - Domain: rxshift.io (Cloudflare, $50/yr, auto-renews June 11, 2027)
 - Catch-all: `*@rxshift.io` → jamison@jamisonwest.com (M365)
+- **`hello@rxshift.io` → M365 shared mailbox "RxShift" (June 16)** — a specific Cloudflare rule overrides the catch-all for hello@ only; the team sees demo requests + replies there. Sending as hello@ uses the shared mailbox (Send As) with rxshift.io DKIM/SPF.
 - Resend DKIM/SPF verified; DMARC added June 12, 2026
 - demo@rxshift.io, jerome@rxshift.io, patricia@rxshift.io (Mesa Vista demo logins) — all forward to Jamison
 

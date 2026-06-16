@@ -156,11 +156,12 @@ OUTBOUND
      recorded in: shared mailbox Sent Items (team-visible)
 
 INBOUND
-  anyone@rxshift.io ──▶ Cloudflare MX ──▶ catch-all ──▶ jamison@jamisonwest.com
-     recorded in: Jamison's personal M365 inbox
-     NOTE: the hello@ shared mailbox does NOT receive external mail today — MX points
-     at Cloudflare, so inbound hello@ still forwards to Jamison's personal box. (To make
-     the shared mailbox actually receive, see "Now vs. later".)
+  hello@rxshift.io  ──▶ Cloudflare ──(specific rule)──▶ hello@jamisonwest.onmicrosoft.com
+                                                         ──▶ RxShift SHARED mailbox (team)
+  any other @rxshift.io ──▶ Cloudflare MX ──▶ catch-all ──▶ jamison@jamisonwest.com (personal)
+     (Verified June 16: a specific Cloudflare routing rule for hello@ overrides the
+      catch-all and delivers to the shared mailbox's onmicrosoft address; everything
+      else still forwards to Jamison's personal inbox.)
 
   The app receives NO email — it only sends.
 ```
@@ -194,7 +195,7 @@ genuinely stored in the shared mailbox. (b) is a real project, not a config togg
 | | Now (free) | Later (when it takes off) |
 |---|---|---|
 | Send as brand | ✅ `hello@` shared mailbox + Send As | More shared mailboxes (info@, support@) — still free |
-| Receive into the shared mailbox | Not yet — inbound still forwards to Jamison | (a) Cloudflare forward `hello@` → the mailbox's `…@onmicrosoft.com` address, or (b) switch rxshift.io MX to M365 (cleaner end-state; loses the auto-forward catch-all, so define each address) |
+| Receive into the shared mailbox | **Done (June 16)** — `hello@` lands in the shared mailbox via a Cloudflare rule | If you ever want *all* rxshift.io mail in M365, switch the MX to M365 (cleaner end-state; loses the auto-forward catch-all, so define each address) |
 | Team access | Jamison + assistant (each needs an EXO license) | **RT / Susie need a licensed account in THIS tenant** (~$6–8/user/mo). Susie is in Optum's tenant, so she'd be a licensed/guest user here. |
 | Mailbox size / legal hold | 50 GB, no hold | EXO **Plan 2** (~$8/mo) for 100 GB or litigation hold/retention |
 | App-email record | Resend + in-app notifications | Build `email_log`; optionally move app sending to M365 Graph for a single store |
@@ -216,18 +217,20 @@ platform **Feedback** inbox (`/app/admin/feedback`). New/changed env vars:
 
 | Env var | Where | Purpose |
 |---|---|---|
-| `CONTACT_TO_EMAIL` | Vercel | Recipient of the website demo-request alert. **Set to `hello@rxshift.io`** (defaults to it) so demo alerts land in the shared mailbox once it receives. |
+| `CONTACT_TO_EMAIL` | Vercel | Recipient of the website demo-request alert. **Set to `hello@rxshift.io` (June 16)** — verified that demo alerts now land in the shared mailbox. |
 | `RESEND_WEBHOOK_SECRET` | Vercel | Signing secret for the Resend delivery webhook (`POST /api/webhooks/resend`). Until set, the webhook acknowledges but does nothing. |
 | `PLATFORM_ADMIN_EMAIL` | Vercel (optional) | Where feedback + system alerts are emailed. Defaults to `jamison@jamisonwest.com`. |
 
-**Manual steps (Jamison):**
-1. **Resend webhook:** Resend dashboard → Webhooks → add endpoint
-   `https://app.rxshift.io/api/webhooks/resend`, subscribe to delivered / bounced /
-   complained (+ failed if offered); copy the signing secret into `RESEND_WEBHOOK_SECRET`.
-2. **Shared mailbox receives demo alerts:** add the Cloudflare Email Routing rule
-   `hello@rxshift.io` → forward to the shared mailbox's `…@jamisonwest.onmicrosoft.com`
-   address (verify that destination once). Until then, demo alerts to `hello@` still
-   forward to Jamison's personal inbox via the catch-all.
+**Manual steps — both DONE June 16, 2026:**
+1. ✅ **Resend webhook:** endpoint `https://app.rxshift.io/api/webhooks/resend` added in
+   Resend (delivered / bounced / complained); signing secret set as `RESEND_WEBHOOK_SECRET`
+   in Vercel. Verified live: an unsigned POST returns 401, and a real delivery event
+   updated an email_log row to `delivered`.
+2. ✅ **Shared mailbox receives `hello@`:** Cloudflare Email Routing → Destination address
+   `hello@jamisonwest.onmicrosoft.com` (the shared mailbox's onmicrosoft address) verified;
+   custom routing rule `hello@rxshift.io → hello@jamisonwest.onmicrosoft.com` Active
+   (overrides the catch-all for hello@ only). Verified: both an app demo-alert and an
+   external Gmail message to hello@ landed in the RxShift shared mailbox.
 
 ---
 
@@ -289,8 +292,8 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [x] **M365 send-as `hello@rxshift.io` — DONE June 16, 2026** (shared mailbox, NOT the alias dead-end). Shared mailbox + Full Access/Send As + `MessageCopyForSentAsEnabled` (shared Sent Items) + SPF (`spf.protection.outlook.com`) + DKIM (`Set-DkimSigningConfig -Enabled`). Verified: Gmail shows `hello@rxshift.io`, no "via," shared Sent Items working. Full procedure + email flow in the Email section above.
 - [x] **In-app `email_log`** + admin report — DONE June 16, 2026 (`/app/admin/emails`).
 - [x] **Route the demo-request alert to `hello@`** — app side DONE June 16 (`CONTACT_TO_EMAIL` defaults to hello@); team-visible once the mailbox receives (below).
-- [ ] **Configure the Resend delivery webhook** + set `RESEND_WEBHOOK_SECRET` (see "App email instrumentation" above) — enables bounce/complaint detection.
-- [ ] **Make the shared mailbox RECEIVE** (currently send-only; inbound still forwards to Jamison) — Cloudflare forward `hello@` → onmicrosoft address, or switch MX to M365. Activates team-visible demo alerts + prospect replies.
+- [x] **Configure the Resend delivery webhook** + `RESEND_WEBHOOK_SECRET` — DONE June 16 (verified live).
+- [x] **Make the shared mailbox RECEIVE `hello@`** — DONE June 16. Cloudflare rule `hello@rxshift.io → hello@jamisonwest.onmicrosoft.com` (Active); demo alerts + external mail to hello@ verified landing in the shared mailbox. `CONTACT_TO_EMAIL` set to hello@. (A full MX move to M365 remains a future option if ever wanted.)
 - [ ] License a paid mailbox/seat for **Susie** (and RT if he engages) on this tenant — only when they actually need access.
 - [x] Push the repo to GitHub — jamisonwest-ship-it added as collaborator on RxShift/RxShift; both remotes (`vercel` + `origin`) current as of June 12, 2026
 - [x] Supabase schema — migrations 0001–0019 applied; full v1 schema live

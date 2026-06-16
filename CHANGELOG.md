@@ -58,9 +58,11 @@ One build (workstreams A–G). Migrations 0019 (email_log) + 0020 (feedback) app
   created a CRM lead + a logged email with the rendered body, and the Resend webhook
   updated it to `delivered`; admin email-log + feedback pages and the feedback modal
   confirmed in-browser; demo-safe chrome (Platform nav hidden while emulating) confirmed.
-- **Open config:** `CONTACT_TO_EMAIL` in Vercel is still `info@rxshift.io` — change to
-  `hello@rxshift.io` to route demo alerts to the shared mailbox. `RESEND_WEBHOOK_SECRET`
-  confirmed set. Cloudflare `hello@` inbound forward (Step 4) intentionally deferred.
+- **Config completed (June 16):** `RESEND_WEBHOOK_SECRET` set + webhook verified live;
+  `CONTACT_TO_EMAIL` set to `hello@rxshift.io`; Cloudflare routing rule
+  `hello@rxshift.io → hello@jamisonwest.onmicrosoft.com` Active. Verified end-to-end:
+  app demo-alerts AND external mail to hello@ both land in the RxShift shared mailbox;
+  everything else still forwards to Jamison's personal inbox.
 
 ---
 
