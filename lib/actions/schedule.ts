@@ -8,7 +8,11 @@ import {
   nextPeriodStart,
   periodEnd,
   addDaysStr,
+  mondayOf,
+  monthStart,
 } from "@/lib/dates";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ScheduleCycle, Shift, ShiftSegment } from "@/lib/types";
 import { buildComplianceRecords, loadPeriodBundle } from "@/lib/schedule-data";
 import { deficiencyStreaks } from "@/lib/engine/compliance";
 import { sendNotificationEmail } from "@/lib/email";
@@ -21,6 +25,48 @@ import {
 } from "./helpers";
 
 // ─── Periods ─────────────────────────────────────────────────────────────────
+
+/**
+ * Find the period covering (location, date), or create the cycle-aligned one.
+ * Lets scheduling under the All-Locations matrix "just work" — periods are
+ * invisible plumbing; we materialize them on demand when a shift lands in a
+ * week that has no period yet.
+ */
+async function ensurePeriodForDate(
+  supabase: SupabaseClient,
+  tenantId: string,
+  cycle: ScheduleCycle,
+  locationId: string,
+  date: string
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from("schedule_period")
+    .select("id, status")
+    .eq("location_id", locationId)
+    .lte("start_date", date)
+    .gte("end_date", date)
+    .order("status", { ascending: false }) // prefer 'published' over 'draft'
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.id as string;
+
+  const start = cycle === "monthly" ? monthStart(date) : mondayOf(date);
+  const end = periodEnd(start, cycle);
+  const { data: row, error } = await supabase
+    .from("schedule_period")
+    .insert({
+      tenant_id: tenantId,
+      location_id: locationId,
+      cycle,
+      start_date: start,
+      end_date: end,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error) throw new ActionError(error.message);
+  return row.id as string;
+}
 
 export async function createNextPeriod(
   locationId: string
@@ -72,7 +118,9 @@ const segmentSchema = z.object({
 });
 
 const shiftSchema = z.object({
-  schedule_period_id: z.string().uuid(),
+  // Optional: when omitted (All-Locations scheduling), the period covering
+  // (location_id, date) is found or created automatically.
+  schedule_period_id: z.string().uuid().nullish(),
   location_id: z.string().uuid(),
   staff_id: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -91,7 +139,18 @@ export async function upsertShift(
     const data = shiftSchema.parse(input);
     const supabase = await createClient();
 
-    const { segments, ...shiftFields } = data;
+    const { segments, schedule_period_id, ...rest } = data;
+    // Resolve (or create) the period covering this location + date.
+    const periodId =
+      schedule_period_id ??
+      (await ensurePeriodForDate(
+        supabase,
+        ctx.tenantId,
+        ctx.tenant.schedule_cycle,
+        data.location_id,
+        data.date
+      ));
+    const shiftFields = { ...rest, schedule_period_id: periodId };
     let id = shiftId;
 
     if (id) {
@@ -345,5 +404,158 @@ export async function publishPeriod(
     revalidatePath("/app/schedule");
     revalidatePath("/app/log");
     return undefined;
+  });
+}
+
+// ─── Window-level operations (the All-Locations toolbar) ─────────────────────
+
+/** Publish every draft period overlapping a window — all locations, or one. */
+export async function publishWindow(
+  viewStart: string,
+  viewEnd: string,
+  locationId: string | null,
+  overrideReason: string | null
+): Promise<ActionResult<{ published: number }>> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+    let q = supabase
+      .from("schedule_period")
+      .select("id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("status", "draft")
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart);
+    if (locationId) q = q.eq("location_id", locationId);
+    const { data: drafts } = await q;
+    if (!drafts || drafts.length === 0)
+      throw new ActionError(
+        "Nothing to publish — there's no draft schedule in this window."
+      );
+    let published = 0;
+    for (const p of drafts) {
+      // Reuse the per-period publish (flag/override + compliance snapshot).
+      const result = await publishPeriod(p.id as string, overrideReason);
+      if (!result.ok) throw new ActionError(result.error);
+      published += 1;
+    }
+    return { published };
+  });
+}
+
+/** Copy the previous window's shifts into the current one (per location). */
+export async function copyForwardWindow(
+  viewStart: string,
+  viewEnd: string,
+  locationId: string | null
+): Promise<ActionResult<{ copied: number }>> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+    const len =
+      Math.round(
+        (Date.parse(`${viewEnd}T00:00:00Z`) -
+          Date.parse(`${viewStart}T00:00:00Z`)) /
+          86400000
+      ) + 1;
+    const priorStart = addDaysStr(viewStart, -len);
+    const priorEnd = addDaysStr(viewStart, -1);
+
+    let pq = supabase
+      .from("shift")
+      .select("*")
+      .gte("date", priorStart)
+      .lte("date", priorEnd);
+    if (locationId) pq = pq.eq("location_id", locationId);
+    const { data: prior } = await pq;
+    const priorShifts = (prior ?? []) as Shift[];
+    if (priorShifts.length === 0)
+      throw new ActionError("No shifts in the previous window to copy.");
+
+    let tq = supabase
+      .from("shift")
+      .select("staff_id, location_id, date")
+      .gte("date", viewStart)
+      .lte("date", viewEnd);
+    if (locationId) tq = tq.eq("location_id", locationId);
+    const { data: existing } = await tq;
+    const taken = new Set(
+      (existing ?? []).map(
+        (s) => `${s.staff_id}|${s.location_id}|${s.date}`
+      )
+    );
+
+    const { data: segs } = await supabase
+      .from("shift_segment")
+      .select("*")
+      .in(
+        "shift_id",
+        priorShifts.map((s) => s.id)
+      );
+    const segByShift = new Map<string, ShiftSegment[]>();
+    for (const sg of (segs ?? []) as ShiftSegment[]) {
+      const list = segByShift.get(sg.shift_id) ?? [];
+      list.push(sg);
+      segByShift.set(sg.shift_id, list);
+    }
+
+    const periodCache = new Map<string, string>();
+    let copied = 0;
+    for (const sh of priorShifts) {
+      const newDate = addDaysStr(sh.date, len);
+      if (newDate > viewEnd) continue;
+      const cellKey = `${sh.staff_id}|${sh.location_id}|${newDate}`;
+      if (taken.has(cellKey)) continue;
+      const pcKey = `${sh.location_id}|${newDate}`;
+      let periodId = periodCache.get(pcKey);
+      if (!periodId) {
+        periodId = await ensurePeriodForDate(
+          supabase,
+          ctx.tenantId,
+          ctx.tenant.schedule_cycle,
+          sh.location_id,
+          newDate
+        );
+        periodCache.set(pcKey, periodId);
+      }
+      const { data: row, error } = await supabase
+        .from("shift")
+        .insert({
+          tenant_id: ctx.tenantId,
+          location_id: sh.location_id,
+          department_id: sh.department_id,
+          staff_id: sh.staff_id,
+          date: newDate,
+          schedule_period_id: periodId,
+          status: "draft",
+          break_minutes: sh.break_minutes ?? 0,
+          created_by: ctx.userId,
+        })
+        .select("id")
+        .single();
+      if (error || !row) continue;
+      const shiftSegs = segByShift.get(sh.id) ?? [];
+      if (shiftSegs.length) {
+        await supabase.from("shift_segment").insert(
+          shiftSegs.map((s) => ({
+            shift_id: row.id,
+            tenant_id: ctx.tenantId,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            work_type_id: s.work_type_id,
+            counts_toward_ratio: s.counts_toward_ratio,
+          }))
+        );
+      }
+      taken.add(cellKey);
+      copied += 1;
+    }
+    await logActivity(ctx, "copy_forward_window", "schedule", null, {
+      viewStart,
+      viewEnd,
+      copied,
+    });
+    revalidatePath("/app/schedule");
+    return { copied };
   });
 }

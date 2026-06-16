@@ -2,34 +2,31 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
-import ScheduleBuilder from "@/components/app/schedule/schedule-builder";
-import ScheduleRangeView from "@/components/app/schedule/schedule-range-view";
-import NewPeriodButton from "@/components/app/schedule/new-period-button";
-import AiCommandBar from "@/components/app/schedule/ai-command-bar";
 import ScheduleMatrix from "@/components/app/schedule/schedule-matrix";
 import {
   loadAllLocationsBundle,
-  loadPeriodBundle,
-  loadRangeBundle,
-  validateBundle,
   validateRangeBundle,
 } from "@/lib/schedule-data";
 import {
   addDaysStr,
-  fmtRange,
   mondayOf,
   monthStart,
   nowInTimeZone,
   periodEnd,
 } from "@/lib/dates";
-import type { Department, Location, SchedulePeriod } from "@/lib/types";
+import type { Department, Location } from "@/lib/types";
 
-// View windows are decoupled from the build cycle: you can browse by week,
-// 2 weeks, or month regardless of how the schedule was built/published.
+// The schedule is ONE person-centric matrix. You build under All Locations
+// (a person, a day, pick the location); selecting a location is just a view
+// filter. The window selector (week / 2-week / month) sets the span; periods
+// are created/published behind the scenes.
 const VIEW_MODES = ["week", "2week", "month"] as const;
 type ViewMode = (typeof VIEW_MODES)[number];
 
-function viewWindow(view: ViewMode, anchor: string): { start: string; end: string } {
+function viewWindow(
+  view: ViewMode,
+  anchor: string
+): { start: string; end: string } {
   if (view === "month") {
     const start = monthStart(anchor);
     return { start, end: periodEnd(start, "monthly") };
@@ -38,34 +35,39 @@ function viewWindow(view: ViewMode, anchor: string): { start: string; end: strin
   return { start, end: addDaysStr(start, view === "2week" ? 13 : 6) };
 }
 
-// Location switcher: "All locations" overview + one pill per location.
-function ViewNav({
+const pillBase =
+  "whitespace-nowrap rounded-full border font-brand font-semibold transition-colors";
+function pillCls(active: boolean, small = false) {
+  return `${pillBase} ${small ? "px-3 py-1 text-[12px]" : "px-3.5 py-1.5 text-[13px]"} ${
+    active
+      ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
+      : "border-line bg-surface text-steel hover:text-navy"
+  }`;
+}
+
+function LocationNav({
   locations,
   activeLocationId,
-  isAll,
+  view,
 }: {
   locations: Location[];
   activeLocationId: string | null;
-  isAll: boolean;
+  view: ViewMode;
 }) {
-  const pill = (active: boolean) =>
-    `whitespace-nowrap rounded-full border px-3.5 py-1.5 font-brand text-[13px] font-semibold transition-colors ${
-      active
-        ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
-        : "border-line bg-surface text-steel hover:text-navy"
-    }`;
+  const href = (loc?: string) =>
+    `/app/schedule?view=${view}${loc ? `&location=${loc}` : ""}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {locations.length > 1 && (
-        <Link href="/app/schedule?view=all" className={pill(isAll)}>
+        <Link href={href()} className={pillCls(!activeLocationId)}>
           All locations
         </Link>
       )}
       {locations.map((l) => (
         <Link
           key={l.id}
-          href={`/app/schedule?location=${l.id}`}
-          className={pill(!isAll && l.id === activeLocationId)}
+          href={href(l.id)}
+          className={pillCls(l.id === activeLocationId)}
         >
           {l.name}
         </Link>
@@ -74,32 +76,28 @@ function ViewNav({
   );
 }
 
-// Time-window selector for a single location: edit the built period, or browse
-// by week / 2 weeks / month. Building stays per-period; this only changes what
-// span you're looking at.
-function ViewModeNav({
+function WindowNav({
+  activeView,
   locationId,
-  active,
 }: {
-  locationId: string;
-  active: ViewMode | "period";
+  activeView: ViewMode;
+  locationId: string | null;
 }) {
-  const pill = (on: boolean) =>
-    `whitespace-nowrap rounded-full border px-3 py-1 font-brand text-[12px] font-semibold transition-colors ${
-      on
-        ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
-        : "border-line bg-surface text-steel hover:text-navy"
-    }`;
-  const modes: { key: ViewMode | "period"; label: string; href: string }[] = [
-    { key: "period", label: "Edit period", href: `/app/schedule?location=${locationId}` },
-    { key: "week", label: "Week", href: `/app/schedule?location=${locationId}&view=week` },
-    { key: "2week", label: "2 weeks", href: `/app/schedule?location=${locationId}&view=2week` },
-    { key: "month", label: "Month", href: `/app/schedule?location=${locationId}&view=month` },
+  const modes: { key: ViewMode; label: string }[] = [
+    { key: "week", label: "Week" },
+    { key: "2week", label: "2 weeks" },
+    { key: "month", label: "Month" },
   ];
+  const href = (v: ViewMode) =>
+    `/app/schedule?view=${v}${locationId ? `&location=${locationId}` : ""}`;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {modes.map((m) => (
-        <Link key={m.key} href={m.href} className={pill(active === m.key)}>
+        <Link
+          key={m.key}
+          href={href(m.key)}
+          className={pillCls(activeView === m.key, true)}
+        >
           {m.label}
         </Link>
       ))}
@@ -112,9 +110,7 @@ export default async function SchedulePage({
 }: {
   searchParams: Promise<{
     location?: string;
-    period?: string;
     view?: string;
-    week?: string;
     anchor?: string;
   }>;
 }) {
@@ -136,7 +132,7 @@ export default async function SchedulePage({
         <PageHeader title="Schedule" />
         <div className="flex-1 p-8">
           <EmptyState
-            message="Add a location before building a schedule — every schedule belongs to one."
+            message="Add a location before building a schedule — every shift belongs to one, and the ratio is calculated per location."
             action={
               <Link
                 href="/app/settings/locations"
@@ -151,228 +147,79 @@ export default async function SchedulePage({
     );
   }
 
-  // Default location: prefer one with a PUBLISHED schedule — landing on an
-  // empty draft (e.g. a location that hasn't opened yet) reads as broken.
-  const { data: allPeriods } = await supabase
-    .from("schedule_period")
-    .select("*")
-    .order("start_date", { ascending: false });
-  const everyPeriod = (allPeriods ?? []) as SchedulePeriod[];
-
-  // ── All-locations unified matrix (the default for multi-location tenants) ──
-  // One person-centric grid across every location; ratio stays per location and
-  // a person scheduled in two overlapping shifts (any location) is flagged.
-  const todayDate = nowInTimeZone(tenant.timezone).date;
-  const showAll =
-    locs.length > 1 &&
-    (params.view === "all" ||
-      (!params.location && !params.view && !params.period));
-  if (showAll) {
-    const target =
-      params.week && /^\d{4}-\d{2}-\d{2}$/.test(params.week)
-        ? params.week
-        : todayDate;
-    const start = mondayOf(target);
-    const end = addDaysStr(start, 6);
-    const allBundle = await loadAllLocationsBundle(start, end);
-    const validation = validateRangeBundle(allBundle, tenant);
-
-    return (
-      <>
-        <PageHeader title="Schedule — All locations" />
-        <div className="flex-1 min-w-0 space-y-4 p-8">
-          <ViewNav locations={locs} activeLocationId={null} isAll />
-          <div className="flex items-center gap-3">
-            <Link
-              href={`/app/schedule?view=all&week=${addDaysStr(start, -7)}`}
-              className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
-            >
-              ← Prev week
-            </Link>
-            <span className="font-body text-sm font-medium text-steel">
-              Week of {target}
-            </span>
-            <Link
-              href={`/app/schedule?view=all&week=${addDaysStr(start, 7)}`}
-              className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
-            >
-              Next week →
-            </Link>
-          </div>
-          <ScheduleMatrix
-            tenant={tenant}
-            today={todayDate}
-            viewStart={start}
-            viewEnd={end}
-            periods={allBundle.periods}
-            shifts={allBundle.shifts}
-            staff={allBundle.staff}
-            workTypes={allBundle.workTypes}
-            locations={allBundle.locations}
-            departments={depts}
-            approvedTimeOff={allBundle.approvedTimeOff}
-            validation={validation}
-            locationFilter={null}
-          />
-        </div>
-      </>
-    );
-  }
-
-  const defaultLocationId =
-    locs.find((l) =>
-      everyPeriod.some(
-        (p) => p.location_id === l.id && p.status === "published"
-      )
-    )?.id ?? locs[0].id;
-  const locationId = params.location ?? defaultLocationId;
-  const locName = locs.find((l) => l.id === locationId)?.name ?? "";
   const today = nowInTimeZone(tenant.timezone).date;
-
-  // ── View-by window (week / 2-week / month), decoupled from the build cycle ──
-  const viewMode = (VIEW_MODES as readonly string[]).includes(params.view ?? "")
+  const view: ViewMode = (VIEW_MODES as readonly string[]).includes(
+    params.view ?? ""
+  )
     ? (params.view as ViewMode)
-    : null;
-  if (viewMode) {
-    // Anchor comes from internal links, but guard against a hand-edited URL so a
-    // malformed date never reaches the Postgres date filters.
-    const anchor =
-      params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
-        ? params.anchor
-        : today;
-    const { start, end } = viewWindow(viewMode, anchor);
-    const range = await loadRangeBundle(locationId, start, end);
-    const rangeValidation = validateRangeBundle(range, tenant);
-    const stepLen = viewMode === "2week" ? 14 : 7;
-    const prevAnchor =
-      viewMode === "month" ? addDaysStr(start, -1) : addDaysStr(start, -stepLen);
-    const nextAnchor =
-      viewMode === "month" ? addDaysStr(end, 1) : addDaysStr(start, stepLen);
-    const stepHref = (a: string) =>
-      `/app/schedule?location=${locationId}&view=${viewMode}&anchor=${a}`;
-    const stepLink =
-      "rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40";
-    return (
-      <>
-        <PageHeader title={`Schedule — ${locName} — ${fmtRange(start, end)}`} />
-        <div className="flex-1 min-w-0 space-y-5 p-8">
-          <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <ViewModeNav locationId={locationId} active={viewMode} />
-            <div className="flex items-center gap-3">
-              <Link href={stepHref(prevAnchor)} className={stepLink}>
-                ← Prev
-              </Link>
-              <Link
-                href={stepHref(today)}
-                className="font-body text-sm font-medium text-steel hover:text-navy"
-              >
-                Today
-              </Link>
-              <Link href={stepHref(nextAnchor)} className={stepLink}>
-                Next →
-              </Link>
-            </div>
-          </div>
-          <ScheduleRangeView
-            tenant={tenant}
-            locationId={locationId}
-            today={today}
-            viewStart={start}
-            viewEnd={end}
-            periods={range.periods}
-            shifts={range.shifts}
-            staff={range.staff}
-            workTypes={range.workTypes}
-            departments={depts}
-            requireDepartment={tenant.require_department}
-            approvedTimeOff={range.approvedTimeOff}
-            validation={rangeValidation}
-          />
-        </div>
-      </>
-    );
-  }
+    : "week";
+  const anchor =
+    params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
+      ? params.anchor
+      : today;
+  const { start, end } = viewWindow(view, anchor);
+  const locationFilter =
+    params.location && locs.some((l) => l.id === params.location)
+      ? params.location
+      : null;
 
-  const periodList = everyPeriod.filter((p) => p.location_id === locationId);
+  const allBundle = await loadAllLocationsBundle(start, end);
+  const validation = validateRangeBundle(allBundle, tenant);
 
-  // Default period: the one containing today (published first), then newest
-  // published, then newest of any status — so you land on "now", not the 1st.
-  const periodId =
-    params.period ??
-    (
-      periodList.find(
-        (p) =>
-          p.start_date <= today &&
-          p.end_date >= today &&
-          p.status === "published"
-      ) ??
-      periodList.find((p) => p.start_date <= today && p.end_date >= today) ??
-      periodList.find((p) => p.status === "published") ??
-      periodList[0]
-    )?.id;
+  const stepLen = view === "2week" ? 14 : 7;
+  const prevAnchor =
+    view === "month" ? addDaysStr(start, -1) : addDaysStr(start, -stepLen);
+  const nextAnchor =
+    view === "month" ? addDaysStr(end, 1) : addDaysStr(start, stepLen);
+  const stepHref = (a: string) =>
+    `/app/schedule?view=${view}${locationFilter ? `&location=${locationFilter}` : ""}&anchor=${a}`;
+  const stepLink =
+    "rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40";
 
-  if (!periodId) {
-    return (
-      <>
-        <PageHeader title={`Schedule — ${locName}`} />
-        <div className="flex-1 min-w-0 space-y-5 p-8">
-          <ViewNav
-            locations={locs}
-            activeLocationId={locationId}
-            isAll={false}
-          />
-          <EmptyState
-            message={`No schedule periods yet for ${locName}. Create the first ${tenant.schedule_cycle} period to start scheduling.`}
-            action={<NewPeriodButton locationId={locationId} />}
-          />
-        </div>
-      </>
-    );
-  }
-
-  const bundle = await loadPeriodBundle(periodId);
-  if (!bundle) {
-    return (
-      <>
-        <PageHeader title="Schedule" />
-        <div className="p-8 font-body text-sm text-steel">
-          That period wasn&rsquo;t found.
-        </div>
-      </>
-    );
-  }
-
-  const validation = validateBundle(bundle, tenant);
+  const title = locationFilter
+    ? `Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
+    : "Schedule — All locations";
 
   return (
     <>
-      <PageHeader
-        title={`Schedule — ${locName} — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
-      />
-      <div className="flex-1 min-w-0 p-8">
-        <ScheduleBuilder
+      <PageHeader title={title} />
+      <div className="flex-1 min-w-0 space-y-4 p-8">
+        <LocationNav
+          locations={locs}
+          activeLocationId={locationFilter}
+          view={view}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <WindowNav activeView={view} locationId={locationFilter} />
+          <div className="flex items-center gap-3">
+            <Link href={stepHref(prevAnchor)} className={stepLink}>
+              ← Prev
+            </Link>
+            <Link
+              href={stepHref(today)}
+              className="font-body text-sm font-medium text-steel hover:text-navy"
+            >
+              Today
+            </Link>
+            <Link href={stepHref(nextAnchor)} className={stepLink}>
+              Next →
+            </Link>
+          </div>
+        </div>
+        <ScheduleMatrix
           tenant={tenant}
-          locationId={locationId}
-          periods={periodList}
-          bundle={{
-            period: bundle.period,
-            shifts: bundle.shifts,
-            staff: bundle.staff.filter((s) => s.active),
-            workTypes: bundle.workTypes,
-            departments: depts,
-            approvedTimeOff: bundle.approvedTimeOff,
-          }}
-          validation={validation}
           today={today}
-          locationName={locName}
-          nav={
-            <div className="space-y-5">
-              <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
-              <ViewModeNav locationId={locationId} active="period" />
-            </div>
-          }
-          aiBar={<AiCommandBar periodId={bundle.period.id} />}
+          viewStart={start}
+          viewEnd={end}
+          periods={allBundle.periods}
+          shifts={allBundle.shifts}
+          staff={allBundle.staff}
+          workTypes={allBundle.workTypes}
+          locations={allBundle.locations}
+          departments={depts}
+          approvedTimeOff={allBundle.approvedTimeOff}
+          validation={validation}
+          locationFilter={locationFilter}
         />
       </div>
     </>

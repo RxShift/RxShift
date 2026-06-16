@@ -8,7 +8,12 @@
 // (open a single location to publish it).
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Button from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
+import { Textarea } from "@/components/ui/form";
 import { eachDate } from "@/lib/dates";
+import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
 import ShiftModal from "./shift-modal";
 import { WorkTypeLegend } from "./shift-block";
 import ScheduleGrid from "./schedule-grid";
@@ -59,11 +64,82 @@ export default function ScheduleMatrix({
   validation: ValidationOut;
   locationFilter: string | null;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState<{
     staff: Staff;
     date: string;
     shift: ShiftWithSegments | null;
   } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [confirmCopy, setConfirmCopy] = useState(false);
+  const [toolError, setToolError] = useState<string | null>(null);
+
+  const flagCount =
+    validation.ratioFlags.length + validation.constraintFlags.length;
+
+  async function runPublish(overrideReason: string | null) {
+    setBusy(true);
+    setToolError(null);
+    const result = await publishWindow(
+      viewStart,
+      viewEnd,
+      locationFilter,
+      overrideReason
+    );
+    setBusy(false);
+    if (result.ok) {
+      setPublishOpen(false);
+      setReason("");
+      router.refresh();
+    } else {
+      setToolError(result.error);
+      setPublishOpen(true); // surface the reason prompt
+    }
+  }
+
+  async function handleCopy() {
+    setBusy(true);
+    setToolError(null);
+    const result = await copyForwardWindow(viewStart, viewEnd, locationFilter);
+    setBusy(false);
+    setConfirmCopy(false);
+    if (result.ok) router.refresh();
+    else alert(result.error);
+  }
+
+  function exportCsv() {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const staffById = new Map(staff.map((s) => [s.id, s.full_name]));
+    const locById = new Map(locations.map((l) => [l.id, l.name]));
+    const header = ["Staff", "Location", "Date", "Shift"].join(",");
+    const lines = [...visibleShifts]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((sh) => {
+        const times = sh.segments
+          .map(
+            (seg) =>
+              `${String(seg.start_time).slice(0, 5)}-${String(seg.end_time).slice(0, 5)}`
+          )
+          .join(" / ");
+        return [
+          esc(staffById.get(sh.staff_id) ?? ""),
+          esc(locById.get(sh.location_id) ?? ""),
+          sh.date,
+          esc(times),
+        ].join(",");
+      });
+    const blob = new Blob([[header, ...lines].join("\n")], {
+      type: "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `schedule-${viewStart}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Fixed-frame: only the grid scrolls.
   const frameRef = useRef<HTMLDivElement>(null);
@@ -143,11 +219,15 @@ export default function ScheduleMatrix({
     return ids;
   }, [visibleShifts]);
 
-  // Rows: in the all-locations view, show everyone (you schedule against the
-  // whole roster). Filtered to one location in VIEW context, show only people
-  // actually working there; in edit you still want everyone, so we keep all
-  // active staff and let empty rows be schedulable.
-  const activeStaff = useMemo(() => staff.filter((s) => s.active), [staff]);
+  // Rows: All Locations shows the whole roster (it's where you build). Filtered
+  // to one location, it's a view — show only people actually scheduled there
+  // (add someone new from All Locations).
+  const activeStaff = useMemo(() => {
+    const base = staff.filter((s) => s.active);
+    if (!locationFilter) return base;
+    const scheduledIds = new Set(visibleShifts.map((s) => s.staff_id));
+    return base.filter((s) => scheduledIds.has(s.id));
+  }, [staff, locationFilter, visibleShifts]);
 
   // For editing, the shift carries its own location + period.
   const periodById = useMemo(
@@ -162,6 +242,32 @@ export default function ScheduleMatrix({
 
   return (
     <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
+      <div className="flex flex-none flex-wrap items-center gap-3 pb-3">
+        {flagCount > 0 && (
+          <span className="font-body text-[13px] font-semibold text-deficiency">
+            ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setConfirmCopy(true)}
+            disabled={busy}
+          >
+            Copy last week&rsquo;s pattern
+          </Button>
+          <Button variant="secondary" onClick={exportCsv}>
+            Export CSV
+          </Button>
+          <Button
+            onClick={() => (flagCount > 0 ? setPublishOpen(true) : runPublish(null))}
+            disabled={busy}
+          >
+            {busy ? "Working…" : "Publish"}
+          </Button>
+        </div>
+      </div>
+
       <div className="min-h-0 flex-1">
         <ScheduleGrid
           dates={dates}
@@ -201,6 +307,67 @@ export default function ScheduleMatrix({
           periods={periods}
         />
       )}
+
+      <Modal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        title="Publish this schedule?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPublishOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => runPublish(reason || null)} disabled={busy}>
+              {busy ? "Publishing…" : "Publish"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Publishing makes this {viewStart === viewEnd ? "day" : "window"} visible
+          to staff and generates the hourly compliance record
+          {locationFilter ? "" : " for every location"}.
+        </p>
+        {flagCount > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 font-medium text-deficiency">
+              {flagCount} flag{flagCount === 1 ? "" : "s"} will be overridden. A
+              reason is required and goes in the override log.
+            </p>
+            <Textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why is it acceptable to publish with these flags?"
+            />
+          </div>
+        )}
+        {toolError && (
+          <p className="mt-3 font-body text-sm text-deficiency">{toolError}</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={confirmCopy}
+        onClose={() => setConfirmCopy(false)}
+        title="Copy last week's pattern?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmCopy(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCopy} disabled={busy}>
+              {busy ? "Copying…" : "Copy forward"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This copies the previous window&rsquo;s shifts into this one for{" "}
+          {locationFilter ? "this location" : "every location"}, skipping any
+          cell that already has a shift.
+        </p>
+      </Modal>
     </div>
   );
 }
