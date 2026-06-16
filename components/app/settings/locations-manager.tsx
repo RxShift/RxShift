@@ -3,16 +3,37 @@
 // Client wrapper that owns the column/field definitions — server pages
 // pass plain data only (functions can't cross the server/client boundary).
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import EntityManager from "@/components/app/entity-manager";
+import { setRequireDepartment } from "@/lib/actions/settings";
 import type { Department, Location } from "@/lib/types";
 
 export default function LocationsManager({
   locations,
   departments,
+  requireDepartment,
 }: {
   locations: Location[];
   departments: Department[];
+  requireDepartment: boolean;
 }) {
+  const router = useRouter();
+  const [required, setRequired] = useState(requireDepartment);
+  const [pending, startTransition] = useTransition();
+
+  function toggleRequired(next: boolean) {
+    setRequired(next); // optimistic
+    startTransition(async () => {
+      const result = await setRequireDepartment(next);
+      if (!result.ok) {
+        setRequired(!next); // revert on failure
+        alert(result.error);
+      }
+      router.refresh();
+    });
+  }
+
   return (
     <div className="max-w-[840px] space-y-10">
       <EntityManager
@@ -33,6 +54,27 @@ export default function LocationsManager({
         ]}
         toFormValues={(r) => ({ name: r.name, address: r.address ?? "" })}
       />
+
+      <div className="rounded-lg border border-line bg-surface p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={required}
+            disabled={pending}
+            onChange={(e) => toggleRequired(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-[#1C2F5E]"
+          />
+          <span>
+            <span className="font-brand text-sm font-bold text-navy">
+              Require a department on every shift
+            </span>
+            <span className="mt-0.5 block font-body text-[13px] text-steel">
+              When on, scheduling any shift requires choosing a department.
+              Leave off to keep departments optional.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <EntityManager
         entity="department"

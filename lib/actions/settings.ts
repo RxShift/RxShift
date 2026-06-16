@@ -39,6 +39,26 @@ export async function updateTenant(input: unknown): Promise<ActionResult> {
   });
 }
 
+/** Toggle whether every shift must be assigned a department. */
+export async function setRequireDepartment(
+  value: boolean
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("tenant")
+      .update({ require_department: value })
+      .eq("id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+    await logActivity(ctx, "update", "tenant", ctx.tenantId, {
+      require_department: value,
+    });
+    revalidatePath("/app", "layout");
+    return undefined;
+  });
+}
+
 // ─── Branding ─────────────────────────────────────────────────────────────────
 
 const brandingSchema = z.object({
