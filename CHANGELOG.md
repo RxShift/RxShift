@@ -7,6 +7,45 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-15 — Punch list: expandable flags, approve-executes-request, staff self-service, logo upload
+
+Follow-on pass after the schedule rebuild (commits 6a8ad97 → 7835867).
+
+### Shipped
+- **Schedule flags expand again.** The flag summary in the matrix toolbar is a
+  button that opens the full flag list in a bounded modal (the rebuilt matrix had
+  collapsed it to a non-expandable count).
+- **Approving a time-off request now executes it.** On approval, `decideTimeOff`
+  deletes the person's shifts inside the approved window so they actually come off
+  the schedule (manager sees the gap and backfills); PTO then overlays those days.
+  Previously an approved request left the person still scheduled.
+- **Staff self-service photo.** `/app/me` gained a "Your photo" card. Avatar upload
+  was reworked from a browser-client + RLS write into a single `uploadAvatar` server
+  action (service role, self-or-manager authorization) so it also works under
+  platform-admin "viewing as." Light/dark toggle and self request-submission already
+  existed on the staff-facing surface.
+- **Tenant logo file upload.** Branding settings now accept a logo file (not just a
+  hosted URL): `uploadLogo` server action → private `avatars` bucket → 1-year signed
+  URL stored in `branding.logo_url`, preserving the accent color. One accent color +
+  logo is the confirmed branding depth (no secondary color).
+
+### Email (investigated — no change needed)
+- Traced "I approved a request but no manager email arrived." The code is correct:
+  `submitTimeOff`/`logCallout` email every approver through the safety gate, and
+  **both demo tenants already deliver.** Mesa Vista (`is_demo`) redirects all email
+  to `mesa-demo@rxshift.io` → rxshift.io catch-all → Jamison. OptumRx Demo allowlists
+  `jamison@jamisonwest.com`, `dr.monahan@yahoo.com`, `susie.monahan@optum.com`. Its
+  only approver is Susan Monahan West, whose work email `susie.monahan@optum.com` is
+  allowlisted — so the submission email **sends to Susie's real Optum inbox**, which
+  is why Jamison didn't see it. To watch the email flow himself, demo on **Mesa
+  Vista** (routes to his catch-all). Changing OptumRx routing is a deliberate
+  decision (Susie is a real co-founder/buyer) — left as-is pending Jamison's call.
+
+### Schema / Infrastructure
+- None (reuses the `avatars` bucket from the rebuild pass).
+
+---
+
 ## 2026-06-15 — Schedule rebuild: per-location ratio, unified matrix, departments, filters, avatars
 
 Large pass (commits d0fdc06 → b95b2bf). Supersedes the scroll "condense" shipped
