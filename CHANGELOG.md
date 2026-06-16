@@ -52,8 +52,15 @@ One build (workstreams A–G). Migrations 0019 (email_log) + 0020 (feedback) app
   forwarding rule so the shared mailbox receives demo alerts.
 
 ### Verified
-- `tsc` clean, 45 vitest tests pass, `next build` clean (new routes present),
-  migrations applied + confirmed. Live browser pass pending (extension was offline).
+- `tsc` clean, 45 vitest tests pass, `next build` clean, migrations applied + confirmed.
+- **Deployed to production + verified end-to-end (June 16):** webhook route live with
+  signature verification active (unsigned POST → 401); a live demo-form submission
+  created a CRM lead + a logged email with the rendered body, and the Resend webhook
+  updated it to `delivered`; admin email-log + feedback pages and the feedback modal
+  confirmed in-browser; demo-safe chrome (Platform nav hidden while emulating) confirmed.
+- **Open config:** `CONTACT_TO_EMAIL` in Vercel is still `info@rxshift.io` — change to
+  `hello@rxshift.io` to route demo alerts to the shared mailbox. `RESEND_WEBHOOK_SECRET`
+  confirmed set. Cloudflare `hello@` inbound forward (Step 4) intentionally deferred.
 
 ---
 

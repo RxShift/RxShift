@@ -1,5 +1,5 @@
 # RxShift — Project Status
-**Last updated:** June 13, 2026
+**Last updated:** June 16, 2026
 **Entity:** JWC LLC (Jamison West Consulting)
 **Managed in:** Cowork (codebase) + Claude.ai RxShift project (strategy/chat)
 
@@ -19,9 +19,9 @@ B2B SaaS scheduling platform for retail pharmacies (1–25 locations). Embeds st
 
 ---
 
-## Build Status: COMPLETE (v1 + Phase 2 + retail-ready + June 13 UX/live-board/branding/help pass)
+## Build Status: COMPLETE (v1 + Phase 2 + retail-ready + June 13 UX pass + June 15 schedule rebuild + June 16 platform email/feedback)
 
-Full product built June 11–13, 2026. All features are live in the repo (`tsc` clean, 45 vitest tests, `next build` clean); migrations 0015–0017 applied to Supabase.
+Full product built June 11–16, 2026. All features are live in the repo (`tsc` clean, 45 vitest tests, `next build` clean); migrations 0001–0021 applied to Supabase. **The June 16 platform-email/feedback build is deployed to production and verified end-to-end** (live demo-form submission produced a CRM lead + a logged email with rendered body; the Resend delivery webhook updated it to `delivered`).
 
 ### What Exists in the App
 
@@ -65,6 +65,13 @@ Full product built June 11–13, 2026. All features are live in the repo (`tsc` 
 | Mobile-first My Schedule (agenda on phones) | Live (June 13) |
 | Light tenant branding (accent color + logo URL; RxShift mark always shown) — Settings → Branding | Live (June 13) |
 | Admin-only help (RLS-gated) + expanded help library | Live (June 13) |
+| Per-location ratio + unified person-centric schedule matrix (ratio zones removed) | Live (June 15) |
+| Staff avatars (1:1 crop → private Storage bucket, signed URLs) | Live (June 15) |
+| **Centralized email path (`sendEmail`) + email log** (`/app/admin/emails`, actual-form view, xlsx export) | Live (June 16) |
+| **Email deliverability webhook + system-issues-into-feedback loop** | Live (June 16) |
+| **In-app feedback / bug / feature capture + triage** (`/app/admin/feedback`) | Live (June 16) |
+| **Demo-safe admin chrome** (Platform nav hidden while emulating; slim banner) | Live (June 16) |
+| **M365 shared mailbox** sending as hello@ (brand email; DKIM/SPF authenticated) | Live (June 16) |
 
 \* Per-minute alert delivery needs a paid Vercel plan; on the free plan the cron runs ~daily and the on-screen board badge is the real-time signal.
 
@@ -87,6 +94,10 @@ Project: `cnhpaxucnbgxazpbvtod` (supabase@rxshift.io)
 | 0015_live_status_config | live_status_config + live_ratio_alert_state (configurable statuses + alert grace/cooldown state) |
 | 0016_help_admin_only | help_article.admin_only column + help_select RLS rewrite (admin docs gated to platform admins) |
 | 0017_help_content_overhaul | rewrote "Building a schedule" + added 5 tenant + 4 admin help articles |
+| 0018_per_location_ratio | ratio per location (dropped ratio_zone); departments tenant-level; tenant.require_department; staff.avatar_path; private avatars bucket |
+| 0019_email_log | email_log (service-role; every send + status + rendered body) |
+| 0020_feedback | feedback (user + system issues; service-role) + private feedback bucket |
+| 0021_help_feedback | help articles for feedback + the platform email log |
 
 ---
 
