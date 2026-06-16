@@ -5,6 +5,8 @@ import Badge from "@/components/ui/badge";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
+import AvatarUpload from "@/components/app/avatar-upload";
+import { signedAvatarUrls } from "@/lib/avatars";
 import { addDaysStr, eachDate, fmtDay, todayStr } from "@/lib/dates";
 import { resolveStatuses } from "@/lib/live-status-config";
 import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
@@ -109,6 +111,7 @@ export default async function MePage() {
   );
 
   const staff = me as Staff;
+  const myAvatarUrl = (await signedAvatarUrls(supabase, [staff]))[staff.id];
   const shifts = (myShifts ?? []) as (Shift & { shift_segment: ShiftSegment[] })[];
   const requests = (myRequests ?? []) as TimeOffRequest[];
   const live = myLive as LiveStatus | null;
@@ -131,6 +134,17 @@ export default async function MePage() {
       <PageHeader title="My Schedule" />
       <div className="flex-1 space-y-5 p-4 sm:p-8">
         <div className="max-w-[640px] space-y-5">
+          <Card>
+            <h2 className="mb-3 font-brand text-base font-bold text-navy">
+              Your photo
+            </h2>
+            <AvatarUpload
+              staffId={staff.id}
+              fullName={staff.full_name}
+              currentUrl={myAvatarUrl}
+            />
+          </Card>
+
           {tenant.has_ratio && (
             <MyStatusPicker
               current={live?.status ?? "present_counting"}

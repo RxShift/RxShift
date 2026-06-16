@@ -9,6 +9,7 @@ import {
   logActivity,
   requireAdmin,
   requireManager,
+  requireMember,
   runAction,
   type ActionResult,
 } from "./helpers";
@@ -42,24 +43,56 @@ export async function createStaff(input: unknown): Promise<ActionResult<{ id: st
   });
 }
 
-/** Save a staff member's avatar path (uploaded client-side to the avatars bucket). */
-export async function setStaffAvatar(
+/**
+ * Upload a staff avatar (already cropped to a square webp client-side). A manager
+ * can set anyone's photo; a staff member can set their own. Runs server-side with
+ * the service role (so it works regardless of browser RLS / "viewing as"), and
+ * enforces self-or-manager + tenant ownership in code.
+ */
+export async function uploadAvatar(
   staffId: string,
-  avatarPath: string
-): Promise<ActionResult> {
+  formData: FormData
+): Promise<ActionResult<{ path: string }>> {
   return runAction(async () => {
-    const ctx = await requireManager();
+    const ctx = await requireMember();
+    const isManager = ["owner_admin", "scheduler", "supervisor"].includes(
+      ctx.appUser.role
+    );
+    if (!isManager && ctx.appUser.staff_id !== staffId)
+      throw new ActionError("You can only change your own photo.");
+
+    const file = formData.get("file");
+    if (!(file instanceof Blob)) throw new ActionError("No image provided.");
+
     const supabase = await createClient();
-    const { error } = await supabase
+    const { data: staff } = await supabase
       .from("staff")
-      .update({ avatar_path: avatarPath })
+      .select("id")
+      .eq("id", staffId)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (!staff) throw new ActionError("Staff member not found.");
+
+    const service = createServiceClient();
+    const path = `${ctx.tenantId}/${staffId}-${Date.now()}.webp`;
+    const buf = Buffer.from(await file.arrayBuffer());
+    const { error: upErr } = await service.storage
+      .from("avatars")
+      .upload(path, buf, { contentType: "image/webp", upsert: true });
+    if (upErr) throw new ActionError(upErr.message);
+
+    const { error } = await service
+      .from("staff")
+      .update({ avatar_path: path })
       .eq("id", staffId)
       .eq("tenant_id", ctx.tenantId);
     if (error) throw new ActionError(error.message);
+
     await logActivity(ctx, "update", "staff", staffId, { avatar: true });
     revalidatePath("/app/staff");
     revalidatePath("/app/schedule");
-    return undefined;
+    revalidatePath("/app/me");
+    return { path };
   });
 }
 

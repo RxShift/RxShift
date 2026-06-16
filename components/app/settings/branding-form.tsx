@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { HelpText, Input, Label } from "@/components/ui/form";
-import { updateBranding } from "@/lib/actions/settings";
+import { updateBranding, uploadLogo } from "@/lib/actions/settings";
 import type { Tenant } from "@/lib/types";
 
 const RXSHIFT_AMBER = "#F07C30";
@@ -17,7 +17,27 @@ export default function BrandingForm({ tenant }: { tenant: Tenant }) {
   );
   const [logoUrl, setLogoUrl] = useState(tenant.branding?.logo_url ?? "");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  async function onLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setUploading(true);
+    setMessage(null);
+    const fd = new FormData();
+    fd.append("file", f, f.name);
+    const result = await uploadLogo(fd);
+    setUploading(false);
+    if (result.ok) {
+      if (result.data) setLogoUrl(result.data.url);
+      setMessage("Logo uploaded.");
+      router.refresh();
+    } else {
+      setMessage(result.error);
+    }
+  }
 
   async function save(reset: boolean) {
     setSaving(true);
@@ -63,17 +83,47 @@ export default function BrandingForm({ tenant }: { tenant: Tenant }) {
         </div>
 
         <div>
-          <Label htmlFor="logo-url">Logo URL</Label>
+          <Label htmlFor="logo-url">Logo</Label>
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt="Tenant logo"
+              className="mb-2 h-12 w-auto rounded border border-line bg-white p-1"
+            />
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="cursor-pointer rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm font-medium text-navy hover:border-steel/40">
+              {uploading ? "Uploading…" : "Upload logo file"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={onLogoFile}
+              />
+            </label>
+            {logoUrl && (
+              <button
+                type="button"
+                onClick={() => setLogoUrl("")}
+                className="font-body text-sm text-steel underline-offset-2 hover:underline"
+              >
+                Remove
+              </button>
+            )}
+          </div>
           <Input
             id="logo-url"
             type="url"
             value={logoUrl}
             onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://…/logo.png"
+            placeholder="…or paste a hosted image URL"
+            className="mt-2"
           />
           <HelpText>
-            A hosted image (PNG or SVG). It appears in the sidebar next to the
-            RxShift mark. Uploading from your computer is coming later.
+            Upload a PNG or SVG (or paste a hosted URL). It appears in the sidebar
+            next to the RxShift mark, in both light and dark mode.
           </HelpText>
         </div>
       </div>

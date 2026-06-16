@@ -9,8 +9,7 @@ import { useRouter } from "next/navigation";
 import Cropper, { type Area } from "react-easy-crop";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
-import { createClient } from "@/lib/supabase/client";
-import { setStaffAvatar } from "@/lib/actions/staff";
+import { uploadAvatar } from "@/lib/actions/staff";
 import Avatar from "./avatar";
 
 async function cropToWebp(src: string, area: Area): Promise<Blob> {
@@ -38,12 +37,10 @@ async function cropToWebp(src: string, area: Area): Promise<Blob> {
 
 export default function AvatarUpload({
   staffId,
-  tenantId,
   fullName,
   currentUrl,
 }: {
   staffId: string;
-  tenantId: string;
   fullName: string;
   currentUrl?: string | null;
 }) {
@@ -77,13 +74,9 @@ export default function AvatarUpload({
     setError(null);
     try {
       const blob = await cropToWebp(src, area);
-      const supabase = createClient();
-      const path = `${tenantId}/${staffId}-${Date.now()}.webp`;
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, blob, { contentType: "image/webp", upsert: true });
-      if (upErr) throw new Error(upErr.message);
-      const result = await setStaffAvatar(staffId, path);
+      const fd = new FormData();
+      fd.append("file", blob, "avatar.webp");
+      const result = await uploadAvatar(staffId, fd);
       if (!result.ok) throw new Error(result.error);
       setSrc(null);
       router.refresh();

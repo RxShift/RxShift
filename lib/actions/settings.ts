@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import {
   ActionError,
   logActivity,
@@ -90,6 +91,54 @@ export async function updateBranding(input: unknown): Promise<ActionResult> {
     await logActivity(ctx, "update", "tenant", ctx.tenantId, { branding });
     revalidatePath("/app", "layout");
     return undefined;
+  });
+}
+
+/** Upload a tenant logo file (owner-only) → private Storage → long-lived signed
+ *  URL saved on branding.logo_url, merged so the accent color is preserved. */
+export async function uploadLogo(
+  formData: FormData
+): Promise<ActionResult<{ url: string }>> {
+  return runAction(async () => {
+    const ctx = await requireAdmin();
+    const file = formData.get("file");
+    if (!(file instanceof Blob)) throw new ActionError("No image provided.");
+
+    const service = createServiceClient();
+    const path = `${ctx.tenantId}/logo-${Date.now()}`;
+    const buf = Buffer.from(await file.arrayBuffer());
+    const { error: upErr } = await service.storage
+      .from("avatars")
+      .upload(path, buf, {
+        contentType: file.type || "image/png",
+        upsert: true,
+      });
+    if (upErr) throw new ActionError(upErr.message);
+
+    const { data: signed, error: sErr } = await service.storage
+      .from("avatars")
+      .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+    if (sErr || !signed)
+      throw new ActionError(sErr?.message ?? "Could not sign the logo URL.");
+
+    const { data: t } = await service
+      .from("tenant")
+      .select("branding")
+      .eq("id", ctx.tenantId)
+      .maybeSingle();
+    const branding = {
+      ...((t?.branding as Record<string, unknown>) ?? {}),
+      logo_url: signed.signedUrl,
+    };
+    const { error } = await service
+      .from("tenant")
+      .update({ branding })
+      .eq("id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+
+    await logActivity(ctx, "update", "tenant", ctx.tenantId, { logo: true });
+    revalidatePath("/app", "layout");
+    return { url: signed.signedUrl };
   });
 }
 

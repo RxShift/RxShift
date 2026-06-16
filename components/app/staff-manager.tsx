@@ -42,14 +42,12 @@ export default function StaffManager({
   appUsers,
   canEditRoles,
   avatarUrls,
-  tenantId,
 }: {
   staff: Staff[];
   locations: Location[];
   appUsers: AppUser[];
   canEditRoles: boolean;
   avatarUrls: Record<string, string>;
-  tenantId: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | "new" | null>(null);
@@ -240,7 +238,6 @@ export default function StaffManager({
           {initial && (
             <AvatarUpload
               staffId={initial.id}
-              tenantId={tenantId}
               fullName={initial.full_name}
               currentUrl={avatarUrls[initial.id]}
             />

@@ -34,7 +34,6 @@ export default async function StaffPage() {
           appUsers={(appUsers ?? []) as AppUser[]}
           canEditRoles={["owner_admin"].includes(session!.appUser!.role)}
           avatarUrls={avatarUrls}
-          tenantId={session!.tenant!.id}
         />
       </div>
     </>
