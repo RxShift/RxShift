@@ -7,6 +7,35 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-16 — Brand email: M365 shared mailbox + DKIM/SPF (infra, no app code)
+
+Set up `hello@rxshift.io` as a real branded sending identity and documented the whole
+email flow. No app code changed this session — infra + docs only.
+
+### Infrastructure (Microsoft 365 / Cloudflare)
+- **`hello@rxshift.io` shared mailbox** in the jamisonwest.com tenant with Send As +
+  Full Access (Jamison) and shared Sent Items (`MessageCopyForSentAsEnabled`). Replaces
+  a rejected alias approach (alias send-as is desktop-broken and shows the primary addr).
+- **Authenticated rxshift.io for M365 sending:** root SPF now includes
+  `spf.protection.outlook.com`; M365 **DKIM** enabled (two `selector{1,2}._domainkey`
+  CNAMEs → `…jamisonwest.p-v1.dkim.mail.microsoft`). Verified: Gmail shows
+  `hello@rxshift.io`, no "via onmicrosoft.com." Resend's `send.rxshift.io` SPF/DKIM left
+  intact (separate sender).
+
+### Docs
+- `INFRASTRUCTURE.md` email section rewritten: shared-mailbox setup, full **email-flow
+  map** (app/Resend vs M365, inbound/outbound, demo-request crossover), reporting model,
+  and a now-vs-later cost/scaling table. DNS table updated with DKIM + new SPF.
+- `docs/decisions.md`: shared-mailbox-over-alias rationale + the two-stream model (MS
+  prohibits BCC-archiving into a shared mailbox) + deferred items.
+
+### Open (next build — moving to plan mode)
+- In-app `email_log` table + admin report (durable record of every Resend send).
+- Route the demo-request alert to the `hello@` shared mailbox (team-visible).
+- Make the shared mailbox *receive* (send-only today); paid seats for Susie/RT when needed.
+
+---
+
 ## 2026-06-15 — Punch list: expandable flags, approve-executes-request, staff self-service, logo upload
 
 Follow-on pass after the schedule rebuild (commits 6a8ad97 → 7835867).

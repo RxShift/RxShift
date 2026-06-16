@@ -3,6 +3,34 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 16, 2026 — Brand email: M365 shared mailbox, and the two-stream model
+
+**Send as `hello@rxshift.io` via a Microsoft 365 *shared mailbox*, not an alias.** An
+alias + `SendFromAliasEnabled` was tried first and rejected: Outlook desktop never honors
+it, and even in OWA the recipient still sees the user's primary address — so it can't give
+RxShift a reliable branded From. A shared mailbox with **Send As** shows `hello@rxshift.io`
+to recipients in every client, is free (≤50 GB, no license on the mailbox), and gives the
+team shared Sent Items (`MessageCopyForSentAsEnabled $true`). Authenticated with SPF
+(`spf.protection.outlook.com`) + M365 DKIM (`d=rxshift.io`) so it isn't junked and Gmail
+drops the "via onmicrosoft.com". Full runbook in `INFRASTRUCTURE.md`.
+
+**App email and human email are two separate streams — by design, not by neglect.**
+Microsoft **prohibits** BCC-ing or transport-ruling app mail into a shared mailbox for
+archiving, so there is no compliant "one inbox holds everything." App/transactional mail
+stays on **Resend** (from `hello@`); human/brand mail lives in the **M365 shared mailbox**.
+Reporting is therefore two surfaces: a planned in-app `email_log` for Resend sends, and
+M365 Message Trace / Content Search for the mailbox. A true single store would require
+moving app sending onto M365 Graph as `hello@` — deferred as a real project, not a toggle.
+
+**Demo requests do not "fall out of the CRM."** A submitted demo form creates a permanent
+CRM lead AND sends an alert email; the lead is the system of record, the email is a copy.
+The only tracking gap is that follow-up email threads aren't auto-linked to the lead —
+mitigated by working prospects from the CRM. Linking threads to leads is a later feature.
+
+**Deferred:** (1) make the shared mailbox *receive* (it's send-only today — inbound still
+forwards to Jamison); (2) the in-app `email_log` + admin report; (3) routing the
+demo-request alert to the shared mailbox; (4) paid seats for Susie/RT when they need access.
+
 ## June 15, 2026 — Per-location ratio + unified person-centric schedule
 
 **Ratio is per LOCATION; the "ratio zone" concept is removed.** Everyone counting

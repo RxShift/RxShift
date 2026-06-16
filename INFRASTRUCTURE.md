@@ -57,12 +57,16 @@ Tag: [JWC] | Last updated: June 13, 2026 | Status: Live — Vercel RxShift accou
 ```
 Visitor submits form on rxshift.io/#demo
   → POST /api/contact (Next.js route)
-  → Resend API sends FROM hello@rxshift.io TO info@rxshift.io
+  → (1) creates a CRM LEAD (/app/admin/leads) — the PERMANENT record
+  → (2) Resend API sends FROM hello@rxshift.io TO info@rxshift.io
       (replyTo = the visitor's email, so replying reaches the prospect)
   → Cloudflare MX accepts (Resend dashboard shows "delivered" here)
   → Cloudflare catch-all forwards to jamison@jamisonwest.com (M365)
   → Lands in Jamison's Outlook inbox — OR Junk, OR M365 quarantine
 ```
+
+The CRM lead is the system of record — the email is only a heads-up copy. See "The
+complete email flow" below for how this fits the whole picture.
 
 **Troubleshooting "the email never arrived":**
 1. Check the Resend dashboard (or API) first — if status is `delivered`,
@@ -78,68 +82,131 @@ Visitor submits form on rxshift.io/#demo
    persists, adding Cloudflare as a trusted ARC sealer in M365 Defender
    (Email authentication settings → ARC) both help.
 
-### DNS records verified June 11, 2026
+### DNS records (mail) — verified June 16, 2026
 
 | Record | Value | Purpose |
 |---|---|---|
-| MX rxshift.io | route1/2/3.mx.cloudflare.net | Inbound → Cloudflare Email Routing |
-| TXT rxshift.io | `v=spf1 include:_spf.mx.cloudflare.net ~all` | SPF for Cloudflare forwarding |
-| TXT send.rxshift.io | `v=spf1 include:amazonses.com ~all` | SPF for Resend bounce domain |
-| TXT resend._domainkey.rxshift.io | (DKIM key) | Resend DKIM — present ✓ |
-| TXT _dmarc.rxshift.io | `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` | DMARC — added by Jamison June 12, 2026 |
+| MX rxshift.io | route1/2/3.mx.cloudflare.net | Inbound → Cloudflare Email Routing (catch-all) |
+| MX send.rxshift.io | feedback-smtp.us-east-1.amazonses.com | Resend bounce handling |
+| TXT rxshift.io | `v=spf1 include:_spf.mx.cloudflare.net include:spf.protection.outlook.com ~all` | SPF — authorizes BOTH Cloudflare forwarding AND M365 sending as @rxshift.io |
+| TXT send.rxshift.io | `v=spf1 include:amazonses.com ~all` | SPF for Resend's bounce subdomain — **leave alone** |
+| CNAME selector1._domainkey.rxshift.io | `selector1-rxshift-io._domainkey.jamisonwest.p-v1.dkim.mail.microsoft` | **M365 DKIM** (selector 1) — signs human mail as rxshift.io (kills the "via onmicrosoft.com") |
+| CNAME selector2._domainkey.rxshift.io | `selector2-rxshift-io._domainkey.jamisonwest.p-v1.dkim.mail.microsoft` | M365 DKIM (selector 2 — rotation standby) |
+| TXT resend._domainkey.rxshift.io | (DKIM key) | **Resend DKIM** — signs app/transactional mail |
+| TXT cf2024-1._domainkey.rxshift.io | (DKIM key) | Cloudflare Email Routing DKIM |
+| TXT _dmarc.rxshift.io | `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` | DMARC (monitor mode; `rua` → dmarc@rxshift.io via catch-all) |
 
-(The DMARC `rua` reports go to dmarc@rxshift.io, which the catch-all
-forwards to Jamison — no extra setup needed.)
+All mail records are **DNS only** (grey cloud) in Cloudflare — proxying breaks them.
+**Three legitimate senders now sign for rxshift.io:** M365 (DKIM `d=rxshift.io`, human
+mail), Resend (`resend._domainkey`, app mail), Cloudflare (forwarding). DMARC stays
+`p=none` while multiple senders exist; only tighten to quarantine/reject after confirming
+all three align (check the DMARC `rua` reports first).
 
-### Replying AS hello@rxshift.io from Outlook (IN PROGRESS — June 16, 2026)
+### Sending AS the brand — `hello@rxshift.io` shared mailbox (DONE — June 16, 2026)
 
-Cloudflare Email Routing is receive-only — it cannot send. Today, replying
-to a demo request goes out as jamison@jamisonwest.com (the replyTo is set to
-the prospect, so the reply reaches the right person, just from the wrong
-domain). To reply as hello@rxshift.io, rxshift.io must be added to the
-jamisonwest.com Microsoft 365 tenant:
+`hello@rxshift.io` is a **Microsoft 365 shared mailbox** in the jamisonwest.com tenant.
+Jamison sends *as* it from Outlook (desktop + web); recipients see `hello@rxshift.io`,
+DKIM-signed as rxshift.io (no "via onmicrosoft.com"). Sent copies land in the shared
+mailbox's Sent Items, so anyone with access sees the full thread history.
 
-**Status (verified by DNS June 16, 2026):**
-- ✅ Step 1 DONE — rxshift.io is added + verified in the M365 tenant
-  (`MS=ms52040000` TXT token is live in Cloudflare DNS).
-- ✅ Step 2 SAFE — MX still points at Cloudflare (route1/2/3.mx.cloudflare.net);
-  M365 did NOT hijack it. Inbound email / catch-all forwarding intact.
-- ⏳ Steps 3–4 PENDING — `hello@rxshift.io` alias not yet on Jamison's user, and
-  `SendFromAliasEnabled` not yet set. **This is why no rxshift.io address appears
-  in Outlook's From dropdown.** (The `auth@jamisonwest.com` address Jamison sees
-  is an unrelated jamisonwest.com alias.)
-- ⏳ Step 5 PENDING — SPF still `v=spf1 include:_spf.mx.cloudflare.net ~all`
-  (no `spf.protection.outlook.com`). Mail sent as hello@rxshift.io will fail SPF
-  / risk junking until this is added.
+> We tried an **alias + `SendFromAliasEnabled`** first — it's a dead end: Outlook desktop
+> never honors it, and even in OWA the recipient still sees the primary address. A shared
+> mailbox is the correct, free, reliable pattern, and works in every client. The alias and
+> its OWA "addresses to send from" checkbox were removed. (`SendFromAliasEnabled` is still
+> `True` on the org — harmless, unrelated to shared-mailbox send-as.)
 
-1. **M365 admin center** (admin.microsoft.com) → Settings → Domains →
-   Add domain: `rxshift.io`. Verify ownership via the TXT record Microsoft
-   provides (add it in Cloudflare DNS). ✅ done
-2. When M365 offers to set up DNS records, **skip the MX record** — MX must
-   stay pointed at Cloudflare or Email Routing breaks. (Skipping is allowed;
-   M365 will nag about it. Ignore the nag.) ✅ MX confirmed still Cloudflare
-3. Users → Jamison's user → Manage email aliases → add `hello@rxshift.io`. ⏳
-4. Enable sending from aliases (Exchange Online PowerShell):
-   `Set-OrganizationConfig -SendFromAliasEnabled $true` ⏳
-5. Update the SPF record in Cloudflare to authorize Outlook:
-   `v=spf1 include:_spf.mx.cloudflare.net include:spf.protection.outlook.com ~all` ⏳
-6. (Recommended) Enable DKIM for rxshift.io in M365: Defender portal →
-   Email authentication settings → DKIM → rxshift.io (requires two CNAME
-   records Microsoft provides).
-7. In Outlook (web first — desktop catches up later), the From dropdown
-   will offer hello@rxshift.io.
+**The setup (so it can be rebuilt / extended):**
+1. Domain `rxshift.io` added + verified in the M365 tenant (TXT `MS=ms52040000`). **MX
+   stays on Cloudflare** — do NOT let M365 take the MX, or inbound/catch-all breaks.
+2. Shared mailbox created: admin center → **Teams & groups → Shared mailboxes** →
+   "RxShift" / `hello@rxshift.io`.
+3. Permissions: Jamison granted **Read and manage (Full Access)** + **Send as**.
+   ⚠️ Each person who OPENS the mailbox needs their **own Exchange Online license**; the
+   shared mailbox itself is free (≤50 GB).
+4. Shared Sent Items (no GUI for this — PowerShell):
+   `Set-Mailbox -Identity hello@rxshift.io -MessageCopyForSentAsEnabled $true`
+5. Authentication (kills junking + the "via"):
+   - **SPF** — root TXT now includes `spf.protection.outlook.com` (see DNS table).
+   - **DKIM** — published the two selector CNAMEs, then
+     `Set-DkimSigningConfig -Identity rxshift.io -Enabled $true` (Status = Enabled/Valid).
+6. Signature: brand HTML block (RxShift wordmark, tagline, hello@/rxshift.io) pasted in
+   OWA → Settings → Mail → Compose and reply.
 
-**Test once steps 3–5 are done:** Outlook web → New mail → From → pick
-hello@rxshift.io → send to a personal Gmail → confirm it arrives showing
-From `hello@rxshift.io` and lands in inbox (not junk). Reply from Gmail →
-confirm it reaches Outlook via the Cloudflare catch-all.
+**Exchange Online PowerShell reminder:** install once with
+`Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force` (installs for
+**PowerShell 7 / pwsh** — use that, not Windows PowerShell 5.1). Order matters:
+**`Connect-ExchangeOnline -UserPrincipalName jamison@jamisonwest.com` FIRST → do the work
+→ `Disconnect-ExchangeOnline` LAST.** Jamison admins multiple tenants — run
+`Get-AcceptedDomain` and confirm `rxshift.io` is listed before changing anything.
 
-**Caveat:** once rxshift.io is an accepted domain in the tenant, mail sent
-from inside the tenant to any @rxshift.io address routes internally — only
-hello@ will exist as an alias, so tenant-internal mail to other @rxshift.io
-addresses would bounce instead of forwarding. External senders are
-unaffected (MX still points to Cloudflare). With a one-person tenant this is
-a non-issue, but it's the thing to remember if it ever behaves oddly.
+### The complete email flow — who sends/receives what, and where it's recorded
+
+Three systems touch email; mail lives in two of them. **This is the answer to "how do we
+make sure nothing gets missed."**
+
+```
+OUTBOUND
+  RxShift app ──(Resend, From: hello@rxshift.io)──▶ recipients
+     types: sign-in links, request notifications (PTO/callout/swap),
+            live-ratio alerts, demo-request alert, CRM mail
+     recorded in: Resend dashboard + in-app `notification` rows
+                  (NOT in any mailbox; no durable app-side log yet — see TODO)
+
+  Humans ──(M365 hello@ shared mailbox, Send As, DKIM d=rxshift.io)──▶ recipients
+     recorded in: shared mailbox Sent Items (team-visible)
+
+INBOUND
+  anyone@rxshift.io ──▶ Cloudflare MX ──▶ catch-all ──▶ jamison@jamisonwest.com
+     recorded in: Jamison's personal M365 inbox
+     NOTE: the hello@ shared mailbox does NOT receive external mail today — MX points
+     at Cloudflare, so inbound hello@ still forwards to Jamison's personal box. (To make
+     the shared mailbox actually receive, see "Now vs. later".)
+
+  The app receives NO email — it only sends.
+```
+
+**The demo-request crossover (the worry: "does a lead fall out of tracking?")**
+```
+Visitor submits the demo form on rxshift.io
+   ├─▶ creates a CRM LEAD → /app/admin/leads   (PERMANENT — the system of record)
+   └─▶ sends an alert email (Resend, from hello@) → info@rxshift.io → Jamison's inbox
+```
+The lead is **persisted and stays in the CRM** — the email is only a heads-up copy, not a
+handoff. Nothing is lost at request time. The *one* gap: the follow-up email conversation
+with a prospect isn't auto-linked back to its CRM lead. **Mitigation: work prospects FROM
+the CRM, not the inbox.**
+
+**Why we can't just "put everything in one inbox":** Microsoft **prohibits** BCC-ing or
+transport-ruling app mail into a shared mailbox for archiving. So app email and human email
+are two streams by design. Unifying them means either (a) report on each in its own place
+(below), or (b) later, move app sending onto **M365 (Graph) as hello@** — then it's
+genuinely stored in the shared mailbox. (b) is a real project, not a config toggle.
+
+### Reporting — "what was sent/received, to whom"
+
+| Stream | Where it lives | How to find / report |
+|---|---|---|
+| App / transactional (Resend) | Resend dashboard + in-app `notification` rows | Resend logs (limited retention); **planned in-app `email_log` table** for durable, searchable history inside RxShift |
+| Human / brand (shared mailbox) | M365 shared mailbox (Sent + received) | Exchange **Message Trace** (recent); Purview **Content Search** (full history); everyone with access reads threads directly |
+
+### Now vs. later (free today; what costs money only when RxShift grows)
+
+| | Now (free) | Later (when it takes off) |
+|---|---|---|
+| Send as brand | ✅ `hello@` shared mailbox + Send As | More shared mailboxes (info@, support@) — still free |
+| Receive into the shared mailbox | Not yet — inbound still forwards to Jamison | (a) Cloudflare forward `hello@` → the mailbox's `…@onmicrosoft.com` address, or (b) switch rxshift.io MX to M365 (cleaner end-state; loses the auto-forward catch-all, so define each address) |
+| Team access | Jamison + assistant (each needs an EXO license) | **RT / Susie need a licensed account in THIS tenant** (~$6–8/user/mo). Susie is in Optum's tenant, so she'd be a licensed/guest user here. |
+| Mailbox size / legal hold | 50 GB, no hold | EXO **Plan 2** (~$8/mo) for 100 GB or litigation hold/retention |
+| App-email record | Resend + in-app notifications | Build `email_log`; optionally move app sending to M365 Graph for a single store |
+| Prospect/client folders | ✅ create freely inside the shared mailbox | — |
+
+**Cost stays $0 today.** Money only enters with (1) *people* who must open the mailbox
+(licenses) and (2) *retention / legal-hold* needs — both only when the business grows.
+
+**Caveat to remember:** rxshift.io is an **Authoritative** accepted domain in M365, so mail
+sent *from inside the tenant* to an @rxshift.io address that isn't a real mailbox/alias will
+bounce instead of forwarding via Cloudflare. External senders are unaffected (MX → Cloudflare).
+Non-issue today; if internal mail to an @rxshift.io address ever bounces oddly, this is why.
 
 ---
 
@@ -198,7 +265,11 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [ ] Once Vercel resolves: connect GitHub repo, create project, add domains, env vars, keep-alive cron
 - [ ] Configure Cloudflare DNS A/CNAME records pointing rxshift.io and app.rxshift.io to Vercel
 - [x] Add DMARC record in Cloudflare: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` — added June 12, 2026
-- [~] M365 send-as-hello@rxshift.io setup (steps above) — IN PROGRESS: domain added + verified, MX safe; still need the `hello@rxshift.io` alias + `SendFromAliasEnabled` + the SPF `spf.protection.outlook.com` include (June 16, 2026)
+- [x] **M365 send-as `hello@rxshift.io` — DONE June 16, 2026** (shared mailbox, NOT the alias dead-end). Shared mailbox + Full Access/Send As + `MessageCopyForSentAsEnabled` (shared Sent Items) + SPF (`spf.protection.outlook.com`) + DKIM (`Set-DkimSigningConfig -Enabled`). Verified: Gmail shows `hello@rxshift.io`, no "via," shared Sent Items working. Full procedure + email flow in the Email section above.
+- [ ] **Make the shared mailbox RECEIVE** (currently send-only; inbound still forwards to Jamison) — Cloudflare forward `hello@` → onmicrosoft address, or switch MX to M365. Decide when the team grows.
+- [ ] **In-app `email_log`** + admin report — durable, searchable record of every app/Resend send (next build; see decisions.md).
+- [ ] **Route the demo-request alert to the `hello@` shared mailbox** (team-visible) instead of only Jamison's inbox (next build).
+- [ ] License a paid mailbox/seat for **Susie** (and RT if he engages) on this tenant — only when they actually need access.
 - [x] Push the repo to GitHub — jamisonwest-ship-it added as collaborator on RxShift/RxShift; both remotes (`vercel` + `origin`) current as of June 12, 2026
 - [x] Supabase schema — migrations 0001–0019 applied; full v1 schema live
   - Note: migrations 0001–0005 were applied via raw `execute_sql` before MCP migration tracking was configured — they do not appear in `list_migrations`. Schema is correct; 0006+ are tracked normally.
