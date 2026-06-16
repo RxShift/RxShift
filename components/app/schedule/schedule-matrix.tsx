@@ -77,6 +77,7 @@ export default function ScheduleMatrix({
   const [reason, setReason] = useState("");
   const [confirmCopy, setConfirmCopy] = useState(false);
   const [toolError, setToolError] = useState<string | null>(null);
+  const [flagsOpen, setFlagsOpen] = useState(false);
   // Pure view filters (what do I want to look at) — no scheduling effect.
   const [deptFilter, setDeptFilter] = useState(""); // "" = all departments
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
@@ -327,9 +328,13 @@ export default function ScheduleMatrix({
           {statusLabel}
         </span>
         {flagCount > 0 && (
-          <span className="font-body text-[13px] font-semibold text-deficiency">
-            ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"}
-          </span>
+          <button
+            type="button"
+            onClick={() => setFlagsOpen(true)}
+            className="font-body text-[13px] font-semibold text-deficiency underline-offset-2 hover:underline"
+          >
+            ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"} ▸
+          </button>
         )}
         <div className="ml-auto flex items-center gap-2">
           <Button
@@ -446,6 +451,56 @@ export default function ScheduleMatrix({
           periods={periods}
         />
       )}
+
+      <Modal
+        open={flagsOpen}
+        onClose={() => setFlagsOpen(false)}
+        title={`Open flags (${flagCount})`}
+        footer={
+          <Button variant="secondary" onClick={() => setFlagsOpen(false)}>
+            Close
+          </Button>
+        }
+      >
+        {flagCount === 0 ? (
+          <p className="font-body text-sm text-steel">No open flags.</p>
+        ) : (
+          <div className="max-h-[60vh] space-y-4 overflow-auto">
+            {validation.ratioFlags.length > 0 && (
+              <div>
+                <p className="font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-deficiency">
+                  Ratio
+                </p>
+                <ul className="mt-1.5 space-y-1.5 font-body text-[13px] text-navy">
+                  {validation.ratioFlags.map((f, i) => (
+                    <li key={`r${i}`}>
+                      <span className="font-medium">{f.location_name}</span> ·{" "}
+                      {f.date} {f.slot_label}: {f.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {validation.constraintFlags.length > 0 && (
+              <div>
+                <p className="font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-alert">
+                  Hours &amp; constraints
+                </p>
+                <ul className="mt-1.5 space-y-1.5 font-body text-[13px] text-navy">
+                  {validation.constraintFlags.map((f, i) => (
+                    <li key={`c${i}`}>
+                      <span className="font-medium">
+                        {f.rule_type.replace(/_/g, " ")}
+                      </span>{" "}
+                      · {f.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={publishOpen}

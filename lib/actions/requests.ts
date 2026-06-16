@@ -202,6 +202,19 @@ export async function decideTimeOff(
       .eq("id", id);
     if (error) throw new ActionError(error.message);
 
+    // Approving executes the request: clear any shifts the person had in the
+    // approved window so they actually come off the schedule (the manager sees
+    // the gap and backfills). PTO then overlays those days.
+    if (decision === "approved") {
+      await supabase
+        .from("shift")
+        .delete()
+        .eq("tenant_id", ctx.tenantId)
+        .eq("staff_id", request.staff_id)
+        .gte("date", request.start_date)
+        .lte("date", request.end_date);
+    }
+
     const email = await staffEmail(ctx, request.staff_id);
     if (email) {
       await sendNotificationEmail(
