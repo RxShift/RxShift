@@ -32,7 +32,7 @@ function seg(
 ): EngineSegment {
   return {
     shift_id: `s-${staff.id}-${date}`,
-    zone_id: "z1",
+    location_id: "loc1",
     date,
     start_time: start,
     end_time: end,
@@ -83,8 +83,8 @@ describe("deficiencyStreaks", () => {
   const row = (date: string, deficient: boolean): ComplianceRecordRow => ({
     date,
     hour: 9,
-    zone_id: "z1",
-    zone_name: "Main",
+    location_id: "loc1",
+    location_name: "Main",
     pharmacists_on_duty: [],
     technicians_counting: [],
     technicians_count: 0,

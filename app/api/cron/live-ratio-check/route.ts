@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { evaluateLiveZones, type LiveZoneEval } from "@/lib/live-board";
+import { evaluateLiveLocations, type LiveLocationEval } from "@/lib/live-board";
 import { sendNotificationEmail } from "@/lib/email";
 import type { Tenant } from "@/lib/types";
 
@@ -41,21 +41,21 @@ export async function GET(request: NextRequest) {
     .select("*")
     .eq("has_ratio", true);
 
-  let zonesDeficient = 0;
+  let locationsDeficient = 0;
   let alertsFired = 0;
 
   for (const tenant of (tenants ?? []) as Tenant[]) {
-    const zones = await evaluateLiveZones(tenant, supabase);
+    const locations = await evaluateLiveLocations(tenant, supabase);
 
-    for (const z of zones) {
+    for (const loc of locations) {
       const { data: state } = await supabase
         .from("live_ratio_alert_state")
         .select("*")
         .eq("tenant_id", tenant.id)
-        .eq("ratio_zone_id", z.zoneId)
+        .eq("location_id", loc.locationId)
         .maybeSingle();
 
-      if (z.status !== "deficient") {
+      if (loc.status !== "deficient") {
         // Recovered (or never deficient): clear tracking so a brief blip that
         // self-corrects within the grace window never alerted, and a future
         // deficiency is treated fresh.
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      zonesDeficient += 1;
+      locationsDeficient += 1;
 
       const deficientSinceIso = state?.deficient_since ?? nowIso;
       const deficientForMin = (nowMs - Date.parse(deficientSinceIso)) / 60000;
@@ -86,16 +86,16 @@ export async function GET(request: NextRequest) {
       await supabase.from("live_ratio_alert_state").upsert(
         {
           tenant_id: tenant.id,
-          ratio_zone_id: z.zoneId,
+          location_id: loc.locationId,
           deficient_since: deficientSinceIso,
           last_alerted_at: shouldAlert ? nowIso : (state?.last_alerted_at ?? null),
           updated_at: nowIso,
         },
-        { onConflict: "tenant_id,ratio_zone_id" }
+        { onConflict: "tenant_id,location_id" }
       );
 
       if (shouldAlert) {
-        await fireAlert(supabase, tenant, z);
+        await fireAlert(supabase, tenant, loc);
         alertsFired += 1;
       }
     }
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     tenantsChecked: tenants?.length ?? 0,
-    zonesDeficient,
+    locationsDeficient,
     alertsFired,
     timestamp: nowIso,
   });
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 async function fireAlert(
   supabase: SupabaseClient,
   tenant: Tenant,
-  zone: LiveZoneEval
+  loc: LiveLocationEval
 ) {
   const { data: managers } = await supabase
     .from("app_user")
@@ -123,7 +123,7 @@ async function fireAlert(
 
   const lines = [
     "The live ratio board is showing a deficiency right now:",
-    `${zone.zoneName}: ${zone.reason ?? "out of ratio"}`,
+    `${loc.locationName}: ${loc.reason ?? "out of ratio"}`,
     "Adjust coverage in RxShift to restore the ratio. Whether and how to report is your pharmacy's decision — RxShift never contacts the board.",
   ];
 
@@ -132,7 +132,7 @@ async function fireAlert(
       tenant_id: tenant.id,
       user_id: m.supabase_user_id,
       type: "live_ratio_deficient",
-      payload: { zone_id: zone.zoneId, zone: zone.zoneName, reason: zone.reason },
+      payload: { location_id: loc.locationId, location: loc.locationName, reason: loc.reason },
       channel: "in_app",
     });
     const staff = m.staff as
@@ -143,7 +143,7 @@ async function fireAlert(
       await sendNotificationEmail(
         tenant,
         addr,
-        "Live ratio alert — a zone is out of ratio now",
+        "Live ratio alert — a location is out of ratio now",
         lines
       );
     }

@@ -19,7 +19,7 @@ export default function ComplianceView({
 }: {
   periods: { id: string; label: string }[];
   periodId: string;
-  records: { zoneId: string; zoneName: string; rows: ComplianceRecordRow[] }[];
+  records: { locationId: string; locationName: string; rows: ComplianceRecordRow[] }[];
   streaks: {
     deficientDates: string[];
     streaks: { start: string; length: number }[];
@@ -130,12 +130,12 @@ export default function ComplianceView({
       )}
 
       {records.length === 0 ? (
-        <EmptyState message="No zone-assigned shifts in this period yet. Assign shifts to a ratio zone for them to appear on the record." />
+        <EmptyState message="No shifts in this period yet. Schedule shifts for them to appear on the record." />
       ) : (
         records.map((record) => (
-          <div key={record.zoneId}>
+          <div key={record.locationId}>
             <h2 className="mb-3 font-brand text-base font-bold text-navy">
-              {record.zoneName}
+              {record.locationName}
             </h2>
             <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
               <table className="w-full">

@@ -280,3 +280,56 @@ export function evaluateConstraints(
 
   return flags;
 }
+
+/**
+ * Cross-location double-booking: the same person scheduled in two overlapping
+ * shifts on the same day — commonly at two different locations. The unified
+ * person view makes this visible; this flags it. Segments within ONE shift are
+ * sequential by construction, so we only compare segments from DIFFERENT shifts.
+ */
+export function detectDoubleBookings(
+  segments: EngineSegment[]
+): ConstraintFlag[] {
+  const flags: ConstraintFlag[] = [];
+  const byStaffDate = new Map<string, EngineSegment[]>();
+  for (const seg of segments) {
+    const key = `${seg.staff.id}|${seg.date}`;
+    const list = byStaffDate.get(key) ?? [];
+    list.push(seg);
+    byStaffDate.set(key, list);
+  }
+
+  const span = (s: EngineSegment): readonly [number, number] => {
+    const start = timeToMinutes(s.start_time);
+    const end0 = timeToMinutes(s.end_time);
+    return [start, end0 > start ? end0 : end0 + 1440] as const; // crosses midnight
+  };
+
+  for (const [key, segs] of byStaffDate) {
+    if (segs.length < 2) continue;
+    let overlap: { a: EngineSegment; b: EngineSegment } | null = null;
+    outer: for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length; j++) {
+        if (segs[i].shift_id === segs[j].shift_id) continue; // same shift = sequential
+        const [aS, aE] = span(segs[i]);
+        const [bS, bE] = span(segs[j]);
+        if (aS < bE && bS < aE) {
+          overlap = { a: segs[i], b: segs[j] };
+          break outer;
+        }
+      }
+    }
+    if (!overlap) continue;
+    const [staffId, date] = key.split("|");
+    flags.push({
+      rule_id: "double_book",
+      rule_type: "double_book",
+      staff_id: staffId,
+      staff_name: overlap.a.staff.full_name,
+      shift_id: overlap.a.shift_id,
+      date,
+      message: `${overlap.a.staff.full_name} is double-booked on ${date} — overlapping shifts ${overlap.a.start_time}–${overlap.a.end_time} and ${overlap.b.start_time}–${overlap.b.end_time}`,
+    });
+  }
+  return flags;
+}

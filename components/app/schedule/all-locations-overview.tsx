@@ -66,8 +66,8 @@ function LocationSection({
 
   const deficientShiftIds = new Set<string>();
   for (const s of bundle.shifts) {
-    if (!s.ratio_zone_id || !validation) continue;
-    if (validation.deficientCells[s.ratio_zone_id]?.includes(s.date))
+    if (!validation) continue;
+    if (validation.deficientCells[s.location_id]?.includes(s.date))
       deficientShiftIds.add(s.id);
   }
 

@@ -19,9 +19,9 @@ import type {
   Tenant,
 } from "@/lib/types";
 
-export interface LiveZoneEval {
-  zoneId: string;
-  zoneName: string;
+export interface LiveLocationEval {
+  locationId: string;
+  locationName: string;
   status: "compliant" | "deficient";
   reason: string | null;
 }
@@ -62,17 +62,18 @@ export function currentSlotOf(
 }
 
 /**
- * Evaluate every ratio zone's CURRENT slot for a tenant. Used by the alert
- * cron (with a service-role client). Returns one entry per zone with shifts
- * scheduled for the current moment.
+ * Evaluate every LOCATION's CURRENT slot for a tenant. Used by the alert cron
+ * (with a service-role client). Ratio is per location — all counting staff at a
+ * location count together. Returns one entry per location with shifts scheduled
+ * for the current moment.
  */
-export async function evaluateLiveZones(
+export async function evaluateLiveLocations(
   tenant: Tenant,
   supabase: SupabaseClient
-): Promise<LiveZoneEval[]> {
+): Promise<LiveLocationEval[]> {
   const { date: today, minutes: nowMinutes } = nowInTimeZone(tenant.timezone);
 
-  const [{ data: periods }, { data: liveStatuses }, { data: cfg }] =
+  const [{ data: periods }, { data: liveStatuses }, { data: cfg }, { data: locations }] =
     await Promise.all([
       supabase
         .from("schedule_period")
@@ -86,35 +87,42 @@ export async function evaluateLiveZones(
         .eq("tenant_id", tenant.id)
         .is("effective_to", null),
       supabase.from("live_status_config").select("*").eq("tenant_id", tenant.id),
+      supabase.from("location").select("id, name").eq("tenant_id", tenant.id),
     ]);
 
   const liveByStaff = new Map(
     ((liveStatuses ?? []) as LiveStatus[]).map((l) => [l.staff_id, l.status])
   );
   const countsCfg = countsByStatus((cfg ?? []) as LiveStatusConfig[]);
+  const locName = new Map(
+    ((locations ?? []) as { id: string; name: string }[]).map((l) => [l.id, l.name])
+  );
 
-  const out: LiveZoneEval[] = [];
+  // One result per location; if more than one period covers today for a
+  // location, a deficiency in any of them wins.
+  const byLocation = new Map<string, LiveLocationEval>();
   for (const period of (periods ?? []) as SchedulePeriod[]) {
     const bundle = await loadPeriodBundle(period.id, supabase);
     if (!bundle?.ratioRule) continue;
     const segments = toEngineSegments(bundle).filter((s) => s.date === today);
-    for (const zone of bundle.zones) {
-      const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
-      if (zoneSegs.length === 0) continue;
-      const adjusted = adjustSegmentsForLive(zoneSegs, liveByStaff, countsCfg);
-      const evals = evaluateZone(
-        adjusted,
-        toEngineRule(bundle.ratioRule),
-        tenant.ratio_slot_minutes
-      );
-      const slot = currentSlotOf(evals.get(today) ?? [], nowMinutes);
-      out.push({
-        zoneId: zone.id,
-        zoneName: zone.name,
-        status: slot?.status ?? "compliant",
+    if (segments.length === 0) continue;
+    const adjusted = adjustSegmentsForLive(segments, liveByStaff, countsCfg);
+    const evals = evaluateZone(
+      adjusted,
+      toEngineRule(bundle.ratioRule),
+      tenant.ratio_slot_minutes
+    );
+    const slot = currentSlotOf(evals.get(today) ?? [], nowMinutes);
+    const status = slot?.status ?? "compliant";
+    const prev = byLocation.get(period.location_id);
+    if (!prev || (status === "deficient" && prev.status !== "deficient")) {
+      byLocation.set(period.location_id, {
+        locationId: period.location_id,
+        locationName: locName.get(period.location_id) ?? "Location",
+        status,
         reason: slot?.deficiency_reason ?? null,
       });
     }
   }
-  return out;
+  return [...byLocation.values()];
 }

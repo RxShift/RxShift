@@ -15,7 +15,7 @@ import { eachDate, fmtRange } from "@/lib/dates";
 import { copyForward, createNextPeriod, publishPeriod } from "@/lib/actions/schedule";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
-  RatioZone,
+  Department,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -37,7 +37,7 @@ export interface BuilderBundle {
   shifts: ShiftWithSegments[];
   staff: Staff[];
   workTypes: WorkType[];
-  zones: RatioZone[];
+  departments: Department[];
   approvedTimeOff: TimeOffRequest[];
 }
 
@@ -111,8 +111,7 @@ export default function ScheduleBuilder({
   const deficientShiftIds = useMemo(() => {
     const out = new Set<string>();
     for (const s of bundle.shifts) {
-      if (!s.ratio_zone_id) continue;
-      const dates = validation.deficientCells[s.ratio_zone_id];
+      const dates = validation.deficientCells[s.location_id];
       if (dates?.includes(s.date)) out.add(s.id);
     }
     return out;
@@ -342,7 +341,7 @@ export default function ScheduleBuilder({
               {validation.ratioFlags.slice(0, 20).map((f, i) => (
                 <li key={`r${i}`}>
                   <span className="font-medium text-deficiency">Ratio</span> ·{" "}
-                  {f.date} {f.slot_label} ({f.zone_name}): {f.reason}
+                  {f.date} {f.slot_label} ({f.location_name}): {f.reason}
                 </li>
               ))}
               {groupedConstraintFlags.slice(0, 20).map((g, i) => (
@@ -431,9 +430,10 @@ export default function ScheduleBuilder({
           shift={editing.shift}
           period={bundle.period}
           locationId={locationId}
-          zones={bundle.zones}
+          locationName={locationName}
+          departments={bundle.departments}
+          requireDepartment={tenant.require_department}
           workTypes={bundle.workTypes}
-          hasRatio={tenant.has_ratio}
           defaultBreakMinutes={tenant.default_break_minutes ?? 30}
         />
       )}

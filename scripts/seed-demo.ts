@@ -273,36 +273,23 @@ async function main() {
     .select("id")
     .single();
 
-  // 4. Zones
-  const { data: mainZone } = await supabase
-    .from("ratio_zone")
-    .insert({ tenant_id: tenantId, location_id: smrx!.id, name: "SMRX Main Floor", ratio_isolated: false, ratio_rule_id: rule!.id })
-    .select("id")
-    .single();
-  const { data: spcZone } = await supabase
-    .from("ratio_zone")
-    .insert({ tenant_id: tenantId, location_id: smrx!.id, name: "SMRX SPC Compounding (isolated)", ratio_isolated: true, ratio_rule_id: rule!.id })
-    .select("id")
-    .single();
-  await supabase
-    .from("ratio_zone")
-    .insert({ tenant_id: tenantId, location_id: smms!.id, name: "SMMS Main", ratio_isolated: false, ratio_rule_id: rule!.id });
-
-  // 5. Departments
-  const deptNames = ["Home Infusion", "Hospice", "SPC Compounding"];
+  // 4. Departments (tenant-level; ratio is per location, no zones)
+  const deptNames = [
+    "Home Infusion",
+    "Hospice",
+    "SPC Compounding",
+    "Specialty Pharmacy",
+    "Treatment Center",
+  ];
   const deptIds = new Map<string, string>();
   for (const name of deptNames) {
     const { data } = await supabase
       .from("department")
-      .insert({ tenant_id: tenantId, location_id: smrx!.id, name })
+      .insert({ tenant_id: tenantId, name })
       .select("id")
       .single();
     deptIds.set(name, data!.id);
   }
-  await supabase.from("department").insert([
-    { tenant_id: tenantId, location_id: smms!.id, name: "Specialty Pharmacy" },
-    { tenant_id: tenantId, location_id: smms!.id, name: "Treatment Center" },
-  ]);
 
   // 6. Work types
   const { data: wtRows, error: wtErr } = await supabase
@@ -407,16 +394,20 @@ async function main() {
       const end = override?.end ?? pattern.end;
       const wtName = override?.workType ?? pattern.workType ?? null;
       const zoneKey = override?.zone ?? pattern.zone ?? "main";
-      const zoneId = zoneKey === "spc" ? spcZone!.id : mainZone!.id;
       const workTypeId = wtName ? (wtIds.get(wtName) ?? null) : null;
+      // "spc" shifts are tagged to the SPC Compounding department (was a zone).
+      const departmentId = meta.dept
+        ? (deptIds.get(meta.dept) ?? null)
+        : zoneKey === "spc"
+          ? (deptIds.get("SPC Compounding") ?? null)
+          : null;
 
       const { data: shift, error: shErr } = await supabase
         .from("shift")
         .insert({
           tenant_id: tenantId,
           location_id: smrx!.id,
-          department_id: meta.dept ? (deptIds.get(meta.dept) ?? null) : null,
-          ratio_zone_id: zoneId,
+          department_id: departmentId,
           staff_id: staffId,
           date,
           schedule_period_id: period!.id,
@@ -441,7 +432,7 @@ async function main() {
         : null;
       engineSegments.push({
         shift_id: shift!.id,
-        zone_id: zoneId,
+        location_id: smrx!.id,
         date,
         start_time: start,
         end_time: end,
@@ -461,22 +452,22 @@ async function main() {
     .update({ status: "published", published_at: new Date().toISOString() })
     .eq("id", period!.id);
 
-  for (const [zoneId, zoneName] of [
-    [mainZone!.id, "SMRX Main Floor"],
-    [spcZone!.id, "SMRX SPC Compounding (isolated)"],
-  ] as const) {
-    const zoneSegs = engineSegments.filter((s) => s.zone_id === zoneId);
-    if (zoneSegs.length === 0) continue;
-    const evals = evaluateZone(zoneSegs, { max_techs_per_pharmacist: 3 }, 30);
-    const rows = generateComplianceRecord(evals, zoneId, zoneName);
+  {
+    // Ratio is per location — one snapshot for SMRX from all its segments.
+    const evals = evaluateZone(engineSegments, { max_techs_per_pharmacist: 3 }, 30);
+    const rows = generateComplianceRecord(
+      evals,
+      smrx!.id,
+      "SMRX — Southwest Medical Pharmacy"
+    );
     await supabase.from("compliance_snapshot").insert({
       tenant_id: tenantId,
       schedule_period_id: period!.id,
-      ratio_zone_id: zoneId,
+      location_id: smrx!.id,
       rows,
     });
     const deficient = rows.filter((r) => r.ratio_status === "deficient").length;
-    console.log(`${zoneName}: ${rows.length} record hours, ${deficient} deficient`);
+    console.log(`SMRX: ${rows.length} record hours, ${deficient} deficient`);
   }
 
   // 11. Requests to make the queues look alive

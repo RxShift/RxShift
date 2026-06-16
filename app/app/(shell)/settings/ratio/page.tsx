@@ -1,21 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
-import ZonesManager from "@/components/app/settings/zones-manager";
+import { createClient } from "@/lib/supabase/server";
 import RatioRuleForm from "@/components/app/settings/ratio-rule-form";
-import type { Location, RatioRule, RatioZone } from "@/lib/types";
+import type { RatioRule } from "@/lib/types";
 
 export default async function RatioSettingsPage() {
   const session = await getSession();
   const tenant = session!.tenant!;
   const supabase = await createClient();
 
-  const [{ data: zones }, { data: locations }, { data: rules }] =
-    await Promise.all([
-      supabase.from("ratio_zone").select("*").order("name"),
-      supabase.from("location").select("*").order("name"),
-      supabase.from("ratio_rule").select("*"),
-    ]);
-
+  const { data: rules } = await supabase.from("ratio_rule").select("*");
   const allRules = (rules ?? []) as RatioRule[];
   const tenantRule = allRules.find((r) => r.tenant_id === tenant.id) ?? null;
   const nvSeed =
@@ -33,10 +26,18 @@ export default async function RatioSettingsPage() {
 
       <RatioRuleForm tenantRule={tenantRule} nvSeed={nvSeed} />
 
-      <ZonesManager
-        zones={(zones ?? []) as RatioZone[]}
-        locations={(locations ?? []) as Location[]}
-      />
+      <div className="rounded-lg border border-line bg-cloud/40 p-4 font-body text-sm text-steel">
+        <p className="font-brand text-[13px] font-bold text-navy">
+          One ratio per location
+        </p>
+        <p className="mt-1 leading-[1.6]">
+          The ratio is calculated per location — everyone counting toward the
+          ratio at a location counts together, whatever room or department
+          they&rsquo;re in. If a site genuinely needs two separate ratio pools
+          (e.g. a fully isolated sterile suite licensed on its own), add it as a
+          separate <a href="/app/settings/locations" className="underline">location</a>.
+        </p>
+      </div>
     </div>
   );
 }

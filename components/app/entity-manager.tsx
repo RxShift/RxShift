@@ -77,7 +77,6 @@ export interface ColumnDef<Row> {
 type EntityName =
   | "location"
   | "department"
-  | "ratio_zone"
   | "work_type"
   | "constraint_rule";
 

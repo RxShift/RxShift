@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { evaluateZone, minutesToTime, segmentCounts } from "@/lib/engine/ratio";
-import { evaluateConstraints } from "@/lib/engine/constraints";
+import { evaluateConstraints, detectDoubleBookings } from "@/lib/engine/constraints";
 import {
   generateComplianceRecord,
   deficiencyStreaks,
@@ -10,8 +10,8 @@ import {
 import type {
   ComplianceRecordRow,
   ConstraintRule,
+  Location,
   RatioRule,
-  RatioZone,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -31,15 +31,16 @@ export interface PeriodBundle {
   shifts: ShiftWithSegments[];
   staff: Staff[];
   workTypes: WorkType[];
-  zones: RatioZone[];
+  /** Locations referenced by this bundle (ratio is computed per location). */
+  locations: Location[];
   ratioRule: RatioRule | null;
   constraints: ConstraintRule[];
   approvedTimeOff: TimeOffRequest[];
 }
 
 export interface RatioFlagOut {
-  zone_id: string;
-  zone_name: string;
+  location_id: string;
+  location_name: string;
   date: string;
   slot_label: string; // "14:00–14:30"
   reason: string;
@@ -48,8 +49,8 @@ export interface RatioFlagOut {
 export interface ValidationOut {
   ratioFlags: RatioFlagOut[];
   constraintFlags: ConstraintFlag[];
-  /** dates (per zone) that contain at least one deficient slot */
-  deficientCells: { [zoneId: string]: string[] };
+  /** dates (per location) that contain at least one deficient slot */
+  deficientCells: { [locationId: string]: string[] };
 }
 
 export async function loadPeriodBundle(
@@ -70,7 +71,7 @@ export async function loadPeriodBundle(
     { data: segments },
     { data: staff },
     { data: workTypes },
-    { data: zones },
+    { data: locations },
     { data: rules },
     { data: constraints },
     { data: timeOff },
@@ -93,10 +94,7 @@ export async function loadPeriodBundle(
       .select("*")
       .eq("tenant_id", period.tenant_id)
       .order("name"),
-    supabase
-      .from("ratio_zone")
-      .select("*")
-      .eq("location_id", period.location_id),
+    supabase.from("location").select("*").eq("id", period.location_id),
     supabase.from("ratio_rule").select("*").eq("tenant_id", period.tenant_id),
     supabase
       .from("constraint_rule")
@@ -132,7 +130,7 @@ export async function loadPeriodBundle(
     })),
     staff: (staff ?? []) as Staff[],
     workTypes: (workTypes ?? []) as WorkType[],
-    zones: (zones ?? []) as RatioZone[],
+    locations: (locations ?? []) as Location[],
     ratioRule: tenantRule,
     constraints: (constraints ?? []) as ConstraintRule[],
     approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
@@ -154,7 +152,7 @@ export interface RangeBundle {
   shifts: ShiftWithSegments[];
   staff: Staff[];
   workTypes: WorkType[];
-  zones: RatioZone[];
+  locations: Location[];
   ratioRule: RatioRule | null;
   constraints: ConstraintRule[];
   approvedTimeOff: TimeOffRequest[];
@@ -180,7 +178,7 @@ export async function loadRangeBundle(
     { data: segments },
     { data: staff },
     { data: workTypes },
-    { data: zones },
+    { data: locations },
     { data: rules },
     { data: constraints },
     { data: timeOff },
@@ -191,7 +189,7 @@ export async function loadRangeBundle(
       : Promise.resolve({ data: [] as ShiftSegment[] }),
     supabase.from("staff").select("*").order("full_name"),
     supabase.from("work_type").select("*").order("name"),
-    supabase.from("ratio_zone").select("*").eq("location_id", locationId),
+    supabase.from("location").select("*").eq("id", locationId),
     supabase.from("ratio_rule").select("*"),
     supabase.from("constraint_rule").select("*").eq("active", true),
     supabase
@@ -232,7 +230,7 @@ export async function loadRangeBundle(
     })),
     staff: (staff ?? []) as Staff[],
     workTypes: (workTypes ?? []) as WorkType[],
-    zones: (zones ?? []) as RatioZone[],
+    locations: (locations ?? []) as Location[],
     ratioRule: tenantRule,
     constraints: (constraints ?? []) as ConstraintRule[],
     approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
@@ -264,7 +262,7 @@ export function validateRangeBundle(
     shifts: range.shifts,
     staff: range.staff,
     workTypes: range.workTypes,
-    zones: range.zones,
+    locations: range.locations,
     ratioRule: range.ratioRule,
     constraints: range.constraints,
     approvedTimeOff: range.approvedTimeOff,
@@ -294,7 +292,7 @@ export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
       const wt = seg.work_type_id ? (wtById.get(seg.work_type_id) ?? null) : null;
       out.push({
         shift_id: shift.id,
-        zone_id: shift.ratio_zone_id,
+        location_id: shift.location_id,
         date: shift.date,
         break_minutes: shift.break_minutes ?? 0,
         start_time: String(seg.start_time).slice(0, 5),
@@ -325,14 +323,20 @@ export function validateBundle(
 ): ValidationOut {
   const segments = toEngineSegments(bundle);
   const ratioFlags: RatioFlagOut[] = [];
-  const deficientCells: { [zoneId: string]: string[] } = {};
+  const deficientCells: { [locationId: string]: string[] } = {};
+  const locationName = new Map(bundle.locations.map((l) => [l.id, l.name]));
 
   if (tenant.has_ratio && bundle.ratioRule) {
-    for (const zone of bundle.zones) {
-      const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
-      if (zoneSegs.length === 0) continue;
+    // Ratio is per LOCATION: all counting staff at a location count together.
+    const byLocation = new Map<string, EngineSegment[]>();
+    for (const seg of segments) {
+      const list = byLocation.get(seg.location_id) ?? [];
+      list.push(seg);
+      byLocation.set(seg.location_id, list);
+    }
+    for (const [locationId, locSegs] of byLocation) {
       const evals = evaluateZone(
-        zoneSegs,
+        locSegs,
         toEngineRule(bundle.ratioRule),
         tenant.ratio_slot_minutes
       );
@@ -340,46 +344,55 @@ export function validateBundle(
         for (const slot of slots) {
           if (slot.status === "deficient") {
             ratioFlags.push({
-              zone_id: zone.id,
-              zone_name: zone.name,
+              location_id: locationId,
+              location_name: locationName.get(locationId) ?? "Location",
               date,
               slot_label: `${minutesToTime(slot.slot_start)}–${minutesToTime(slot.slot_start + slot.slot_minutes)}`,
               reason: slot.deficiency_reason ?? "deficient",
             });
-            const cells = deficientCells[zone.id] ?? [];
+            const cells = deficientCells[locationId] ?? [];
             if (!cells.includes(date)) cells.push(date);
-            deficientCells[zone.id] = cells;
+            deficientCells[locationId] = cells;
           }
         }
       }
     }
   }
 
-  const constraintFlags = evaluateConstraints(bundle.constraints, segments);
+  const constraintFlags = [
+    ...evaluateConstraints(bundle.constraints, segments),
+    ...detectDoubleBookings(segments),
+  ];
 
   return { ratioFlags, constraintFlags, deficientCells };
 }
 
-/** Generate compliance record rows for every zone in a period. */
+/** Generate compliance record rows for every location in a bundle. */
 export function buildComplianceRecords(
   bundle: PeriodBundle,
   tenant: Tenant
-): { zone: RatioZone; rows: ComplianceRecordRow[] }[] {
+): { location: Location; rows: ComplianceRecordRow[] }[] {
   if (!bundle.ratioRule) return [];
   const segments = toEngineSegments(bundle);
-  const out: { zone: RatioZone; rows: ComplianceRecordRow[] }[] = [];
+  const byLocation = new Map<string, EngineSegment[]>();
+  for (const seg of segments) {
+    const list = byLocation.get(seg.location_id) ?? [];
+    list.push(seg);
+    byLocation.set(seg.location_id, list);
+  }
 
-  for (const zone of bundle.zones) {
-    const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
-    if (zoneSegs.length === 0) continue;
+  const out: { location: Location; rows: ComplianceRecordRow[] }[] = [];
+  for (const location of bundle.locations) {
+    const locSegs = byLocation.get(location.id) ?? [];
+    if (locSegs.length === 0) continue;
     const evals = evaluateZone(
-      zoneSegs,
+      locSegs,
       toEngineRule(bundle.ratioRule),
       tenant.ratio_slot_minutes
     );
     out.push({
-      zone,
-      rows: generateComplianceRecord(evals, zone.id, zone.name),
+      location,
+      rows: generateComplianceRecord(evals, location.id, location.name),
     });
   }
   return out;

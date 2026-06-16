@@ -8,7 +8,7 @@ const maria: EngineStaff = { id: "st1", full_name: "Maria", ratio_type: "technic
 function seg(date: string, start = "08:00", end = "16:00"): EngineSegment {
   return {
     shift_id: `s-${date}`,
-    zone_id: null,
+    location_id: "loc1",
     date,
     start_time: start,
     end_time: end,

@@ -20,7 +20,8 @@ export interface EngineWorkType {
 /** One scheduled block of work, already joined to its staff + work type. */
 export interface EngineSegment {
   shift_id: string;
-  zone_id: string | null;
+  /** Ratio is computed per LOCATION — all counting staff at a location count together. */
+  location_id: string;
   date: string; // shift date yyyy-mm-dd; segment may spill into the next day
   start_time: string; // "HH:mm"
   end_time: string; // "HH:mm"; end <= start means it crosses midnight
@@ -56,7 +57,7 @@ export interface SlotEval {
 }
 
 /** date → ordered slot evaluations (only slots with any presence) */
-export type ZoneDayEvals = Map<string, SlotEval[]>;
+export type DayEvals = Map<string, SlotEval[]>;
 
 export interface ConstraintFlag {
   rule_id: string;

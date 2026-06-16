@@ -61,6 +61,8 @@ export interface Tenant {
   is_demo: boolean;
   /** When set on a demo tenant, ALL app email is rewritten to this address */
   demo_redirect_email: string | null;
+  /** When true, every shift must be assigned a department */
+  require_department: boolean;
   // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)
   billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
   billing_provider: "manual" | "stripe" | "chargebee" | null;
@@ -113,20 +115,12 @@ export interface Location {
   created_at: string;
 }
 
-export interface RatioZone {
-  id: string;
-  tenant_id: string;
-  location_id: string;
-  name: string;
-  ratio_isolated: boolean;
-  ratio_rule_id: string | null;
-  created_at: string;
-}
-
+// Departments are tenant-level groupings (front counter, compounding, hospice).
+// They do NOT affect ratio — ratio is computed per LOCATION. A department can be
+// used at any location; it's an optional tag on a shift, for filtering/pivoting.
 export interface Department {
   id: string;
   tenant_id: string;
-  location_id: string;
   name: string;
   created_at: string;
 }
@@ -144,6 +138,8 @@ export interface Staff {
   /** CPhT national certification — informational + shown in exports */
   certified: boolean;
   active: boolean;
+  /** Path within the private 'avatars' Storage bucket; null = no photo */
+  avatar_path: string | null;
   created_at: string;
 }
 
@@ -176,7 +172,6 @@ export interface Shift {
   tenant_id: string;
   location_id: string;
   department_id: string | null;
-  ratio_zone_id: string | null;
   staff_id: string;
   date: string; // yyyy-mm-dd
   schedule_period_id: string;
@@ -358,17 +353,17 @@ export interface ComplianceSnapshot {
   id: string;
   tenant_id: string;
   schedule_period_id: string;
-  ratio_zone_id: string;
+  location_id: string;
   generated_at: string;
   rows: ComplianceRecordRow[];
 }
 
-// Appendix D — one row per (date, hour, zone)
+// Appendix D — one row per (date, hour, location)
 export interface ComplianceRecordRow {
   date: string;
   hour: number;
-  zone_id: string;
-  zone_name: string;
+  location_id: string;
+  location_name: string;
   pharmacists_on_duty: string[];
   technicians_counting: { name: string; count?: never }[] | string[];
   technicians_count: number;

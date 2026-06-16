@@ -11,7 +11,7 @@ import Modal from "@/components/ui/modal";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { deleteShift, upsertShift } from "@/lib/actions/schedule";
 import type {
-  RatioZone,
+  Department,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -38,9 +38,10 @@ export default function ShiftModal({
   shift,
   period,
   locationId,
-  zones,
+  locationName,
+  departments,
+  requireDepartment,
   workTypes,
-  hasRatio,
   defaultBreakMinutes,
 }: {
   open: boolean;
@@ -50,9 +51,11 @@ export default function ShiftModal({
   shift: ShiftWithSegments | null;
   period: SchedulePeriod;
   locationId: string;
-  zones: RatioZone[];
+  /** Shown as read-only context (the cell already determines the location). */
+  locationName?: string;
+  departments: Department[];
+  requireDepartment: boolean;
   workTypes: WorkType[];
-  hasRatio: boolean;
   defaultBreakMinutes: number;
 }) {
   const router = useRouter();
@@ -71,9 +74,7 @@ export default function ShiftModal({
         }))
       : [{ start_time: "09:00", end_time: "17:00", work_type_id: "", counts: "default" }]
   );
-  const [zoneId, setZoneId] = useState(
-    shift?.ratio_zone_id ?? zones[0]?.id ?? ""
-  );
+  const [departmentId, setDepartmentId] = useState(shift?.department_id ?? "");
   const [breakMinutes, setBreakMinutes] = useState(
     String(shift ? shift.break_minutes : defaultBreakMinutes)
   );
@@ -87,6 +88,10 @@ export default function ShiftModal({
   }
 
   async function handleSave() {
+    if (requireDepartment && !departmentId) {
+      setError("This pharmacy requires a department on every shift.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const result = await upsertShift(shift?.id ?? null, {
@@ -94,7 +99,7 @@ export default function ShiftModal({
       location_id: locationId,
       staff_id: staff.id,
       date,
-      ratio_zone_id: zoneId || null,
+      department_id: departmentId || null,
       break_minutes: Math.max(0, parseInt(breakMinutes, 10) || 0),
       segments: segments.map((s) => ({
         start_time: s.start_time,
@@ -155,23 +160,26 @@ export default function ShiftModal({
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-4">
-          {hasRatio && zones.length > 0 && (
-            <div className="w-[280px]">
-              <Label htmlFor="zone">Ratio zone</Label>
-              <Select
-                id="zone"
-                value={zoneId}
-                onChange={(e) => setZoneId(e.target.value)}
-              >
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                    {z.ratio_isolated ? " (isolated)" : ""}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
+          <div className="w-[280px]">
+            <Label htmlFor="dept">
+              Department{requireDepartment ? "" : " (optional)"}
+            </Label>
+            <Select
+              id="dept"
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+            >
+              <option value="">
+                {requireDepartment ? "— Select a department —" : "— None —"}
+              </option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+            {locationName && <HelpText>Location: {locationName}</HelpText>}
+          </div>
           <div>
             <Label htmlFor="break">Unpaid break (min)</Label>
             <Input

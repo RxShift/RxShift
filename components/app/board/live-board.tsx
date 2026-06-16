@@ -16,9 +16,9 @@ interface BoardPerson {
   workType: string | null;
 }
 
-interface ZoneCard {
-  zoneId: string;
-  zoneName: string;
+interface LocationCard {
+  locationId: string;
+  locationName: string;
   pharmacistsCounting: BoardPerson[];
   pharmacistsNotCounting: (BoardPerson & { reason: string })[];
   techsCounting: BoardPerson[];
@@ -50,13 +50,13 @@ function Dot({ color }: { color: string | null }) {
 }
 
 export default function LiveBoard({
-  zones,
+  locations,
   staff,
   isManager,
   statusOptions,
   labels,
 }: {
-  zones: ZoneCard[];
+  locations: LocationCard[];
   staff: { id: string; name: string; live: string }[];
   isManager: boolean;
   statusOptions: { value: string; label: string }[];
@@ -79,28 +79,28 @@ export default function LiveBoard({
     setBusy(false);
   }
 
-  if (zones.length === 0) {
+  if (locations.length === 0) {
     return (
-      <EmptyState message="No zone-assigned shifts scheduled for today. The live board reads from today's published schedule." />
+      <EmptyState message="No shifts scheduled for today. The live board reads from today's published schedule." />
     );
   }
 
   return (
     <div className="max-w-[1040px] space-y-6">
       <div className="grid gap-5 lg:grid-cols-2">
-        {zones.map((zone) => (
+        {locations.map((loc) => (
           <Card
-            key={zone.zoneId}
+            key={loc.locationId}
             className={
-              zone.status === "deficient" ? "border-l-4 border-l-deficiency" : ""
+              loc.status === "deficient" ? "border-l-4 border-l-deficiency" : ""
             }
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-brand text-base font-bold text-navy">
-                {zone.zoneName}
+                {loc.locationName}
               </h2>
-              <Badge tone={zone.status === "deficient" ? "deficiency" : "compliant"}>
-                {zone.status === "deficient" ? "Deficient now" : "Compliant now"}
+              <Badge tone={loc.status === "deficient" ? "deficiency" : "compliant"}>
+                {loc.status === "deficient" ? "Deficient now" : "Compliant now"}
               </Badge>
             </div>
 
@@ -110,7 +110,7 @@ export default function LiveBoard({
                   Pharmacists counting
                 </p>
                 <p className="font-brand text-[32px] font-bold text-navy">
-                  {zone.pharmacistsCounting.length}
+                  {loc.pharmacistsCounting.length}
                 </p>
               </div>
               <div>
@@ -118,25 +118,25 @@ export default function LiveBoard({
                   Techs counting
                 </p>
                 <p
-                  className={`font-brand text-[32px] font-bold ${zone.status === "deficient" ? "text-deficiency" : "text-navy"}`}
+                  className={`font-brand text-[32px] font-bold ${loc.status === "deficient" ? "text-deficiency" : "text-navy"}`}
                 >
-                  {zone.techsCounting.length}
+                  {loc.techsCounting.length}
                 </p>
               </div>
               <p className="mb-2 font-body text-xs text-steel">
-                limit {zone.techLimit} ({zone.limitLabel})
+                limit {loc.techLimit} ({loc.limitLabel})
               </p>
             </div>
 
-            {zone.reason && (
+            {loc.reason && (
               <p className="mb-3 rounded bg-deficiency-bg p-2.5 font-body text-[13px] text-deficiency">
-                {zone.reason}
+                {loc.reason}
               </p>
             )}
 
             <div className="space-y-1 font-body text-[13px] text-navy">
               <GroupHead>Pharmacists</GroupHead>
-              {zone.pharmacistsCounting.map((p) => (
+              {loc.pharmacistsCounting.map((p) => (
                 <p key={p.staffId}>
                   <Dot color={p.color} />
                   <span className="font-medium">{p.name}</span>{" "}
@@ -146,7 +146,7 @@ export default function LiveBoard({
                 </p>
               ))}
               <GroupHead>Techs — counting</GroupHead>
-              {zone.techsCounting.map((t) => (
+              {loc.techsCounting.map((t) => (
                 <p key={t.staffId}>
                   <Dot color={t.color} />
                   <span className="font-medium">{t.name}</span>{" "}
@@ -155,10 +155,10 @@ export default function LiveBoard({
                   </span>
                 </p>
               ))}
-              {zone.othersOnNow.length > 0 && (
+              {loc.othersOnNow.length > 0 && (
                 <>
                   <GroupHead>Other staff</GroupHead>
-                  {zone.othersOnNow.map((o) => (
+                  {loc.othersOnNow.map((o) => (
                     <p key={o.staffId}>
                       <Dot color={o.color} />
                       <span className="font-medium">{o.name}</span>{" "}
@@ -169,17 +169,17 @@ export default function LiveBoard({
                   ))}
                 </>
               )}
-              {(zone.pharmacistsNotCounting.length > 0 ||
-                zone.techsNotCounting.length > 0) && (
+              {(loc.pharmacistsNotCounting.length > 0 ||
+                loc.techsNotCounting.length > 0) && (
                 <>
                   <GroupHead>Not counting right now</GroupHead>
-                  {zone.pharmacistsNotCounting.map((p) => (
+                  {loc.pharmacistsNotCounting.map((p) => (
                     <p key={p.staffId} className="text-steel">
                       <Dot color={p.color} />
                       {p.name} · RPh · {p.reason}
                     </p>
                   ))}
-                  {zone.techsNotCounting.map((t) => (
+                  {loc.techsNotCounting.map((t) => (
                     <p key={t.staffId} className="text-steel">
                       <Dot color={t.color} />
                       {t.name} · {t.reason}

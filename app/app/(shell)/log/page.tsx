@@ -91,8 +91,8 @@ export default async function ComplianceLogPage({
           }))}
           periodId={periodId}
           records={records.map((r) => ({
-            zoneId: r.zone.id,
-            zoneName: r.zone.name,
+            locationId: r.location.id,
+            locationName: r.location.name,
             rows: r.rows,
           }))}
           streaks={streaks}

@@ -180,7 +180,7 @@ export async function GET(
         out.push({
           Date: r.date,
           Hour: hourLabel(r.hour),
-          Zone: r.zone_name,
+          Location: r.location_name,
           "Pharmacist(s)": r.pharmacists_on_duty.join(", "),
           "Technician(s) counting": (r.technicians_counting as string[])
             .map(cphtName)

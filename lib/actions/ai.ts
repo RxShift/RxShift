@@ -168,15 +168,6 @@ function expandCreateDates(
   });
 }
 
-/** Default zone for AI-created shifts: the period location's main floor. */
-function defaultZoneId(
-  bundle: NonNullable<Awaited<ReturnType<typeof loadPeriodBundle>>>
-): string | null {
-  return (
-    bundle.zones.find((z) => !z.ratio_isolated)?.id ?? bundle.zones[0]?.id ?? null
-  );
-}
-
 export interface AiCommandResult {
   mode: "answer" | "proposal";
   answer?: string;
@@ -212,7 +203,7 @@ export async function aiScheduleCommand(
       .join("\n");
     const flagSummary = [
       ...validation.ratioFlags.map(
-        (f) => `ratio: ${f.date} ${f.slot_label} ${f.zone_name}: ${f.reason}`
+        (f) => `ratio: ${f.date} ${f.slot_label} ${f.location_name}: ${f.reason}`
       ),
       ...validation.constraintFlags.map((f) => `constraint: ${f.message}`),
     ].join("\n");
@@ -277,7 +268,6 @@ export async function aiScheduleCommand(
       } else if (op.op === "create_shifts") {
         const person = staffById.get(op.staff_id);
         if (!person) throw new ActionError("Proposed shifts target unknown staff.");
-        const zoneId = defaultZoneId(bundle);
         const spanMin =
           timeToMinutes(op.end_time) - timeToMinutes(op.start_time);
         const breakMin =
@@ -286,7 +276,7 @@ export async function aiScheduleCommand(
           createdCount += 1;
           simulated.push({
             shift_id: `proposed-${op.staff_id}-${date}`,
-            zone_id: zoneId,
+            location_id: bundle.period.location_id,
             date,
             start_time: op.start_time,
             end_time: op.end_time,
@@ -330,9 +320,16 @@ export async function aiScheduleCommand(
     const countDeficient = (segs: typeof segments) => {
       if (!ctx.tenant.has_ratio || !bundle.ratioRule) return 0;
       let n = 0;
-      for (const zone of bundle.zones) {
+      // Ratio is per location — group the segments by location and evaluate each.
+      const byLoc = new Map<string, typeof segments>();
+      for (const s of segs) {
+        const list = byLoc.get(s.location_id) ?? [];
+        list.push(s);
+        byLoc.set(s.location_id, list);
+      }
+      for (const [, locSegs] of byLoc) {
         const evals = evaluateZone(
-          segs.filter((s) => s.zone_id === zone.id),
+          locSegs,
           toEngineRule(bundle.ratioRule),
           ctx.tenant.ratio_slot_minutes
         );
@@ -388,7 +385,6 @@ export async function applyAiOperations(
 
     for (const op of ops) {
       if (op.op === "create_shifts" && bundle) {
-        const zoneId = defaultZoneId(bundle);
         const spanMin =
           timeToMinutes(op.end_time) - timeToMinutes(op.start_time);
         const breakMin =
@@ -399,7 +395,6 @@ export async function applyAiOperations(
             .insert({
               tenant_id: ctx.tenantId,
               location_id: bundle.period.location_id,
-              ratio_zone_id: zoneId,
               staff_id: op.staff_id,
               date,
               schedule_period_id: periodId,

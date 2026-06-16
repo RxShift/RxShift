@@ -14,7 +14,7 @@ import { WorkTypeLegend } from "./shift-block";
 import ScheduleGrid, { type DateStatus } from "./schedule-grid";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
-  RatioZone,
+  Department,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -38,7 +38,8 @@ export default function ScheduleRangeView({
   shifts,
   staff,
   workTypes,
-  zones,
+  departments,
+  requireDepartment,
   approvedTimeOff,
   validation,
 }: {
@@ -51,7 +52,8 @@ export default function ScheduleRangeView({
   shifts: ShiftWithSegments[];
   staff: Staff[];
   workTypes: WorkType[];
-  zones: RatioZone[];
+  departments: Department[];
+  requireDepartment: boolean;
   approvedTimeOff: TimeOffRequest[];
   validation: ValidationOut;
 }) {
@@ -90,8 +92,7 @@ export default function ScheduleRangeView({
   const deficientShiftIds = useMemo(() => {
     const out = new Set<string>();
     for (const s of shifts) {
-      if (!s.ratio_zone_id) continue;
-      if (validation.deficientCells[s.ratio_zone_id]?.includes(s.date))
+      if (validation.deficientCells[s.location_id]?.includes(s.date))
         out.add(s.id);
     }
     return out;
@@ -192,9 +193,9 @@ export default function ScheduleRangeView({
           shift={editing.shift}
           period={editing.period}
           locationId={locationId}
-          zones={zones}
+          departments={departments}
+          requireDepartment={requireDepartment}
           workTypes={workTypes}
-          hasRatio={tenant.has_ratio}
           defaultBreakMinutes={tenant.default_break_minutes ?? 30}
         />
       )}

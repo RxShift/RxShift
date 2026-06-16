@@ -96,7 +96,7 @@ async function calloutGap(
     .select("*")
     .eq("id", shiftId)
     .maybeSingle();
-  if (!shift || !shift.ratio_zone_id || !ctx.tenant.has_ratio) return null;
+  if (!shift || !shift.location_id || !ctx.tenant.has_ratio) return null;
 
   const bundle = await loadPeriodBundle(shift.schedule_period_id);
   if (!bundle?.ratioRule) return null;
@@ -105,7 +105,7 @@ async function calloutGap(
     max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist,
   };
   const all = toEngineSegments(bundle).filter(
-    (s) => s.zone_id === shift.ratio_zone_id && s.date === shift.date
+    (s) => s.location_id === shift.location_id && s.date === shift.date
   );
   const without = all.filter((s) => s.shift_id !== shiftId);
 

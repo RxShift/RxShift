@@ -41,7 +41,7 @@ function seg(
 ): EngineSegment {
   return {
     shift_id: `shift-${staff.id}-${start}`,
-    zone_id: "z1",
+    location_id: "loc1",
     date,
     start_time: start,
     end_time: end,

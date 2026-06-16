@@ -83,9 +83,9 @@ export default async function LiveBoardPage() {
     color: string | null;
     workType: string | null;
   };
-  const zoneCards: {
-    zoneId: string;
-    zoneName: string;
+  const locationCards: {
+    locationId: string;
+    locationName: string;
     pharmacistsCounting: BoardPerson[];
     pharmacistsNotCounting: (BoardPerson & { reason: string })[];
     techsCounting: BoardPerson[];
@@ -108,13 +108,13 @@ export default async function LiveBoardPage() {
     const colorOf = (s: (typeof segments)[number]) =>
       s.work_type ? (wtColorById.get(s.work_type.id) ?? null) : null;
 
-    for (const zone of bundle.zones) {
-      const zoneSegs = segments.filter((s) => s.zone_id === zone.id);
-      if (zoneSegs.length === 0) continue;
+    for (const location of bundle.locations) {
+      const locSegs = segments.filter((s) => s.location_id === location.id);
+      if (locSegs.length === 0) continue;
 
       // Apply live-status overrides for the current moment (shared with the
       // alert cron so the badge and the alert always agree).
-      const adjusted = adjustSegmentsForLive(zoneSegs, liveByStaff, countsCfg);
+      const adjusted = adjustSegmentsForLive(locSegs, liveByStaff, countsCfg);
 
       const evals = evaluateZone(
         adjusted,
@@ -123,7 +123,7 @@ export default async function LiveBoardPage() {
       );
       const currentSlot = currentSlotOf(evals.get(today) ?? [], nowMinutes);
 
-      const onNow = zoneSegs.filter((seg) => {
+      const onNow = locSegs.filter((seg) => {
         const start = timeToMinutes(seg.start_time);
         const end0 = timeToMinutes(seg.end_time);
         const end = end0 > start ? end0 : 1440;
@@ -191,9 +191,9 @@ export default async function LiveBoardPage() {
         }));
 
       const engineRule = toEngineRule(bundle.ratioRule);
-      zoneCards.push({
-        zoneId: zone.id,
-        zoneName: zone.name,
+      locationCards.push({
+        locationId: location.id,
+        locationName: location.name,
         pharmacistsCounting,
         pharmacistsNotCounting,
         techsCounting,
@@ -215,7 +215,7 @@ export default async function LiveBoardPage() {
       <PageHeader title="Live Board" />
       <div className="flex-1 p-8">
         <LiveBoard
-          zones={zoneCards}
+          locations={locationCards}
           staff={(staff ?? []).map((s: Staff) => ({
             id: s.id,
             name: s.full_name,

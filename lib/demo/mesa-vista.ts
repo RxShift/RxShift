@@ -171,7 +171,6 @@ export async function clearMesaVistaData(
     "staff_location",
     "staff",
     "department",
-    "ratio_zone",
     "location",
     "ratio_rule",
     "work_type",
@@ -393,15 +392,14 @@ export async function seedMesaVista(
     .single();
   if (ruleErr) throw new Error(ruleErr.message);
 
-  // Locations + one main-floor zone each
+  // Locations (ratio is computed per location — no zones)
   const LOCS: { key: "SV" | "HD" | "NLV"; name: string; address: string }[] = [
     { key: "SV", name: "Mesa Vista — Spring Valley", address: "4880 S Rainbow Blvd, Las Vegas, NV" },
     { key: "HD", name: "Mesa Vista — Henderson", address: "2310 W Horizon Ridge Pkwy, Henderson, NV" },
     { key: "NLV", name: "Mesa Vista — North Las Vegas", address: "3175 W Craig Rd, North Las Vegas, NV" },
   ];
   const locIds = new Map<string, string>();
-  const zoneIds = new Map<string, string>();
-  const zoneNames = new Map<string, string>();
+  const locNames = new Map<string, string>();
   for (const loc of LOCS) {
     const { data: row, error } = await service
       .from("location")
@@ -410,22 +408,9 @@ export async function seedMesaVista(
       .single();
     if (error) throw new Error(error.message);
     locIds.set(loc.key, row.id);
-    const { data: zone, error: zErr } = await service
-      .from("ratio_zone")
-      .insert({
-        tenant_id: tenantId,
-        location_id: row.id,
-        name: `${loc.name.replace("Mesa Vista — ", "")} Main Floor`,
-        ratio_isolated: false,
-        ratio_rule_id: rule.id,
-      })
-      .select("id, name")
-      .single();
-    if (zErr) throw new Error(zErr.message);
-    zoneIds.set(loc.key, zone.id);
-    zoneNames.set(loc.key, zone.name);
+    locNames.set(loc.key, loc.name);
   }
-  log("3 locations + main-floor zones.");
+  log("3 locations.");
 
   // Work types
   const { data: wtRows, error: wtErr } = await service
@@ -576,7 +561,6 @@ export async function seedMesaVista(
           shiftInputs.map((s) => ({
             tenant_id: tenantId,
             location_id: locIds.get(loc.key)!,
-            ratio_zone_id: zoneIds.get(loc.key)!,
             staff_id: staffIds.get(s.staff)!,
             date: s.date,
             schedule_period_id: period.id,
@@ -608,7 +592,7 @@ export async function seedMesaVista(
         const wt = s.workType ? WORK_TYPES.find((w) => w.name === s.workType)! : null;
         return {
           shift_id: shifts[i].id,
-          zone_id: zoneIds.get(loc.key)!,
+          location_id: locIds.get(loc.key)!,
           date: s.date,
           start_time: s.start,
           end_time: s.end,
@@ -623,13 +607,13 @@ export async function seedMesaVista(
       const evals = evaluateZone(engineSegs, { max_techs_per_pharmacist: 3 }, 30);
       const rows = generateComplianceRecord(
         evals,
-        zoneIds.get(loc.key)!,
-        zoneNames.get(loc.key)!
+        locIds.get(loc.key)!,
+        locNames.get(loc.key)!
       );
       await service.from("compliance_snapshot").insert({
         tenant_id: tenantId,
         schedule_period_id: period.id,
-        ratio_zone_id: zoneIds.get(loc.key)!,
+        location_id: locIds.get(loc.key)!,
         rows,
       });
       deficientHours += rows.filter((r) => r.ratio_status === "deficient").length;

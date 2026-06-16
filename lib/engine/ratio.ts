@@ -14,7 +14,7 @@ import type {
   EngineRatioRule,
   EngineSegment,
   SlotEval,
-  ZoneDayEvals,
+  DayEvals,
 } from "./types";
 
 export function timeToMinutes(t: string): number {
@@ -91,7 +91,7 @@ export function evaluateZone(
   segments: EngineSegment[],
   rule: EngineRatioRule,
   slotMinutes: number
-): ZoneDayEvals {
+): DayEvals {
   const byDate = new Map<string, Interval[]>();
   for (const seg of segments) {
     for (const iv of toIntervals(seg)) {
@@ -101,7 +101,7 @@ export function evaluateZone(
     }
   }
 
-  const result: ZoneDayEvals = new Map();
+  const result: DayEvals = new Map();
 
   for (const [date, intervals] of byDate) {
     const slots: SlotEval[] = [];
@@ -174,7 +174,7 @@ export function evaluateZone(
 }
 
 /** Convenience: list the deficient slots as flat flags for the UI. */
-export function deficientSlots(evals: ZoneDayEvals) {
+export function deficientSlots(evals: DayEvals) {
   const out: { date: string; slot: SlotEval }[] = [];
   for (const [date, slots] of evals) {
     for (const slot of slots) {

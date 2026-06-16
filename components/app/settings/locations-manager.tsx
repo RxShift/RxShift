@@ -13,17 +13,13 @@ export default function LocationsManager({
   locations: Location[];
   departments: Department[];
 }) {
-  const locName = (id: string) =>
-    locations.find((l) => l.id === id)?.name ?? "—";
-  const locOptions = locations.map((l) => ({ value: l.id, label: l.name }));
-
   return (
     <div className="max-w-[840px] space-y-10">
       <EntityManager
         entity="location"
         title="Location"
         rows={locations}
-        emptyMessage="No locations yet. Add your first pharmacy location — operating hours, departments, and ratio zones all hang off it."
+        emptyMessage="No locations yet. Add your first pharmacy location — each location is its own ratio unit (everyone at a location counts toward one ratio)."
         columns={[
           {
             label: "Name",
@@ -42,25 +38,17 @@ export default function LocationsManager({
         entity="department"
         title="Department"
         rows={departments}
-        emptyMessage="Departments are optional groupings inside a location (front counter, fulfillment). Schedulers can be scoped to departments."
+        emptyMessage="Departments are optional groupings (compounding, hospice, front counter) used to organize and filter schedules. They don't affect the ratio, and the same department can be used at any location."
         columns={[
           {
             label: "Name",
             render: (r) => <span className="font-medium">{r.name}</span>,
           },
-          { label: "Location", render: (r) => locName(r.location_id) },
         ]}
         fields={[
           { name: "name", label: "Department name", type: "text", required: true },
-          {
-            name: "location_id",
-            label: "Location",
-            type: "select",
-            required: true,
-            options: locOptions,
-          },
         ]}
-        toFormValues={(r) => ({ name: r.name, location_id: r.location_id })}
+        toFormValues={(r) => ({ name: r.name })}
       />
     </div>
   );

@@ -76,7 +76,6 @@ const shiftSchema = z.object({
   location_id: z.string().uuid(),
   staff_id: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  ratio_zone_id: z.string().uuid().nullish(),
   department_id: z.string().uuid().nullish(),
   notes: z.string().max(500).nullish(),
   break_minutes: z.coerce.number().int().min(0).max(240).default(0),
@@ -200,7 +199,6 @@ export async function copyForward(
           tenant_id: ctx.tenantId,
           location_id: shift.location_id,
           department_id: shift.department_id,
-          ratio_zone_id: shift.ratio_zone_id,
           staff_id: shift.staff_id,
           date: newDate,
           schedule_period_id: periodId,
@@ -287,11 +285,11 @@ export async function publishPeriod(
     // Snapshot the compliance record at publish (Appendix D retention)
     const records = buildComplianceRecords(bundle, ctx.tenant);
     const streakAlerts: string[] = [];
-    for (const { zone, rows } of records) {
+    for (const { location, rows } of records) {
       await supabase.from("compliance_snapshot").insert({
         tenant_id: ctx.tenantId,
         schedule_period_id: periodId,
-        ratio_zone_id: zone.id,
+        location_id: location.id,
         rows,
       });
       // 3+ consecutive deficient days: alert the pharmacy's OWN managers.
@@ -301,7 +299,7 @@ export async function publishPeriod(
       const streaks = deficiencyStreaks(rows);
       for (const s of streaks.streaks.filter((x) => x.length >= 3)) {
         streakAlerts.push(
-          `${zone.name}: ${s.length} consecutive deficient days starting ${s.start}`
+          `${location.name}: ${s.length} consecutive deficient days starting ${s.start}`
         );
       }
     }

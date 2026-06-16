@@ -176,7 +176,6 @@ export async function goLiveTenant(): Promise<ActionResult> {
 type EntityName =
   | "location"
   | "department"
-  | "ratio_zone"
   | "work_type"
   | "constraint_rule";
 
@@ -186,15 +185,10 @@ const SCHEMAS: Record<EntityName, z.ZodType> = {
     address: z.string().max(300).nullish(),
     operating_hours: z.record(z.string(), z.union([z.object({ open: z.string(), close: z.string() }), z.null()])).nullish(),
   }),
+  // Departments are tenant-level groupings (compounding, hospice, front counter).
+  // They don't affect ratio and aren't tied to a location.
   department: z.object({
     name: z.string().min(1).max(120),
-    location_id: z.string().uuid(),
-  }),
-  ratio_zone: z.object({
-    name: z.string().min(1).max(120),
-    location_id: z.string().uuid(),
-    ratio_isolated: z.coerce.boolean(),
-    ratio_rule_id: z.string().uuid().nullish(),
   }),
   work_type: z.object({
     name: z.string().min(1).max(120),
@@ -326,13 +320,6 @@ export async function upsertRatioRule(input: unknown): Promise<ActionResult> {
       if (error) throw new ActionError(error.message);
       ruleId = row.id;
     }
-
-    // Point un-linked zones at the tenant rule
-    await supabase
-      .from("ratio_zone")
-      .update({ ratio_rule_id: ruleId })
-      .eq("tenant_id", ctx.tenantId)
-      .is("ratio_rule_id", null);
 
     await logActivity(ctx, "upsert", "ratio_rule", ruleId, data);
     revalidatePath("/app", "layout");

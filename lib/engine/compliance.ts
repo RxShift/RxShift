@@ -4,12 +4,12 @@
 // that is the audit defense), and compliant/deficient status per hour.
 
 import type { ComplianceRecordRow } from "@/lib/types";
-import type { ZoneDayEvals } from "./types";
+import type { DayEvals } from "./types";
 
 export function generateComplianceRecord(
-  evals: ZoneDayEvals,
-  zoneId: string,
-  zoneName: string
+  evals: DayEvals,
+  locationId: string,
+  locationName: string
 ): ComplianceRecordRow[] {
   const rows: ComplianceRecordRow[] = [];
 
@@ -47,8 +47,8 @@ export function generateComplianceRecord(
       rows.push({
         date,
         hour,
-        zone_id: zoneId,
-        zone_name: zoneName,
+        location_id: locationId,
+        location_name: locationName,
         pharmacists_on_duty: [...pharmacists].sort(),
         technicians_counting: [...techsCounting].sort(),
         technicians_count: techsCounting.size,
@@ -115,7 +115,7 @@ export function complianceRecordToCsv(rows: ComplianceRecordRow[]): string {
   const header = [
     "Date",
     "Hour",
-    "Zone",
+    "Location",
     "Pharmacists on duty",
     "Technicians counting",
     "Technician count",
@@ -128,7 +128,7 @@ export function complianceRecordToCsv(rows: ComplianceRecordRow[]): string {
     [
       r.date,
       `${String(r.hour).padStart(2, "0")}:00`,
-      esc(r.zone_name),
+      esc(r.location_name),
       esc(r.pharmacists_on_duty.join("; ")),
       esc((r.technicians_counting as string[]).join("; ")),
       String(r.technicians_count),

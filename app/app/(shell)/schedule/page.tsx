@@ -23,7 +23,7 @@ import {
   nowInTimeZone,
   periodEnd,
 } from "@/lib/dates";
-import type { Location, SchedulePeriod } from "@/lib/types";
+import type { Department, Location, SchedulePeriod } from "@/lib/types";
 
 // View windows are decoupled from the build cycle: you can browse by week,
 // 2 weeks, or month regardless of how the schedule was built/published.
@@ -124,11 +124,12 @@ export default async function SchedulePage({
   const tenant = session!.tenant!;
   const supabase = await createClient();
 
-  const { data: locations } = await supabase
-    .from("location")
-    .select("*")
-    .order("name");
+  const [{ data: locations }, { data: departments }] = await Promise.all([
+    supabase.from("location").select("*").order("name"),
+    supabase.from("department").select("*").order("name"),
+  ]);
   const locs = (locations ?? []) as Location[];
+  const depts = (departments ?? []) as Department[];
 
   if (locs.length === 0) {
     return (
@@ -288,7 +289,8 @@ export default async function SchedulePage({
             shifts={range.shifts}
             staff={range.staff}
             workTypes={range.workTypes}
-            zones={range.zones}
+            departments={depts}
+            requireDepartment={tenant.require_department}
             approvedTimeOff={range.approvedTimeOff}
             validation={rangeValidation}
           />
@@ -363,7 +365,7 @@ export default async function SchedulePage({
             shifts: bundle.shifts,
             staff: bundle.staff.filter((s) => s.active),
             workTypes: bundle.workTypes,
-            zones: bundle.zones,
+            departments: depts,
             approvedTimeOff: bundle.approvedTimeOff,
           }}
           validation={validation}
