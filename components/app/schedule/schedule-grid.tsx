@@ -2,18 +2,26 @@
 
 // The shared spreadsheet grid: rows = staff (banded by role), columns = days.
 //
-// Sticky behavior (the part that used to be broken): the staff-name column
-// freezes on horizontal scroll and the date header freezes on vertical scroll,
-// like a spreadsheet. This ONLY works because the table uses
-// `border-separate` — Chrome silently ignores `position: sticky` on cells in a
-// `border-collapse` table, which is why the staff column scrolled away before.
-// Horizontal scroll happens inside this component's overflow-x container;
-// vertical scroll is the page/window, so `top-0` pins the header to the
-// viewport. Don't add a fixed height / overflow-y here or `top-0` breaks.
+// Sticky behavior: the staff-name column freezes on horizontal scroll and the
+// date header freezes on vertical scroll, like a spreadsheet. Two things make
+// this work:
+//   1. `border-separate` on the table — Chrome silently ignores
+//      `position: sticky` on cells in a `border-collapse` table.
+//   2. This container is a BOUNDED scroll region: it has a capped height and
+//      `overflow-auto`, so both axes scroll *inside* it. That is what pins the
+//      header to the top of the grid (instead of off-screen) and keeps the
+//      horizontal scrollbar at the grid's bottom edge, always on screen. An
+//      earlier version let the whole page scroll with no height cap here — but
+//      `overflow-x` already makes this a scroll container on both axes, so the
+//      header stuck to a box that itself scrolled away. The height cap is the
+//      fix; it is measured at runtime to fill the viewport below whatever
+//      chrome sits above the grid.
 //
 // Used by the schedule builder (single editable period) and the range view
 // (week / 2-week / month across periods). The caller owns the data maps and
 // what a cell click does; this component owns layout + sticky + banding.
+// `onCondensedChange` (optional) fires as the grid scrolls so the caller can
+// collapse its top chrome to a slim strip; absent = no-op (range view).
 
 import { Fragment, useEffect, useRef } from "react";
 import { fmtDay } from "@/lib/dates";
@@ -38,6 +46,7 @@ export default function ScheduleGrid({
   workTypeById,
   dateStatus,
   onCellClick,
+  onCondensedChange,
 }: {
   dates: string[];
   today: string;
@@ -50,9 +59,63 @@ export default function ScheduleGrid({
   /** Optional per-date publish state — when set, columns are tinted/labeled. */
   dateStatus?: Map<string, DateStatus>;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
+  /** Fires (rAF-debounced) as the grid scrolls so the caller can condense its top chrome. */
+  onCondensedChange?: (condensed: boolean) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLSpanElement>(null);
+
+  // Bound the grid to the viewport so it scrolls internally — this is what makes
+  // the sticky header and frozen column work and keeps the horizontal scrollbar
+  // on screen. Measured rather than hardcoded because the chrome above the grid
+  // varies (pills, AI bar, toolbar, flags, banners) and can condense.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const FOOTER_RESERVE = 112; // room for the legend + help line below the grid
+    const fit = () => {
+      const top = el.getBoundingClientRect().top;
+      const next = `${Math.max(320, window.innerHeight - top - FOOTER_RESERVE)}px`;
+      if (el.style.maxHeight !== next) el.style.maxHeight = next; // guard avoids RO loop
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    // Recompute when the chrome above the grid changes height (e.g. it condenses).
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener("resize", fit);
+      ro.disconnect();
+    };
+  }, []);
+
+  // Tell the caller to condense/expand its top chrome as the grid scrolls.
+  // Hysteresis (24 / 8 px) avoids flicker right at the threshold.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onCondensedChange) return;
+    let raf = 0;
+    let condensed = false;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = el.scrollTop;
+        if (!condensed && y > 24) {
+          condensed = true;
+          onCondensedChange(true);
+        } else if (condensed && y < 8) {
+          condensed = false;
+          onCondensedChange(false);
+        }
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [onCondensedChange]);
 
   // On open, center today's column so a mid-month view doesn't start on the 1st.
   useEffect(() => {
@@ -75,7 +138,7 @@ export default function ScheduleGrid({
   return (
     <div
       ref={scrollRef}
-      className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]"
+      className="max-h-[calc(100dvh-260px)] overflow-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]"
     >
       <table className="w-full border-separate border-spacing-0">
         <thead>

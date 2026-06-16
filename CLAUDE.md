@@ -267,6 +267,24 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - **New routes:** `/app/settings/statuses`, `/api/cron/live-ratio-check`. Migrations
   0015–0017 applied. Verified: `tsc` clean, 45 vitest tests pass, `next build` clean.
 
+## Schedule scroll fix (built June 15, 2026)
+
+- **Sticky header + reachable horizontal scrollbar.** `ScheduleGrid` is now a
+  height-capped, internally-scrolling region (`overflow-auto` + a runtime-measured
+  `max-height`, `ResizeObserver` on `document.body`). The previous full-height,
+  page-scrolling grid couldn't keep the `sticky top-0` header on screen (an
+  `overflow-x` box scrolls on both axes, so the header stuck to a box that scrolled
+  away) and buried the horizontal scrollbar at the page bottom. Capping the height is
+  the fix. Do **not** revert to "no height cap" — that reintroduces both bugs.
+- **Condensing chrome (editor only).** On grid scroll, the pills/AI bar/toolbar/flag
+  list collapse to a slim pinned strip (`Location · Period · status · flag count`);
+  click to expand. Chrome is CSS-hidden, not unmounted (preserves AI-bar input). The
+  editor chrome (`ViewNav`/`ViewModeNav`/`AiCommandBar`) is passed from
+  `schedule/page.tsx` into `ScheduleBuilder` as `nav`/`aiBar` props so it can respond
+  to the grid's `onCondensedChange`. Range views inherit the grid fix; no condense.
+- **All-locations overview** got the same sticky/scroll treatment per section
+  (`border-separate` so sticky cells work in Chrome). UI-only; no schema/API changes.
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.

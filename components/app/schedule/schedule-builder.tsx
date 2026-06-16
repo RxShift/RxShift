@@ -5,7 +5,7 @@
 // the deterministic engines render as red/amber highlights plus a flag
 // panel; publishing with open flags requires a logged reason.
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -48,6 +48,9 @@ export default function ScheduleBuilder({
   bundle,
   validation,
   today,
+  nav,
+  aiBar,
+  locationName,
 }: {
   tenant: Tenant;
   locationId: string;
@@ -55,6 +58,12 @@ export default function ScheduleBuilder({
   bundle: BuilderBundle;
   validation: ValidationOut;
   today: string;
+  /** Location/view pills, rendered at the top of the chrome (condenses on scroll). */
+  nav?: ReactNode;
+  /** AI command bar, rendered in the chrome (condenses on scroll). */
+  aiBar?: ReactNode;
+  /** Location name, shown in the condensed slim strip. */
+  locationName: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<{
@@ -68,6 +77,9 @@ export default function ScheduleBuilder({
   const [publishError, setPublishError] = useState<string | null>(null);
   const [showFlags, setShowFlags] = useState(true);
   const [confirmCopy, setConfirmCopy] = useState(false);
+  // Driven by the grid's scroll: collapses the top chrome to a slim strip so the
+  // grid gets more room. Chrome is hidden (not unmounted) to keep AI-bar state.
+  const [condensed, setCondensed] = useState(false);
 
   const dates = useMemo(
     () => eachDate(bundle.period.start_date, bundle.period.end_date),
@@ -244,8 +256,16 @@ export default function ScheduleBuilder({
 
   return (
     <div className="space-y-5">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Top chrome — location/view pills, AI bar, period toolbar, open-flag
+          list. Hidden (not unmounted) while the grid is scrolled so it condenses
+          to the slim strip below and the grid gains the vertical space. */}
+      <div className={condensed ? "hidden" : "space-y-5"}>
+        {/* Keyed so React doesn't flag these prop-passed children as a keyless list. */}
+        <Fragment key="nav">{nav}</Fragment>
+        <Fragment key="aibar">{aiBar}</Fragment>
+
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
           <Button
             variant="secondary"
@@ -346,6 +366,34 @@ export default function ScheduleBuilder({
           )}
         </div>
       )}
+      </div>
+
+      {/* Condensed slim strip — pinned context while you scroll the grid.
+          Click to bring the full controls + flag list back. */}
+      {condensed && (
+        <button
+          type="button"
+          onClick={() => setCondensed(false)}
+          title="Show schedule controls"
+          className="sticky top-0 z-30 flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] border border-line bg-surface px-4 py-2 text-left shadow-[0_1px_3px_rgba(28,47,94,0.08)] hover:border-steel/40"
+        >
+          <span className="font-brand text-sm font-bold text-navy">
+            {locationName}
+          </span>
+          <span className="text-steel/60">·</span>
+          <span className="font-body text-sm text-steel">
+            {fmtRange(bundle.period.start_date, bundle.period.end_date)}
+          </span>
+          <Badge tone={isPublished ? "compliant" : "neutral"}>
+            {isPublished ? "Published" : "Draft"}
+          </Badge>
+          {flagCount > 0 && (
+            <span className="ml-auto font-body text-sm font-semibold text-deficiency">
+              ⚠ {flagCount} flag{flagCount === 1 ? "" : "s"} ▸
+            </span>
+          )}
+        </button>
+      )}
 
       {/* The grid */}
       <ScheduleGrid
@@ -357,6 +405,7 @@ export default function ScheduleBuilder({
         deficientShiftIds={deficientShiftIds}
         constraintShiftIds={constraintShiftIds}
         workTypeById={workTypeById}
+        onCondensedChange={setCondensed}
         onCellClick={(staff, date, shift) =>
           setEditing({ staff, date, shift })
         }

@@ -7,6 +7,20 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-15 — Schedule scroll fix: sticky header, reachable horizontal scrollbar, condensing chrome
+
+### Shipped
+- **Sticky day header + always-reachable horizontal scrollbar (the core fix).** The schedule grid is now a height-capped, internally-scrolling region (`overflow-auto` + a runtime-measured `max-height`). Previously the grid had no height cap and the whole page scrolled — and because `overflow-x` makes the box a scroll container on *both* axes, the `sticky top-0` header stuck to a box that itself scrolled off-screen, and the horizontal scrollbar lived at the bottom of a full-height box far below the viewport. Capping the height fixes both: the header stays pinned, the staff column stays frozen, and the horizontal scrollbar sits at the visible grid's bottom edge. (`components/app/schedule/schedule-grid.tsx`)
+- **Condensing top chrome → slim strip (editor).** As you scroll the grid, the location/view pills, AI command bar, period toolbar, and open-flag list condense to one slim pinned strip — `Location · Period · Draft/Published · ⚠ N flags`; click it to bring the full controls back. Chrome is hidden via CSS (not unmounted) so the AI-bar input survives. Reclaims vertical space for the grid; grid height recomputes via a `ResizeObserver` on `document.body`. (`schedule-builder.tsx`, with the chrome now passed in from `schedule/page.tsx`.)
+- **All-locations overview** got the same sticky-header + reachable-scrollbar fix per location section (`overflow-auto` + `max-h`, switched the table to `border-separate` so sticky cells work in Chrome, made the date header + corner sticky). (`all-locations-overview.tsx`)
+- The week / 2-week / month views inherit the grid fix automatically (shared `ScheduleGrid`); condense is editor-only.
+
+### Open
+- UI/layout only — no schema, API, auth, or dependency changes.
+- Verified in-browser (Mesa Vista/OptumRx demo tenant, dark mode): header sticks, scrollbar always reachable, condense/expand cycle, frozen staff column, all-locations sticky header. Clean: `tsc`, 45 vitest tests, `next build`. No new console errors (the remaining `<html>` hydration warning is the pre-existing dark-mode no-flash script — fires on every page, not from this change).
+
+---
+
 ## 2026-06-15 — Docs: infra fingerprint moved to the C:\dev master doc
 
 ### Infrastructure

@@ -353,10 +353,7 @@ export default async function SchedulePage({
       <PageHeader
         title={`Schedule — ${locName} — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
       />
-      <div className="flex-1 min-w-0 space-y-5 p-8">
-        <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
-        <ViewModeNav locationId={locationId} active="period" />
-        <AiCommandBar periodId={bundle.period.id} />
+      <div className="flex-1 min-w-0 p-8">
         <ScheduleBuilder
           tenant={tenant}
           locationId={locationId}
@@ -371,6 +368,14 @@ export default async function SchedulePage({
           }}
           validation={validation}
           today={today}
+          locationName={locName}
+          nav={
+            <div className="space-y-5">
+              <ViewNav locations={locs} activeLocationId={locationId} isAll={false} />
+              <ViewModeNav locationId={locationId} active="period" />
+            </div>
+          }
+          aiBar={<AiCommandBar periodId={bundle.period.id} />}
         />
       </div>
     </>

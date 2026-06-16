@@ -87,11 +87,11 @@ function LocationSection({
           {fmtRange(bundle.period.start_date, bundle.period.end_date)}
         </span>
       </div>
-      <div className="overflow-x-auto rounded-[10px] border border-line bg-surface shadow-[var(--shadow-card)]">
-        <table className="w-full border-collapse">
+      <div className="max-h-[calc(100dvh-200px)] overflow-auto rounded-[10px] border border-line bg-surface shadow-[var(--shadow-card)]">
+        <table className="w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
+              <th className="sticky left-0 top-0 z-30 min-w-[160px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
                 Staff
               </th>
               {dates.map((d) => {
@@ -100,8 +100,8 @@ function LocationSection({
                 return (
                   <th
                     key={d}
-                    className={`min-w-[88px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
-                      weekend ? "bg-cloud/60 text-steel/70" : "bg-cloud text-steel"
+                    className={`sticky top-0 z-20 min-w-[88px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
+                      weekend ? "bg-cloud text-steel/70" : "bg-cloud text-steel"
                     }`}
                   >
                     {day.dow}
@@ -117,17 +117,17 @@ function LocationSection({
           <tbody>
             {bands.flatMap((band) => [
               <tr key={`h-${band.label}`}>
-                <td className="sticky left-0 z-10 border-r border-t border-line bg-cloud px-3 py-1 font-brand text-[9px] font-bold uppercase tracking-[1.2px] text-steel">
+                <td className="sticky left-0 z-10 border-b border-r border-line bg-cloud px-3 py-1 font-brand text-[9px] font-bold uppercase tracking-[1.2px] text-steel">
                   {band.label} ({band.staff.length})
                 </td>
                 <td
                   colSpan={dates.length}
-                  className="border-t border-line bg-cloud"
+                  className="border-b border-line bg-cloud"
                 />
               </tr>,
               ...band.staff.map((person) => (
                 <tr key={person.id}>
-                  <td className="sticky left-0 z-10 border-r border-t border-line bg-surface px-3 py-1.5">
+                  <td className="sticky left-0 z-10 border-b border-r border-line bg-surface px-3 py-1.5">
                     <span className="font-body text-[13px] font-medium text-navy">
                       {person.full_name}
                     </span>
@@ -144,7 +144,7 @@ function LocationSection({
                     return (
                       <td
                         key={d}
-                        className={`border-t border-line px-1.5 py-1.5 text-center align-top ${
+                        className={`border-b border-line px-1.5 py-1.5 text-center align-top ${
                           hasPto ? "bg-cloud" : ""
                         }`}
                       >
