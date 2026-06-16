@@ -1,18 +1,16 @@
-import { Resend } from "resend";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail, brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
 
 // Per-instance submission throttle (60s per email address)
 const lastContact = new Map<string, number>();
 
 /**
- * Best-effort CRM capture — a failed database write must never block the
- * email notification (the inbox is the operational fallback). Repeat
- * submissions from the same address append a note to the existing lead
- * instead of creating a duplicate.
+ * Best-effort CRM capture — a failed database write must never block the email
+ * notification (the inbox is the operational fallback). Repeat submissions from
+ * the same address append a note instead of creating a duplicate. Returns the
+ * lead id (existing or new) so the notification email can be tagged to it, or
+ * null if capture failed.
  */
 async function captureLead(input: {
   name: string;
@@ -21,7 +19,7 @@ async function captureLead(input: {
   email: string;
   message?: string;
   source: string;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
     const service = createServiceClient();
     const email = input.email.trim().toLowerCase();
@@ -42,7 +40,7 @@ async function captureLead(input: {
         .from("leads")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", existing.id);
-      return;
+      return existing.id as string;
     }
 
     const { data: lead, error } = await service
@@ -65,8 +63,10 @@ async function captureLead(input: {
       author: "System",
       body: `Interest form submitted via ${input.source}.`,
     });
+    return lead.id as string;
   } catch (e) {
     console.error("[crm] lead capture failed (email path unaffected):", e);
+    return null;
   }
 }
 
@@ -95,21 +95,26 @@ export async function POST(request: NextRequest) {
     }
     lastContact.set(norm, Date.now());
 
-    await captureLead({
+    const src = typeof source === "string" && source ? source : "unknown";
+    const leadId = await captureLead({
       name,
       pharmacy,
       state,
       email,
       message,
-      source: typeof source === "string" && source ? source : "unknown",
+      source: src,
     });
 
-    // The Resend SDK does not throw on API errors — it returns them in
-    // the `error` field, so a failed send must be checked explicitly.
-    const { error } = await resend.emails.send({
-      from: `RxShift <${process.env.RESEND_FROM_EMAIL || "hello@rxshift.io"}>`,
-      to: process.env.CONTACT_TO_EMAIL || "info@rxshift.io",
+    // All email goes through the single sendEmail() core: branded, logged to
+    // email_log, tagged to the lead, and (on failure) self-reported. Addressed
+    // to ourselves (hello@), so it bypasses the tenant gate; replyTo reaches the
+    // prospect. throwOnError preserves the original 500-on-failure behavior.
+    await sendEmail({
+      kind: "demo_request",
+      to: process.env.CONTACT_TO_EMAIL || "hello@rxshift.io",
       replyTo: email,
+      bypassGate: true,
+      throwOnError: true,
       subject: `New Demo Request — ${pharmacy} (${state})`,
       html: brandedEmailHtml({
         bodyHtml:
@@ -119,20 +124,18 @@ export async function POST(request: NextRequest) {
             ["State", String(state)],
             ["Email", String(email)],
             ["Message", message ? String(message) : "(none)"],
-            ["Source", String(source || "unknown")],
-            ["Submitted", new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"],
+            ["Source", src],
+            [
+              "Submitted",
+              new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
+            ],
           ]) +
-          emailLines(["Reply directly to this email to respond — it goes to the prospect."]),
+          emailLines([
+            "Reply directly to this email to respond — it goes to the prospect.",
+          ]),
       }),
+      related: leadId ? { type: "lead", id: leadId } : null,
     });
-
-    if (error) {
-      console.error("Resend send failed:", error);
-      return NextResponse.json(
-        { error: "Failed to send message" },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

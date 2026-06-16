@@ -102,6 +102,72 @@ export interface LeadNote {
   created_at: string;
 }
 
+// ─── Email log (platform-admin only) ─────────────────────────────────────────
+// Every email the app sends flows through the single sendEmail() core, which
+// writes one row here. tenant_id is null for auth/sign-in links and the public
+// demo form. Stores the rendered HTML so an admin can view the actual email.
+export type EmailKind =
+  | "notification"
+  | "auth"
+  | "demo_request"
+  | "feedback"
+  | "system";
+export type EmailStatus =
+  | "sent"
+  | "suppressed"
+  | "redirected"
+  | "failed"
+  | "delivered"
+  | "bounced"
+  | "complained";
+
+export interface EmailLog {
+  id: string;
+  tenant_id: string | null;
+  kind: EmailKind;
+  to_email: string;
+  from_email: string;
+  subject: string;
+  body_html: string | null;
+  status: EmailStatus;
+  redirected_to: string | null;
+  provider_message_id: string | null;
+  error: string | null;
+  related_type: string | null;
+  related_id: string | null;
+  actor_user_id: string | null;
+  created_at: string;
+}
+
+// ─── Feedback / issues (platform-admin managed) ──────────────────────────────
+// One inbox for user-submitted feedback/bugs/features AND system-detected
+// problems (source='system', e.g. a failed send or a bounce).
+export type FeedbackSource = "user" | "system";
+export type FeedbackKind = "bug" | "feature" | "feedback";
+export type FeedbackStatus =
+  | "new"
+  | "triaged"
+  | "in_progress"
+  | "done"
+  | "wont_do";
+
+export interface Feedback {
+  id: string;
+  tenant_id: string | null;
+  actor_user_id: string | null;
+  staff_id: string | null;
+  source: FeedbackSource;
+  kind: FeedbackKind;
+  subject: string;
+  body: string | null;
+  screenshot_path: string | null;
+  page_url: string | null;
+  status: FeedbackStatus;
+  internal_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Location {
   id: string;
   tenant_id: string;

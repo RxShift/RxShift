@@ -7,6 +7,56 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-16 — Centralized email + email log + deliverability/error detection + feedback + demo-safe chrome
+
+One build (workstreams A–G). Migrations 0019 (email_log) + 0020 (feedback) applied.
+
+### Shipped
+- **One send path.** All app email — notifications, sign-in links, the website
+  demo form, feedback, system alerts — now flows through a single `sendEmail()`
+  core in `lib/email.ts` (branding + safety gate + Resend + logging). The three
+  prior direct-to-Resend doors became thin wrappers. There is no other path out.
+- **Email log (platform-admin).** New `email_log` table records every send —
+  status (sent/suppressed/redirected/failed/delivered/bounced/complained),
+  recipient, subject, and the **actual rendered HTML**. `/app/admin/emails` lists
+  + filters them and renders each email exactly as it went out (sandboxed iframe);
+  xlsx export at `/api/admin/emails`. App-sent emails are tagged to their lead and
+  shown on the lead detail page.
+- **Deliverability + system-issue loop.** New signed Resend webhook
+  (`/api/webhooks/resend`) updates the log on delivered/bounced/complained and,
+  with send failures, files a `source='system'` entry into the **same feedback
+  inbox** users post to — so detected problems and reported ones live in one place.
+  `lib/system-report.ts` (`reportSystemIssue`) is loop-guarded and de-duped.
+- **Lean feedback feature.** A Feedback button in the sidebar footer (bug / feature
+  / feedback + optional screenshot) → `submitFeedback` → `/app/admin/feedback`
+  triage (filter by status/source/kind, set status + internal note). Screenshots in
+  a private `feedback` bucket. Notifies platform admin via the central email.
+- **Demo-safe admin chrome.** The PLATFORM nav (Admin Console, Leads, Emails,
+  Feedback) is hidden while emulating a tenant, the "viewing as" banner is slimmed
+  (kept, as the admin's safety signal), and the demo sub-banner no longer reveals
+  the internal redirect address to a prospect.
+- **Demo alerts → `hello@`.** The website demo-request email now defaults to
+  `hello@rxshift.io` (env `CONTACT_TO_EMAIL`) — team-visible once the shared mailbox
+  receives (infra step below).
+
+### Schema
+- `0019_email_log` (applied): email_log; RLS enabled, no policies (service-role).
+- `0020_feedback` (applied): feedback (source user|system); RLS enabled, no
+  policies; private `feedback` Storage bucket.
+
+### Infrastructure / config (see INFRASTRUCTURE.md + closeout)
+- New env vars: `RESEND_WEBHOOK_SECRET` (webhook signature), `CONTACT_TO_EMAIL`
+  (demo-alert recipient; defaults to hello@), optional `PLATFORM_ADMIN_EMAIL`
+  (system/feedback alerts; defaults to jamison@jamisonwest.com).
+- Manual: configure the Resend webhook endpoint; add the Cloudflare `hello@`
+  forwarding rule so the shared mailbox receives demo alerts.
+
+### Verified
+- `tsc` clean, 45 vitest tests pass, `next build` clean (new routes present),
+  migrations applied + confirmed. Live browser pass pending (extension was offline).
+
+---
+
 ## 2026-06-16 — Brand email: M365 shared mailbox + DKIM/SPF (infra, no app code)
 
 Set up `hello@rxshift.io` as a real branded sending identity and documented the whole

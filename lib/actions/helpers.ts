@@ -43,6 +43,15 @@ export async function requireAdmin(): Promise<AuthedContext> {
   return ctx;
 }
 
+/** Platform-admin gate (RxShift operators). Does NOT require a tenant context. */
+export async function requirePlatformAdmin(): Promise<SessionContext> {
+  const session = await getSession();
+  if (!session?.platform.isPlatformAdmin) {
+    throw new ActionError("Platform admin access required.");
+  }
+  return session;
+}
+
 /** Append-only activity trail. Best-effort — never blocks the action. */
 export async function logActivity(
   ctx: AuthedContext,

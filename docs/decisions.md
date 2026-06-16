@@ -27,9 +27,23 @@ CRM lead AND sends an alert email; the lead is the system of record, the email i
 The only tracking gap is that follow-up email threads aren't auto-linked to the lead —
 mitigated by working prospects from the CRM. Linking threads to leads is a later feature.
 
-**Deferred:** (1) make the shared mailbox *receive* (it's send-only today — inbound still
-forwards to Jamison); (2) the in-app `email_log` + admin report; (3) routing the
-demo-request alert to the shared mailbox; (4) paid seats for Susie/RT when they need access.
+**Built June 16 (same day):** the in-app `email_log` (the single `sendEmail()` path +
+platform-admin report), demo-alert routing to `hello@` (app side), deliverability
+detection (Resend webhook), lean feedback, and demo-safe admin chrome. See below.
+
+**System-detected problems file into the feedback inbox (`source='system'`).** Rather
+than a separate error channel, a failed send or a bounce becomes a `feedback` row with
+`source='system'` and alerts platform admins — one "issues" inbox for both user-reported
+and system-detected problems. Jamison's idea; cleaner than parallel systems.
+
+**Feedback is lean and native — a fuller Squeeze/ProductBoard product is deferred to a
+Jamison-directed future build.** Jamison is comfortable reusing the Squeeze *concepts*
+(he conceived them; IP across his own entities is a non-issue — see root C:\dev\CLAUDE.md);
+we are NOT auto-implementing the full product. Per-tenant manager visibility of the email
+log is likewise a future build (their audit needs).
+
+**Still deferred:** (1) make the shared mailbox *receive* (Cloudflare `hello@` forward —
+infra, Jamison); (2) paid seats for Susie/RT when they need mailbox access.
 
 ## June 15, 2026 — Per-location ratio + unified person-centric schedule
 

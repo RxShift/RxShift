@@ -17,6 +17,9 @@ export default async function ShellLayout({
   const showBanner =
     session.platform.activeTenantId !== null ||
     session.platform.emulatingAppUserId !== null;
+  // While emulating a user (running a demo), hide platform chrome + internal
+  // details from the prospect, but keep the "viewing as" safety banner.
+  const isEmulating = session.platform.emulatingAppUserId !== null;
 
   // Light per-tenant branding: a single validated accent color overrides only
   // --color-amber for this subtree (buttons/highlights), in both light and dark
@@ -41,6 +44,7 @@ export default async function ShellLayout({
         hasRatio={session.tenant.has_ratio}
         userEmail={session.email}
         isPlatformAdmin={session.platform.isPlatformAdmin}
+        isEmulating={isEmulating}
         tenantLogoUrl={logoUrl}
       />
       <div className="ml-60 flex min-h-screen min-w-0 flex-1 flex-col">
@@ -54,9 +58,10 @@ export default async function ShellLayout({
           <div className="flex items-center justify-center gap-2 border-b border-alert/30 bg-alert-bg px-4 py-1.5">
             <p className="font-brand text-[12px] font-bold text-alert">
               Demo pharmacy — fictional data.
-              {session.tenant.demo_redirect_email
-                ? ` Emails redirect to ${session.tenant.demo_redirect_email}.`
-                : " No emails are sent."}
+              {!isEmulating &&
+                (session.tenant.demo_redirect_email
+                  ? ` Emails redirect to ${session.tenant.demo_redirect_email}.`
+                  : " No emails are sent.")}
             </p>
           </div>
         ) : (

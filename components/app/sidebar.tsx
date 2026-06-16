@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RxShiftMark from "@/components/rxshift-mark";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import FeedbackButton from "@/components/app/feedback-button";
 import type { AppRole } from "@/lib/types";
 
 interface NavItem {
@@ -24,17 +25,19 @@ const CONFIG: AppRole[] = ["owner_admin", "scheduler", "supervisor"];
 
 function sections(
   hasRatio: boolean,
-  isPlatformAdmin: boolean,
+  showPlatform: boolean,
   tenantName: string
 ): NavSection[] {
   return [
-    ...(isPlatformAdmin
+    ...(showPlatform
       ? [
           {
             label: "Platform",
             items: [
               { label: "Admin Console", href: "/app/admin" },
               { label: "Leads", href: "/app/admin/leads" },
+              { label: "Emails", href: "/app/admin/emails" },
+              { label: "Feedback", href: "/app/admin/feedback" },
             ],
           },
         ]
@@ -84,6 +87,7 @@ export default function Sidebar({
   hasRatio,
   userEmail,
   isPlatformAdmin = false,
+  isEmulating = false,
   tenantLogoUrl = null,
 }: {
   tenantName: string;
@@ -91,6 +95,8 @@ export default function Sidebar({
   hasRatio: boolean;
   userEmail: string;
   isPlatformAdmin?: boolean;
+  /** While emulating a tenant (a demo), hide the Platform section from the prospect. */
+  isEmulating?: boolean;
   tenantLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
@@ -124,7 +130,7 @@ export default function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
-        {sections(hasRatio, isPlatformAdmin, tenantName).map((section, i) => {
+        {sections(hasRatio, isPlatformAdmin && !isEmulating, tenantName).map((section, i) => {
           const visible = section.items.filter(
             (item) => !item.roles || item.roles.includes(role)
           );
@@ -180,6 +186,7 @@ export default function Sidebar({
             Sign out
           </button>
         </form>
+        <FeedbackButton />
         <ThemeToggle />
       </div>
     </aside>

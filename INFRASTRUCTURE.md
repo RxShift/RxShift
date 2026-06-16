@@ -186,7 +186,7 @@ genuinely stored in the shared mailbox. (b) is a real project, not a config togg
 
 | Stream | Where it lives | How to find / report |
 |---|---|---|
-| App / transactional (Resend) | Resend dashboard + in-app `notification` rows | Resend logs (limited retention); **planned in-app `email_log` table** for durable, searchable history inside RxShift |
+| App / transactional (Resend) | `email_log` table + Resend dashboard + in-app `notification` rows | **`email_log` (shipped June 16)** — platform-admin view at `/app/admin/emails` with the actual rendered email + xlsx export; Resend dashboard for raw delivery detail |
 | Human / brand (shared mailbox) | M365 shared mailbox (Sent + received) | Exchange **Message Trace** (recent); Purview **Content Search** (full history); everyone with access reads threads directly |
 
 ### Now vs. later (free today; what costs money only when RxShift grows)
@@ -207,6 +207,27 @@ genuinely stored in the shared mailbox. (b) is a real project, not a config togg
 sent *from inside the tenant* to an @rxshift.io address that isn't a real mailbox/alias will
 bounce instead of forwarding via Cloudflare. External senders are unaffected (MX → Cloudflare).
 Non-issue today; if internal mail to an @rxshift.io address ever bounces oddly, this is why.
+
+### App email instrumentation + env (June 16, 2026)
+
+Every app email now flows through one `sendEmail()` core and is recorded in `email_log`
+(platform-admin view at `/app/admin/emails`). Deliverability + system errors fold into the
+platform **Feedback** inbox (`/app/admin/feedback`). New/changed env vars:
+
+| Env var | Where | Purpose |
+|---|---|---|
+| `CONTACT_TO_EMAIL` | Vercel | Recipient of the website demo-request alert. **Set to `hello@rxshift.io`** (defaults to it) so demo alerts land in the shared mailbox once it receives. |
+| `RESEND_WEBHOOK_SECRET` | Vercel | Signing secret for the Resend delivery webhook (`POST /api/webhooks/resend`). Until set, the webhook acknowledges but does nothing. |
+| `PLATFORM_ADMIN_EMAIL` | Vercel (optional) | Where feedback + system alerts are emailed. Defaults to `jamison@jamisonwest.com`. |
+
+**Manual steps (Jamison):**
+1. **Resend webhook:** Resend dashboard → Webhooks → add endpoint
+   `https://app.rxshift.io/api/webhooks/resend`, subscribe to delivered / bounced /
+   complained (+ failed if offered); copy the signing secret into `RESEND_WEBHOOK_SECRET`.
+2. **Shared mailbox receives demo alerts:** add the Cloudflare Email Routing rule
+   `hello@rxshift.io` → forward to the shared mailbox's `…@jamisonwest.onmicrosoft.com`
+   address (verify that destination once). Until then, demo alerts to `hello@` still
+   forward to Jamison's personal inbox via the catch-all.
 
 ---
 
@@ -266,9 +287,10 @@ Marketing site and application live in the same Next.js repo. No need to split u
 - [ ] Configure Cloudflare DNS A/CNAME records pointing rxshift.io and app.rxshift.io to Vercel
 - [x] Add DMARC record in Cloudflare: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:dmarc@rxshift.io` — added June 12, 2026
 - [x] **M365 send-as `hello@rxshift.io` — DONE June 16, 2026** (shared mailbox, NOT the alias dead-end). Shared mailbox + Full Access/Send As + `MessageCopyForSentAsEnabled` (shared Sent Items) + SPF (`spf.protection.outlook.com`) + DKIM (`Set-DkimSigningConfig -Enabled`). Verified: Gmail shows `hello@rxshift.io`, no "via," shared Sent Items working. Full procedure + email flow in the Email section above.
-- [ ] **Make the shared mailbox RECEIVE** (currently send-only; inbound still forwards to Jamison) — Cloudflare forward `hello@` → onmicrosoft address, or switch MX to M365. Decide when the team grows.
-- [ ] **In-app `email_log`** + admin report — durable, searchable record of every app/Resend send (next build; see decisions.md).
-- [ ] **Route the demo-request alert to the `hello@` shared mailbox** (team-visible) instead of only Jamison's inbox (next build).
+- [x] **In-app `email_log`** + admin report — DONE June 16, 2026 (`/app/admin/emails`).
+- [x] **Route the demo-request alert to `hello@`** — app side DONE June 16 (`CONTACT_TO_EMAIL` defaults to hello@); team-visible once the mailbox receives (below).
+- [ ] **Configure the Resend delivery webhook** + set `RESEND_WEBHOOK_SECRET` (see "App email instrumentation" above) — enables bounce/complaint detection.
+- [ ] **Make the shared mailbox RECEIVE** (currently send-only; inbound still forwards to Jamison) — Cloudflare forward `hello@` → onmicrosoft address, or switch MX to M365. Activates team-visible demo alerts + prospect replies.
 - [ ] License a paid mailbox/seat for **Susie** (and RT if he engages) on this tenant — only when they actually need access.
 - [x] Push the repo to GitHub — jamisonwest-ship-it added as collaborator on RxShift/RxShift; both remotes (`vercel` + `origin`) current as of June 12, 2026
 - [x] Supabase schema — migrations 0001–0019 applied; full v1 schema live

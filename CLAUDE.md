@@ -303,6 +303,33 @@ wrapping `schedule-grid.tsx`). Earlier components (`schedule-builder.tsx`,
   removed from the schedule — re-add bound to the window); group-by sectioning (filters
   cover it for now). See `docs/decisions.md`.
 
+## Platform email, deliverability & feedback (built June 16, 2026)
+
+- **One send path:** every app email goes through `sendEmail()` in `lib/email.ts`
+  (branding + safety gate + Resend + `email_log` write + failure reporting).
+  `sendNotificationEmail`, `sendLoginLinkEmail`, and the website demo form
+  (`/api/contact`) are thin wrappers — do NOT call Resend directly anywhere else.
+- **Email log** (`email_log`, migration 0019; service-role only, platform-admin):
+  records every send incl. the rendered HTML + gate outcome. Surfaced at
+  `/app/admin/emails` (+ `[id]` actual-form view, xlsx export at `/api/admin/emails`).
+  App-sent mail is tagged via `related_type/related_id` and shown on the lead page.
+- **Deliverability:** signed Resend webhook at `/api/webhooks/resend`
+  (`RESEND_WEBHOOK_SECRET`) updates the log on delivered/bounced/complained.
+- **System issues = feedback:** `lib/system-report.ts` `reportSystemIssue()` files
+  detected problems (failed sends, bounces) into the SAME `feedback` table as
+  `source='system'`, loop-guarded + 24h de-duped, and alerts platform admins.
+- **Feedback** (`feedback`, migration 0020; service-role only; private `feedback`
+  bucket): `lib/actions/feedback.ts` (`submitFeedback`/`updateFeedbackStatus`/
+  `setFeedbackNote`). Capture = the sidebar Feedback button
+  (`components/app/feedback-button.tsx`); triage = `/app/admin/feedback`.
+- **Demo-safe chrome:** the PLATFORM nav section is hidden while emulating
+  (`sidebar.tsx` `isEmulating`); the platform banner is slim; the demo sub-banner
+  hides the redirect address from prospects (`(shell)/layout.tsx`).
+- **New env:** `RESEND_WEBHOOK_SECRET`, `CONTACT_TO_EMAIL` (demo alerts → hello@),
+  optional `PLATFORM_ADMIN_EMAIL`. Full email flow + manual steps in INFRASTRUCTURE.md.
+- **Future (Jamison-directed, not auto-built):** a fuller Squeeze/ProductBoard-style
+  feedback product, and per-tenant manager visibility of the email log. See decisions.md.
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
