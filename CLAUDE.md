@@ -267,23 +267,41 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - **New routes:** `/app/settings/statuses`, `/api/cron/live-ratio-check`. Migrations
   0015–0017 applied. Verified: `tsc` clean, 45 vitest tests pass, `next build` clean.
 
-## Schedule scroll fix (built June 15, 2026)
+## Schedule architecture (rebuilt June 15, 2026)
 
-- **Sticky header + reachable horizontal scrollbar.** `ScheduleGrid` is now a
-  height-capped, internally-scrolling region (`overflow-auto` + a runtime-measured
-  `max-height`, `ResizeObserver` on `document.body`). The previous full-height,
-  page-scrolling grid couldn't keep the `sticky top-0` header on screen (an
-  `overflow-x` box scrolls on both axes, so the header stuck to a box that scrolled
-  away) and buried the horizontal scrollbar at the page bottom. Capping the height is
-  the fix. Do **not** revert to "no height cap" — that reintroduces both bugs.
-- **Condensing chrome (editor only).** On grid scroll, the pills/AI bar/toolbar/flag
-  list collapse to a slim pinned strip (`Location · Period · status · flag count`);
-  click to expand. Chrome is CSS-hidden, not unmounted (preserves AI-bar input). The
-  editor chrome (`ViewNav`/`ViewModeNav`/`AiCommandBar`) is passed from
-  `schedule/page.tsx` into `ScheduleBuilder` as `nav`/`aiBar` props so it can respond
-  to the grid's `onCondensedChange`. Range views inherit the grid fix; no condense.
-- **All-locations overview** got the same sticky/scroll treatment per section
-  (`border-separate` so sticky cells work in Chrome). UI-only; no schema/API changes.
+The schedule is **one person-centric matrix** (`components/app/schedule/schedule-matrix.tsx`
+wrapping `schedule-grid.tsx`). Earlier components (`schedule-builder.tsx`,
+`schedule-range-view.tsx`, `all-locations-overview.tsx`) and the scroll-condense were
+**removed** — don't reintroduce them.
+
+- **Ratio is per LOCATION.** The `ratio_zone` table/concept is gone (migration 0018).
+  `validateBundle`/`buildComplianceRecords`/`live-board`/the alert cron group segments
+  by `location_id`. `EngineSegment.location_id` (was `zone_id`); `ComplianceRecordRow`
+  is per location; `compliance_snapshot` + `live_ratio_alert_state` key on `location_id`.
+  A person in two overlapping shifts across locations is flagged
+  (`detectDoubleBookings`). If a site needs two ratio pools → two locations.
+- **Departments** are tenant-level (no `location_id`), an optional tag on a shift, and a
+  view filter. `tenant.require_department` toggles mandatory selection (Settings →
+  Locations & Departments).
+- **All Locations is the build surface** (default for multi-location tenants); a
+  location/department/work-type is a **view filter** that shows only matching scheduled
+  staff. Window selector = week / 2-week / month (`?view=`, `?anchor=`); `?location=`
+  filters. Data: `loadAllLocationsBundle(start,end)` (all locations, no location filter).
+- **Periods are invisible plumbing.** `upsertShift` auto-creates the covering period
+  (`ensurePeriodForDate`, cycle-aligned) when none exists — no "create period" button.
+  The matrix toolbar has **Publish** (`publishWindow` — every draft in the window or the
+  filtered location; reuses `publishPeriod`), **Copy last week's pattern**
+  (`copyForwardWindow`), **Export CSV**, and a Published/Draft **status pill**.
+- **Fixed-frame scroll:** the grid fills a bounded flex frame (`h-full overflow-auto`);
+  compact header, single scroll region, sticky day header + frozen staff column. Do
+  **not** let the page document-scroll around it.
+- **Avatars:** private `avatars` Storage bucket (manager-only RLS); 1:1 crop upload
+  (`avatar-upload.tsx`, react-easy-crop) → 400px webp; display (`avatar.tsx`) in the
+  staff list, staff editor, and schedule staff column via signed URLs
+  (`lib/avatars.ts`).
+- **Deferred:** per-location/multi-state ratio rules; AI command bar (was period-bound,
+  removed from the schedule — re-add bound to the window); group-by sectioning (filters
+  cover it for now). See `docs/decisions.md`.
 
 ## Pending TODOs (as of June 13, 2026)
 

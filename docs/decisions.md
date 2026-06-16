@@ -3,6 +3,53 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 15, 2026 — Per-location ratio + unified person-centric schedule
+
+**Ratio is per LOCATION; the "ratio zone" concept is removed.** Everyone counting
+toward ratio at a pharmacy location counts together, regardless of room — the
+per-zone model (e.g. a separate "SPC Compounding" ratio pool) was a mistake that
+matched no real pharmacy. Ratio now groups by `location_id`. If a site genuinely
+needs two independent ratio pools (a fully isolated sterile suite), it becomes a
+second **location**. Confirmed with Jamison; `ratio_zone` dropped in migration 0018.
+The engine was already zone-agnostic, so this was a grouping-key change, not an
+engine rewrite. SPC Compounding became a **department**.
+
+**Departments are tenant-level, not location-bound.** "One department in two
+locations" only works as a single shared record, so `department.location_id` was
+dropped. A department is an optional tag on a shift, used for filtering — never for
+ratio. A per-tenant **"require a department on every shift"** setting was added (some
+operators want it mandatory, others not).
+
+**Scheduling is person-centric across locations; one matrix is the home.** You
+schedule a person and pick where each shift lands. **All Locations** is the single
+build surface; selecting a location (or department / work type) is a **view filter**
+showing only the matching scheduled staff. The per-location builder, the range view,
+and the "Edit period" mode were removed — they fragmented a fundamentally
+person-centric task. Chosen over the earlier "build per period, view by range" model
+now that multi-location staff made the gap obvious.
+
+**Periods become invisible plumbing; publish stays per-location.** Scheduling into a
+week with no period auto-creates the cycle-aligned period for that location
+(`ensurePeriodForDate`). There is no "create next period" button. Publishing and the
+compliance record remain **per location** (the regulated unit): `publishWindow`
+publishes every draft period overlapping the window (or just the filtered location),
+reusing the per-period flag/override + snapshot logic. A toolbar status pill shows
+Published vs Draft so the active/creation distinction is always clear.
+
+**Per-location / multi-state ratio rules: DEFERRED.** Today one tenant-wide ratio rule
+applies to every location. A chain crossing state lines would need per-location rules;
+not pre-built (no such customer yet). Revisit when a real cross-state prospect appears.
+
+**Staff avatars use a PRIVATE bucket + signed URLs.** Staff photos are mild PII in a
+multi-tenant app; the `avatars` bucket stays private with tenant-scoped, manager-only
+write RLS, and display goes through short-lived signed URLs. (A public bucket was
+considered for simplicity and rejected — don't weaken access controls for convenience.)
+
+**AI command bar removed from the schedule (temporarily).** It was bound to a single
+period; it doesn't fit the all-locations/window model as-is. Re-add later, bound to the
+window. Group-by (by person/location/department) is currently served by the filters
+rather than a separate sectioning toggle.
+
 ## June 13, 2026 — Schedule UX, live board, branding & help
 
 **View is decoupled from build; build cycle stays the publish unit.** You build and

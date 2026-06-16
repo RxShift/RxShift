@@ -7,6 +7,68 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-15 — Schedule rebuild: per-location ratio, unified matrix, departments, filters, avatars
+
+Large pass (commits d0fdc06 → b95b2bf). Supersedes the scroll "condense" shipped
+earlier the same day.
+
+### Shipped
+- **Ratio is per LOCATION; ratio zones removed entirely.** Everyone counting at a
+  location counts together — the "ratio zone" sub-location was a modeling mistake.
+  An isolated room is now just a separate location. The engine was already
+  zone-agnostic, so this is mostly grouping by location instead of zone
+  (validateBundle, buildComplianceRecords, live board, alert cron, reports, AI
+  command, callout gap). Added a cross-location **double-booking** check.
+- **Departments are tenant-level** (shared, not bound to a location), an optional
+  tag on a shift, and a view filter. New tenant setting **"require a department on
+  every shift"** (toggle in Settings → Locations & Departments). SPC Compounding
+  became a department.
+- **Unified, person-centric schedule matrix** is the new home. One grid across all
+  locations: staff down the left, each shift tagged with its location. **All
+  Locations is where you build**; selecting a location (or a department/work-type)
+  is a **view filter** that shows only the matching, scheduled staff. The old
+  per-location builder, the range view, and the "Edit period" mode are gone.
+- **Periods are invisible plumbing.** Scheduling into a week with no period
+  auto-creates the cycle-aligned period (ensurePeriodForDate; upsertShift no longer
+  needs a period id). The All-Locations toolbar has **Publish** (publishWindow —
+  every draft in the window, or just the filtered location), **Copy last week's
+  pattern** (copyForwardWindow), and **Export CSV**. Creating a shift offers a
+  **Location picker**. A status pill shows Published / Draft so you always know if
+  you're looking at an active schedule or a draft.
+- **Fixed-frame scroll** replaced the janky scroll-driven condense: compact header,
+  the grid is the single scroll region (sticky day header, frozen staff column,
+  horizontal scrollbar always reachable).
+- **View filters:** department (single) + **work-type chips (multi-select)** —
+  "show only Hospice Shift". (Group-by is covered by these filters for now.)
+- **Staff avatars:** 1:1 crop (react-easy-crop) → 400px webp → private avatars
+  Storage bucket (manager-only RLS) → shown as rounded squares in the staff list,
+  the staff editor, and in front of every name in the schedule. Display via
+  short-lived signed URLs.
+
+### Schema
+- `0018_per_location_ratio` (applied): drop ratio_zone (table, FKs, RLS); re-point
+  compliance_snapshot + live_ratio_alert_state to location; department tenant-level
+  (drop location_id); add tenant.require_department + staff.avatar_path; create
+  private `avatars` Storage bucket + tenant-scoped RLS.
+
+### Infrastructure
+- New private Supabase Storage bucket `avatars` (tenant-scoped paths
+  `{tenant}/{staff}-{ts}.webp`; manager-only writes; signed-URL reads).
+- New dependency: `react-easy-crop`.
+
+### Open
+- **Publish UX** — Jamison has a question about the Publish button (TBD).
+- **AI command bar** was removed from the schedule (it was period-bound); re-add
+  bound to the window/all-locations later.
+- **Multi-state / per-location ratio rules** deferred (one tenant rule today) —
+  revisit when a cross-state prospect appears (see decisions.md).
+- Real-photo avatar upload should be exercised by a normal manager login to confirm
+  the storage RLS path end-to-end.
+- Per-column published/draft tint (from the old range view) not carried into the
+  matrix; the toolbar status pill covers it for now.
+
+---
+
 ## 2026-06-15 — Schedule scroll fix: sticky header, reachable horizontal scrollbar, condensing chrome
 
 ### Shipped
