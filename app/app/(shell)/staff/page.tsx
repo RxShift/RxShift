@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import StaffManager from "@/components/app/staff-manager";
+import { signedAvatarUrls } from "@/lib/avatars";
 import type { AppUser, Location, Staff } from "@/lib/types";
 
 export default async function StaffPage() {
@@ -20,15 +21,20 @@ export default async function StaffPage() {
         .eq("tenant_id", session!.tenant!.id),
     ]);
 
+  const staffRows = (staff ?? []) as Staff[];
+  const avatarUrls = await signedAvatarUrls(supabase, staffRows);
+
   return (
     <>
       <PageHeader title="Staff" />
       <div className="flex-1 p-8">
         <StaffManager
-          staff={(staff ?? []) as Staff[]}
+          staff={staffRows}
           locations={(locations ?? []) as Location[]}
           appUsers={(appUsers ?? []) as AppUser[]}
           canEditRoles={["owner_admin"].includes(session!.appUser!.role)}
+          avatarUrls={avatarUrls}
+          tenantId={session!.tenant!.id}
         />
       </div>
     </>

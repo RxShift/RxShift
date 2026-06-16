@@ -7,6 +7,7 @@ import {
   loadAllLocationsBundle,
   validateRangeBundle,
 } from "@/lib/schedule-data";
+import { signedAvatarUrls } from "@/lib/avatars";
 import {
   addDaysStr,
   mondayOf,
@@ -165,6 +166,7 @@ export default async function SchedulePage({
 
   const allBundle = await loadAllLocationsBundle(start, end);
   const validation = validateRangeBundle(allBundle, tenant);
+  const avatarUrls = await signedAvatarUrls(supabase, allBundle.staff);
 
   const stepLen = view === "2week" ? 14 : 7;
   const prevAnchor =
@@ -220,6 +222,7 @@ export default async function SchedulePage({
           approvedTimeOff={allBundle.approvedTimeOff}
           validation={validation}
           locationFilter={locationFilter}
+          avatarUrls={avatarUrls}
         />
       </div>
     </>

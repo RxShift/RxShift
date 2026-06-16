@@ -42,6 +42,27 @@ export async function createStaff(input: unknown): Promise<ActionResult<{ id: st
   });
 }
 
+/** Save a staff member's avatar path (uploaded client-side to the avatars bucket). */
+export async function setStaffAvatar(
+  staffId: string,
+  avatarPath: string
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("staff")
+      .update({ avatar_path: avatarPath })
+      .eq("id", staffId)
+      .eq("tenant_id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+    await logActivity(ctx, "update", "staff", staffId, { avatar: true });
+    revalidatePath("/app/staff");
+    revalidatePath("/app/schedule");
+    return undefined;
+  });
+}
+
 export async function updateStaff(id: string, input: unknown): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requireManager();

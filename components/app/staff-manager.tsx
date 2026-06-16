@@ -11,6 +11,8 @@ import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { createStaff, offboardStaff, updateStaff } from "@/lib/actions/staff";
 import { updateAppUser } from "@/lib/actions/settings";
+import Avatar from "@/components/app/avatar";
+import AvatarUpload from "@/components/app/avatar-upload";
 import type { AppRole, AppUser, Location, RatioType, Staff } from "@/lib/types";
 
 const RATIO_LABELS: Record<RatioType, string> = {
@@ -39,11 +41,15 @@ export default function StaffManager({
   locations,
   appUsers,
   canEditRoles,
+  avatarUrls,
+  tenantId,
 }: {
   staff: Staff[];
   locations: Location[];
   appUsers: AppUser[];
   canEditRoles: boolean;
+  avatarUrls: Record<string, string>;
+  tenantId: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | "new" | null>(null);
@@ -149,9 +155,12 @@ export default function StaffManager({
             {visible.map((s) => (
               <Tr key={s.id}>
                 <Td className="font-medium">
-                  {s.full_name}
+                  <div className="flex items-center gap-2.5">
+                    <Avatar url={avatarUrls[s.id]} name={s.full_name} size={30} />
+                    <span>{s.full_name}</span>
+                  </div>
                   {s.login_email && (
-                    <div className="font-body text-xs text-steel">
+                    <div className="mt-0.5 pl-[42px] font-body text-xs text-steel">
                       {s.login_email}
                       {(() => {
                         const acct = appUsers.find((u) => u.staff_id === s.id);
@@ -228,6 +237,14 @@ export default function StaffManager({
         }
       >
         <form id="staff-form" onSubmit={handleSubmit} className="space-y-4">
+          {initial && (
+            <AvatarUpload
+              staffId={initial.id}
+              tenantId={tenantId}
+              fullName={initial.full_name}
+              currentUrl={avatarUrls[initial.id]}
+            />
+          )}
           <div>
             <Label htmlFor="full_name">Full name</Label>
             <Input

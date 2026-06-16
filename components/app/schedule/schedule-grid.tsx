@@ -21,6 +21,7 @@
 
 import { Fragment, useEffect, useRef } from "react";
 import { fmtDay } from "@/lib/dates";
+import Avatar from "@/components/app/avatar";
 import ShiftBlock from "./shift-block";
 import type { Shift, ShiftSegment, Staff, WorkType } from "@/lib/types";
 
@@ -42,6 +43,7 @@ export default function ScheduleGrid({
   workTypeById,
   dateStatus,
   locationNameById,
+  avatarUrlById,
   onCellClick,
 }: {
   dates: string[];
@@ -56,6 +58,8 @@ export default function ScheduleGrid({
   dateStatus?: Map<string, DateStatus>;
   /** When set (all-locations view), each shift shows a location tag. */
   locationNameById?: Map<string, string>;
+  /** When set, an avatar (photo or initials) shows before each staff name. */
+  avatarUrlById?: Record<string, string>;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -144,14 +148,24 @@ export default function ScheduleGrid({
               {band.staff.map((person) => (
                 <tr key={person.id}>
                   <td className="sticky left-0 z-10 border-b border-r border-line bg-surface px-3 py-1.5">
-                    <span className="font-body text-[13px] font-medium text-navy">
-                      {person.full_name}
-                    </span>
-                    {person.ratio_type === "technician" && person.certified && (
-                      <span className="ml-1.5 font-body text-[10px] text-steel">
-                        CPhT
+                    <div className="flex items-center gap-2">
+                      {avatarUrlById && (
+                        <Avatar
+                          url={avatarUrlById[person.id]}
+                          name={person.full_name}
+                          size={24}
+                        />
+                      )}
+                      <span className="font-body text-[13px] font-medium text-navy">
+                        {person.full_name}
                       </span>
-                    )}
+                      {person.ratio_type === "technician" &&
+                        person.certified && (
+                          <span className="font-body text-[10px] text-steel">
+                            CPhT
+                          </span>
+                        )}
+                    </div>
                   </td>
                   {dates.map((d) => {
                     const key = `${person.id}|${d}`;

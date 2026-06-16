@@ -47,6 +47,7 @@ export default function ScheduleMatrix({
   departments,
   approvedTimeOff,
   validation,
+  avatarUrls,
   /** When set, show only this location (rows with a shift there); null = all. */
   locationFilter,
 }: {
@@ -62,6 +63,7 @@ export default function ScheduleMatrix({
   departments: Department[];
   approvedTimeOff: TimeOffRequest[];
   validation: ValidationOut;
+  avatarUrls: Record<string, string>;
   locationFilter: string | null;
 }) {
   const router = useRouter();
@@ -415,6 +417,7 @@ export default function ScheduleMatrix({
           constraintShiftIds={constraintShiftIds}
           workTypeById={workTypeById}
           locationNameById={locationNameById}
+          avatarUrlById={avatarUrls}
           onCellClick={(person, date, shift) =>
             setEditing({ staff: person, date, shift })
           }
