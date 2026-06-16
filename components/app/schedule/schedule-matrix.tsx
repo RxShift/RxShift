@@ -75,9 +75,61 @@ export default function ScheduleMatrix({
   const [reason, setReason] = useState("");
   const [confirmCopy, setConfirmCopy] = useState(false);
   const [toolError, setToolError] = useState<string | null>(null);
+  // Pure view filters (what do I want to look at) — no scheduling effect.
+  const [deptFilter, setDeptFilter] = useState(""); // "" = all departments
+  const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
+
+  function toggleWorkType(id: string) {
+    setWorkTypeFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const flagCount =
     validation.ratioFlags.length + validation.constraintFlags.length;
+
+  // Published vs draft status for the current window (and filter scope), so it's
+  // always obvious whether you're looking at an active schedule or a draft.
+  const { hasDraft, statusLabel, statusTone } = useMemo(() => {
+    const relevant = locationFilter
+      ? periods.filter((p) => p.location_id === locationFilter)
+      : periods;
+    const draft = relevant.some((p) => p.status === "draft");
+    const published = relevant.some((p) => p.status === "published");
+    if (relevant.length === 0)
+      return {
+        hasDraft: false,
+        statusLabel: "Nothing scheduled here yet",
+        statusTone: "neutral" as const,
+      };
+    if (!draft)
+      return {
+        hasDraft: false,
+        statusLabel: "Published — visible to staff",
+        statusTone: "published" as const,
+      };
+    if (published)
+      return {
+        hasDraft: true,
+        statusLabel: "Draft changes pending publish",
+        statusTone: "draft" as const,
+      };
+    return {
+      hasDraft: true,
+      statusLabel: "Draft — not visible to staff yet",
+      statusTone: "draft" as const,
+    };
+  }, [periods, locationFilter]);
+
+  const statusCls =
+    statusTone === "published"
+      ? "bg-compliant-bg text-compliant"
+      : statusTone === "draft"
+        ? "bg-alert-bg text-alert"
+        : "bg-cloud text-steel";
 
   async function runPublish(overrideReason: string | null) {
     setBusy(true);
@@ -157,13 +209,37 @@ export default function ScheduleMatrix({
 
   const dates = useMemo(() => eachDate(viewStart, viewEnd), [viewStart, viewEnd]);
 
-  const visibleShifts = useMemo(
+  // Location-scoped shifts (drives the work-type chips so they stay stable).
+  const locShifts = useMemo(
     () =>
       locationFilter
         ? shifts.filter((s) => s.location_id === locationFilter)
         : shifts,
     [shifts, locationFilter]
   );
+
+  const visibleShifts = useMemo(() => {
+    let list = locShifts;
+    if (deptFilter) list = list.filter((s) => s.department_id === deptFilter);
+    if (workTypeFilter.size > 0)
+      list = list.filter((s) =>
+        s.segments.some(
+          (seg) => seg.work_type_id && workTypeFilter.has(seg.work_type_id)
+        )
+      );
+    return list;
+  }, [locShifts, deptFilter, workTypeFilter]);
+
+  const anyFilter =
+    !!locationFilter || !!deptFilter || workTypeFilter.size > 0;
+
+  const windowWorkTypes = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of locShifts)
+      for (const seg of s.segments)
+        if (seg.work_type_id) ids.add(seg.work_type_id);
+    return workTypes.filter((w) => ids.has(w.id));
+  }, [locShifts, workTypes]);
 
   const shiftsByCell = useMemo(() => {
     const map = new Map<string, ShiftWithSegments[]>();
@@ -224,10 +300,10 @@ export default function ScheduleMatrix({
   // (add someone new from All Locations).
   const activeStaff = useMemo(() => {
     const base = staff.filter((s) => s.active);
-    if (!locationFilter) return base;
+    if (!anyFilter) return base;
     const scheduledIds = new Set(visibleShifts.map((s) => s.staff_id));
     return base.filter((s) => scheduledIds.has(s.id));
-  }, [staff, locationFilter, visibleShifts]);
+  }, [staff, anyFilter, visibleShifts]);
 
   // For editing, the shift carries its own location + period.
   const periodById = useMemo(
@@ -243,6 +319,11 @@ export default function ScheduleMatrix({
   return (
     <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
       <div className="flex flex-none flex-wrap items-center gap-3 pb-3">
+        <span
+          className={`rounded-full px-2.5 py-1 font-brand text-[11px] font-bold uppercase tracking-[0.5px] ${statusCls}`}
+        >
+          {statusLabel}
+        </span>
         {flagCount > 0 && (
           <span className="font-body text-[13px] font-semibold text-deficiency">
             ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"}
@@ -261,12 +342,67 @@ export default function ScheduleMatrix({
           </Button>
           <Button
             onClick={() => (flagCount > 0 ? setPublishOpen(true) : runPublish(null))}
-            disabled={busy}
+            disabled={busy || !hasDraft}
           >
-            {busy ? "Working…" : "Publish"}
+            {busy ? "Working…" : hasDraft ? "Publish" : "Published ✓"}
           </Button>
         </div>
       </div>
+
+      {/* View filters — what do I want to look at (no scheduling effect). */}
+      {(departments.length > 0 || windowWorkTypes.length > 0) && (
+        <div className="flex flex-none flex-wrap items-center gap-2 pb-3 font-body text-[12px]">
+          {departments.length > 0 && (
+            <select
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="rounded-md border-[1.5px] border-line bg-surface px-2.5 py-1.5 text-navy"
+            >
+              <option value="">All departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {windowWorkTypes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-steel">Work type:</span>
+              {windowWorkTypes.map((w) => {
+                const on = workTypeFilter.has(w.id);
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => toggleWorkType(w.id)}
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors ${
+                      on
+                        ? "border-navy bg-navy text-white"
+                        : "border-line bg-surface text-steel hover:text-navy"
+                    }`}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{ backgroundColor: w.color ?? "#5B6B82" }}
+                    />
+                    {w.name}
+                  </button>
+                );
+              })}
+              {workTypeFilter.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWorkTypeFilter(new Set())}
+                  className="ml-1 text-steel underline underline-offset-2 hover:text-navy"
+                >
+                  clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1">
         <ScheduleGrid
