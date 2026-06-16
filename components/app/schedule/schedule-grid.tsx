@@ -41,6 +41,7 @@ export default function ScheduleGrid({
   constraintShiftIds,
   workTypeById,
   dateStatus,
+  locationNameById,
   onCellClick,
 }: {
   dates: string[];
@@ -53,6 +54,8 @@ export default function ScheduleGrid({
   workTypeById: Map<string, WorkType>;
   /** Optional per-date publish state — when set, columns are tinted/labeled. */
   dateStatus?: Map<string, DateStatus>;
+  /** When set (all-locations view), each shift shows a location tag. */
+  locationNameById?: Map<string, string>;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -154,9 +157,6 @@ export default function ScheduleGrid({
                     const key = `${person.id}|${d}`;
                     const cellShifts = shiftsByCell.get(key) ?? [];
                     const hasPto = timeOffByCell.has(key);
-                    const shift = cellShifts[0] ?? null;
-                    const deficient = shift ? deficientShiftIds.has(shift.id) : false;
-                    const constrained = shift ? constraintShiftIds.has(shift.id) : false;
                     const noPeriod = dateStatus?.get(d) === "none";
                     const isDraft = dateStatus?.get(d) === "draft";
 
@@ -164,7 +164,7 @@ export default function ScheduleGrid({
                       <td
                         key={d}
                         onClick={
-                          noPeriod ? undefined : () => onCellClick(person, d, shift)
+                          noPeriod ? undefined : () => onCellClick(person, d, null)
                         }
                         className={`border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
                           noPeriod
@@ -182,13 +182,30 @@ export default function ScheduleGrid({
                             PTO
                           </span>
                         )}
-                        {shift && (
-                          <ShiftBlock
-                            segments={shift.segments}
-                            workTypeById={workTypeById}
-                            deficient={deficient}
-                            constrained={constrained}
-                          />
+                        {cellShifts.length > 0 && (
+                          <div className="space-y-1">
+                            {cellShifts.map((sh) => (
+                              <div
+                                key={sh.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCellClick(person, d, sh);
+                                }}
+                              >
+                                {locationNameById && (
+                                  <span className="mb-0.5 block truncate font-brand text-[8px] font-bold uppercase tracking-[0.5px] text-steel">
+                                    {locationNameById.get(sh.location_id) ?? ""}
+                                  </span>
+                                )}
+                                <ShiftBlock
+                                  segments={sh.segments}
+                                  workTypeById={workTypeById}
+                                  deficient={deficientShiftIds.has(sh.id)}
+                                  constrained={constraintShiftIds.has(sh.id)}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </td>
                     );

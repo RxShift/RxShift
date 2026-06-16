@@ -12,6 +12,7 @@ import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { deleteShift, upsertShift } from "@/lib/actions/schedule";
 import type {
   Department,
+  Location,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -43,22 +44,32 @@ export default function ShiftModal({
   requireDepartment,
   workTypes,
   defaultBreakMinutes,
+  locationOptions,
+  periods,
 }: {
   open: boolean;
   onClose: () => void;
   staff: Staff;
   date: string;
   shift: ShiftWithSegments | null;
-  period: SchedulePeriod;
+  /** The covering period when known (editing); resolved from the picker when null. */
+  period: SchedulePeriod | null;
   locationId: string;
-  /** Shown as read-only context (the cell already determines the location). */
+  /** Shown as read-only context when the location is fixed. */
   locationName?: string;
   departments: Department[];
   requireDepartment: boolean;
   workTypes: WorkType[];
   defaultBreakMinutes: number;
+  /** All-locations create: show a location picker instead of fixed context. */
+  locationOptions?: Location[];
+  /** Periods across locations, used to resolve the covering period when picking. */
+  periods?: SchedulePeriod[];
 }) {
   const router = useRouter();
+  const [selectedLocationId, setSelectedLocationId] = useState(
+    locationId || locationOptions?.[0]?.id || ""
+  );
   const [segments, setSegments] = useState<SegmentDraft[]>(
     shift && shift.segments.length > 0
       ? shift.segments.map((s) => ({
@@ -92,11 +103,33 @@ export default function ShiftModal({
       setError("This pharmacy requires a department on every shift.");
       return;
     }
+    const loc = locationOptions ? selectedLocationId : locationId;
+    if (!loc) {
+      setError("Choose a location for this shift.");
+      return;
+    }
+    // Editing uses the shift's own period; creating resolves the period that
+    // covers this date at the chosen location.
+    const resolvedPeriod =
+      period ??
+      periods?.find(
+        (p) =>
+          p.location_id === loc &&
+          p.start_date <= date &&
+          p.end_date >= date
+      ) ??
+      null;
+    if (!resolvedPeriod) {
+      setError(
+        "No schedule period covers this date at that location yet — open that location to create the period first."
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     const result = await upsertShift(shift?.id ?? null, {
-      schedule_period_id: period.id,
-      location_id: locationId,
+      schedule_period_id: resolvedPeriod.id,
+      location_id: loc,
       staff_id: staff.id,
       date,
       department_id: departmentId || null,
@@ -160,6 +193,22 @@ export default function ShiftModal({
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-4">
+          {locationOptions && (
+            <div className="w-[280px]">
+              <Label htmlFor="loc">Location</Label>
+              <Select
+                id="loc"
+                value={selectedLocationId}
+                onChange={(e) => setSelectedLocationId(e.target.value)}
+              >
+                {locationOptions.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div className="w-[280px]">
             <Label htmlFor="dept">
               Department{requireDepartment ? "" : " (optional)"}

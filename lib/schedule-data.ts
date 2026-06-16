@@ -237,6 +237,90 @@ export async function loadRangeBundle(
   };
 }
 
+// ─── All-locations bundle (the unified, person-centric matrix) ───────────────
+//
+// Same shape as a range bundle but spanning EVERY location: ratio is per
+// location, and a person may work at more than one. We load all shifts in the
+// window (no location filter), group by person at render time, and tag each
+// shift with its location. Validation still groups by location, and the
+// double-book check (validateBundle) flags a person scheduled in two overlapping
+// shifts across locations.
+export async function loadAllLocationsBundle(
+  viewStart: string,
+  viewEnd: string
+): Promise<RangeBundle> {
+  const supabase = await createClient();
+
+  const { data: shifts } = await supabase
+    .from("shift")
+    .select("*")
+    .gte("date", viewStart)
+    .lte("date", viewEnd);
+  const shiftRows = (shifts ?? []) as Shift[];
+  const shiftIds = shiftRows.map((s) => s.id);
+
+  const [
+    { data: segments },
+    { data: staff },
+    { data: workTypes },
+    { data: locations },
+    { data: rules },
+    { data: constraints },
+    { data: timeOff },
+    { data: periods },
+  ] = await Promise.all([
+    shiftIds.length
+      ? supabase.from("shift_segment").select("*").in("shift_id", shiftIds)
+      : Promise.resolve({ data: [] as ShiftSegment[] }),
+    supabase.from("staff").select("*").order("full_name"),
+    supabase.from("work_type").select("*").order("name"),
+    supabase.from("location").select("*").order("name"),
+    supabase.from("ratio_rule").select("*"),
+    supabase.from("constraint_rule").select("*").eq("active", true),
+    supabase
+      .from("time_off_request")
+      .select("*")
+      .eq("status", "approved")
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart),
+    supabase
+      .from("schedule_period")
+      .select("*")
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart)
+      .order("start_date"),
+  ]);
+
+  const segsByShift = new Map<string, ShiftSegment[]>();
+  for (const seg of (segments ?? []) as ShiftSegment[]) {
+    const list = segsByShift.get(seg.shift_id) ?? [];
+    list.push(seg);
+    segsByShift.set(seg.shift_id, list);
+  }
+
+  const allRules = (rules ?? []) as RatioRule[];
+  const tenantRule = allRules.find((r) => r.tenant_id !== null) ?? null;
+
+  return {
+    locationId: "", // spans all locations
+    viewStart,
+    viewEnd,
+    periods: (periods ?? []) as SchedulePeriod[],
+    shifts: shiftRows.map((s) => ({
+      ...s,
+      segments: (segsByShift.get(s.id) ?? []).sort((a, b) =>
+        a.start_time.localeCompare(b.start_time)
+      ),
+    })),
+    staff: (staff ?? []) as Staff[],
+    workTypes: (workTypes ?? []) as WorkType[],
+    locations: (locations ?? []) as Location[],
+    ratioRule: tenantRule,
+    constraints: (constraints ?? []) as ConstraintRule[],
+    approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
+  };
+}
+
 /**
  * Validate a range the same way a period is validated. The engine works
  * per-date/per-zone and never reads the period identity, so a synthetic period

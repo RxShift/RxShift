@@ -6,10 +6,9 @@ import ScheduleBuilder from "@/components/app/schedule/schedule-builder";
 import ScheduleRangeView from "@/components/app/schedule/schedule-range-view";
 import NewPeriodButton from "@/components/app/schedule/new-period-button";
 import AiCommandBar from "@/components/app/schedule/ai-command-bar";
-import AllLocationsOverview, {
-  type OverviewSection,
-} from "@/components/app/schedule/all-locations-overview";
+import ScheduleMatrix from "@/components/app/schedule/schedule-matrix";
 import {
+  loadAllLocationsBundle,
   loadPeriodBundle,
   loadRangeBundle,
   validateBundle,
@@ -160,45 +159,32 @@ export default async function SchedulePage({
     .order("start_date", { ascending: false });
   const everyPeriod = (allPeriods ?? []) as SchedulePeriod[];
 
-  // ── All-locations read-only overview ──────────────────────────────────
-  if (params.view === "all" && locs.length > 1) {
-    const today = nowInTimeZone(tenant.timezone).date;
-    const target = params.week ?? today;
-
-    // For each location, the period covering the target week (prefer
-    // published), then load its bundle + validation read-only.
-    const sections: OverviewSection[] = await Promise.all(
-      locs.map(async (l) => {
-        const covering = everyPeriod
-          .filter(
-            (p) =>
-              p.location_id === l.id &&
-              p.start_date <= target &&
-              p.end_date >= target
-          )
-          .sort((a, b) =>
-            a.status === b.status ? 0 : a.status === "published" ? -1 : 1
-          );
-        const period = covering[0] ?? null;
-        if (!period)
-          return { location: l, bundle: null, validation: null };
-        const bundle = await loadPeriodBundle(period.id);
-        return {
-          location: l,
-          bundle,
-          validation: bundle ? validateBundle(bundle, tenant) : null,
-        };
-      })
-    );
+  // ── All-locations unified matrix (the default for multi-location tenants) ──
+  // One person-centric grid across every location; ratio stays per location and
+  // a person scheduled in two overlapping shifts (any location) is flagged.
+  const todayDate = nowInTimeZone(tenant.timezone).date;
+  const showAll =
+    locs.length > 1 &&
+    (params.view === "all" ||
+      (!params.location && !params.view && !params.period));
+  if (showAll) {
+    const target =
+      params.week && /^\d{4}-\d{2}-\d{2}$/.test(params.week)
+        ? params.week
+        : todayDate;
+    const start = mondayOf(target);
+    const end = addDaysStr(start, 6);
+    const allBundle = await loadAllLocationsBundle(start, end);
+    const validation = validateRangeBundle(allBundle, tenant);
 
     return (
       <>
         <PageHeader title="Schedule — All locations" />
-        <div className="flex-1 min-w-0 space-y-5 p-8">
+        <div className="flex-1 min-w-0 space-y-4 p-8">
           <ViewNav locations={locs} activeLocationId={null} isAll />
           <div className="flex items-center gap-3">
             <Link
-              href={`/app/schedule?view=all&week=${addDaysStr(target, -7)}`}
+              href={`/app/schedule?view=all&week=${addDaysStr(start, -7)}`}
               className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
             >
               ← Prev week
@@ -207,17 +193,26 @@ export default async function SchedulePage({
               Week of {target}
             </span>
             <Link
-              href={`/app/schedule?view=all&week=${addDaysStr(target, 7)}`}
+              href={`/app/schedule?view=all&week=${addDaysStr(start, 7)}`}
               className="rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40"
             >
               Next week →
             </Link>
           </div>
-          <AllLocationsOverview
-            sections={sections}
-            workTypes={
-              sections.find((s) => s.bundle)?.bundle?.workTypes ?? []
-            }
+          <ScheduleMatrix
+            tenant={tenant}
+            today={todayDate}
+            viewStart={start}
+            viewEnd={end}
+            periods={allBundle.periods}
+            shifts={allBundle.shifts}
+            staff={allBundle.staff}
+            workTypes={allBundle.workTypes}
+            locations={allBundle.locations}
+            departments={depts}
+            approvedTimeOff={allBundle.approvedTimeOff}
+            validation={validation}
+            locationFilter={null}
           />
         </div>
       </>
