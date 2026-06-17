@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/app/sidebar";
+import MobileTabBar from "@/components/app/mobile-tab-bar";
+import DesktopOnlyNotice from "@/components/app/desktop-only-notice";
 import PlatformBanner from "@/components/app/platform-banner";
 import DemoBanner from "@/components/app/demo-banner";
 import { getSession } from "@/lib/auth";
@@ -48,7 +50,9 @@ export default async function ShellLayout({
         isEmulating={isEmulating}
         tenantLogoUrl={logoUrl}
       />
-      <div className="app-content ml-60 flex min-h-screen min-w-0 flex-1 flex-col">
+      {/* Mobile: no sidebar margin + bottom padding for the tab bar. Desktop
+          (md+): the fixed sidebar's ml-60 (and the collapse override). */}
+      <div className="app-content ml-0 flex min-h-screen min-w-0 flex-1 flex-col pb-16 md:ml-60 md:pb-0">
         {showBanner && (
           <PlatformBanner
             tenantName={session.tenant.name}
@@ -62,8 +66,16 @@ export default async function ShellLayout({
           isOwner={session.appUser.role === "owner_admin"}
           isEmulating={isEmulating}
         />
+        <DesktopOnlyNotice />
         {children}
       </div>
+      <MobileTabBar
+        role={session.appUser.role}
+        hasRatio={session.tenant.has_ratio}
+        isPlatformAdmin={session.platform.isPlatformAdmin}
+        isEmulating={isEmulating}
+        tenantName={session.tenant.name}
+      />
     </div>
   );
 }

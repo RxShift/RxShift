@@ -138,6 +138,10 @@ html.sidebar-collapsed .app-content {
 .app-sidebar-reopen {
   display: none;
 }
-html.sidebar-collapsed .app-sidebar-reopen {
-  display: flex;
+/* Only on desktop, where the collapsible sidebar exists (mobile uses the
+   bottom tab bar — there's no sidebar to reopen). */
+@media (min-width: 768px) {
+  html.sidebar-collapsed .app-sidebar-reopen {
+    display: flex;
+  }
 }

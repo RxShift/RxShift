@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -26,6 +26,15 @@ export const metadata: Metadata = {
     url: "https://rxshift.io",
     siteName: "RxShift",
   },
+  // Home-screen install (iOS uses apple-touch-icon; the manifest covers Android).
+  appleWebApp: { capable: true, title: "RxShift", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#1C2F5E",
 };
 
 export default function RootLayout({

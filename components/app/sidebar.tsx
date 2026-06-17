@@ -8,22 +8,23 @@ import ThemeToggle from "@/components/ui/theme-toggle";
 import FeedbackButton from "@/components/app/feedback-button";
 import type { AppRole } from "@/lib/types";
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   roles?: AppRole[]; // undefined = everyone
 }
 
-interface NavSection {
+export interface NavSection {
   label: string | null;
   items: NavItem[];
 }
 
-const MANAGE: AppRole[] = ["owner_admin", "scheduler", "supervisor", "read_only"];
+export const MANAGE: AppRole[] = ["owner_admin", "scheduler", "supervisor", "read_only"];
 // Can edit pharmacy configuration (mirrors canManage — excludes read_only)
 const CONFIG: AppRole[] = ["owner_admin", "scheduler", "supervisor"];
 
-function sections(
+// Exported so the mobile tab bar's "More" sheet can reuse the same nav.
+export function sections(
   hasRatio: boolean,
   showPlatform: boolean,
   tenantName: string
@@ -115,7 +116,7 @@ export default function Sidebar({
     Boolean(tenantLogoUrl) && failedLogoUrl !== tenantLogoUrl;
 
   return (
-    <aside className="app-sidebar fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-[#1C2F5E]">
+    <aside className="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-60 flex-col bg-[#1C2F5E] md:flex">
       {/* RxShift mark always stays — the tenant logo (if set) sits beside it */}
       <div className="flex h-[60px] items-center gap-2.5 bg-[#162650] px-5">
         <RxShiftMark size={30} variant="dark" />
