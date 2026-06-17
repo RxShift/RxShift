@@ -34,7 +34,20 @@ export default async function LiveBoardPage() {
 
   return (
     <>
-      <PageHeader title="Live Board" />
+      <PageHeader
+        title="Live Board"
+        actions={
+          <a
+            href="/app/display"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-line px-3 py-1.5 font-brand text-xs font-semibold text-navy transition-colors hover:bg-cloud"
+            title="Open the read-only wall display in a new tab"
+          >
+            Open display ↗
+          </a>
+        }
+      />
       <div className="flex-1 p-8">
         <LiveBoard
           locations={view.locationCards}

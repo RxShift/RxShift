@@ -48,15 +48,17 @@ export default function LocationCard({
     <Card
       className={loc.status === "deficient" ? "border-l-4 border-l-deficiency" : ""}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <h2
-          className={`font-brand font-bold text-navy ${big ? "text-2xl" : "text-base"}`}
+          className={`min-w-0 font-brand font-bold text-navy ${big ? "text-2xl" : "text-base"}`}
         >
           {loc.locationName}
         </h2>
-        <Badge tone={loc.status === "deficient" ? "deficiency" : "compliant"}>
-          {loc.status === "deficient" ? "Deficient now" : "Compliant now"}
-        </Badge>
+        <span className="shrink-0 whitespace-nowrap">
+          <Badge tone={loc.status === "deficient" ? "deficiency" : "compliant"}>
+            {loc.status === "deficient" ? "Deficient now" : "Compliant now"}
+          </Badge>
+        </span>
       </div>
 
       <div className="mb-4 flex items-end gap-6">
