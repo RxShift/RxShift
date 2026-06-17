@@ -23,4 +23,4 @@ On **Live Board**, click **Open display** (top right). It opens the display in a
 
 ## More room on your own screen
 
-Anywhere in RxShift, click the **«** at the top of the left menu to hide it and give the schedule or board the full width. A small tab on the left edge brings the menu back.', true, false);
+Anywhere in RxShift, click the **«** at the top of the left menu to hide it and give the schedule or board the full width. A **»** button then appears in the page header to bring the menu back.', true, false);
