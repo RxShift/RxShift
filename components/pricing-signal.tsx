@@ -30,9 +30,9 @@ export default function PricingSignal() {
         </div>
 
         <p className="mt-6 font-body text-[13px] text-alert">
-          We&rsquo;re currently piloting with Nevada pharmacies.
-          <br className="hidden sm:block" /> Pilot participants receive early
-          pricing. Talk to us before rates are published.
+          Currently piloting with Nevada pharmacies.
+          <br className="hidden sm:block" /> Schedule a walkthrough to discuss
+          pricing for your group.
         </p>
 
         <p className="mt-6">

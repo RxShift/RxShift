@@ -7,6 +7,24 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — /about team page (unlinked draft) + softened homepage pilot-pricing note
+
+- **`/about` (`app/about/page.tsx`)** — two-founder team page (navy hero, two bio cards with treated
+  circular photos, navy CTA strip). **Deliberately NOT linked** from nav or footer, and `noindex` —
+  an internal-review draft reachable by direct URL only. Photos at `public/images/team/{susie,jamison}.jpg`
+  (build-safe initials fallback if absent). Shared `.team-photo` CSS (grayscale 20% + contrast 1.08 +
+  navy multiply overlay) applied to both. Reuses the `Card` component + brand tokens.
+- **Homepage pilot note** (`components/pricing-signal.tsx`): replaced "Pilot participants receive early
+  pricing. Talk to us before rates are published." with "Currently piloting with Nevada pharmacies.
+  Schedule a walkthrough to discuss pricing for your group." (same amber treatment; "See pricing
+  details →" unchanged).
+- Photos: Susie's drop-in worked as-is; Jamison's was a wide full-upper-body shot, so it was cropped
+  to a face-centered 480×480 square and saved as `jamison-headshot.jpg` (~23 KB) so it sits in the
+  circle like Susie's (a distinct filename also avoids a stale-cache collision with the earlier photo).
+- Note: the /about CTA links to **`/#demo`** (the homepage's actual schedule anchor; there is no `#schedule`).
+
+---
+
 ## 2026-06-17 — Website: "can I step away?" story + headroom GIF; Mesa Vista staffed up; PWA install fix
 
 Marketing + demo-data update showcasing the new ratio-headroom feature, plus the PWA install fix.

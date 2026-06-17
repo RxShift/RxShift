@@ -145,3 +145,28 @@ html.sidebar-collapsed .app-content {
     display: flex;
   }
 }
+
+/* ─── About page — founder photos ─────────────────────────────────────────── */
+/* One shared, identical treatment for both photos: a 120px circle with a slight
+   desaturation + contrast boost and a subtle navy multiply overlay, for a
+   consistent on-brand look. */
+.team-photo {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.team-photo img {
+  filter: grayscale(20%) contrast(1.08);
+}
+.team-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(28, 47, 94, 0.08);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
