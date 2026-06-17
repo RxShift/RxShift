@@ -17,7 +17,12 @@ import {
   toEngineRule,
   toEngineSegments,
 } from "@/lib/schedule-data";
-import { evaluateZone, maxTechsAllowed, timeToMinutes } from "@/lib/engine/ratio";
+import {
+  evaluateZone,
+  maxTechsAllowed,
+  pharmacistHeadroom,
+  timeToMinutes,
+} from "@/lib/engine/ratio";
 import { adjustSegmentsForLive, currentSlotOf } from "@/lib/live-board";
 import {
   countsByStatus,
@@ -47,6 +52,8 @@ export interface LocationCard {
   reason: string | null;
   techLimit: number;
   limitLabel: string;
+  /** How many counting pharmacists could step away now and stay compliant. */
+  headroom: number;
 }
 
 export interface StatusListItem {
@@ -238,6 +245,11 @@ export async function buildBoardView(
           engineRule.formula === "additive"
             ? `additive: first +${engineRule.additive_first_techs ?? 1}, each addl +${engineRule.additive_additional_techs ?? 2}`
             : `${bundle.ratioRule.max_techs_per_pharmacist}/pharmacist`,
+        headroom: pharmacistHeadroom(
+          pharmacistsCounting.length,
+          techsCounting.length,
+          engineRule
+        ),
       });
     }
   }

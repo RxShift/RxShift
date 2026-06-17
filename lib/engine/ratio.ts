@@ -53,6 +53,50 @@ export function maxTechsAllowed(
   return pharmacists * rule.max_techs_per_pharmacist;
 }
 
+/**
+ * Minimum counting pharmacists needed to keep `techCount` counting technicians
+ * within ratio. maxTechsAllowed is monotonic in pharmacists, so we walk up.
+ */
+export function minPharmacistsFor(
+  techCount: number,
+  rule: EngineRatioRule
+): number {
+  if (techCount <= 0) return 0;
+  let p = 1;
+  while (maxTechsAllowed(p, rule) < techCount && p < 1000) p++;
+  return p;
+}
+
+/**
+ * How many of the currently-counting pharmacists could step away (go
+ * non-counting) right now and still keep the location compliant. 0 = at the
+ * limit (no one can leave). Use only when currently compliant.
+ */
+export function pharmacistHeadroom(
+  pharmacistsCounting: number,
+  techsCounting: number,
+  rule: EngineRatioRule
+): number {
+  return Math.max(
+    0,
+    pharmacistsCounting - minPharmacistsFor(techsCounting, rule)
+  );
+}
+
+/**
+ * Would the location go out of ratio if exactly ONE currently-counting
+ * pharmacist switched to a non-counting status right now? (Techs leaving never
+ * break ratio, so this is the pharmacist's "can I step away?" check.)
+ */
+export function wouldBreakIfOneLeaves(
+  pharmacistsCounting: number,
+  techsCounting: number,
+  rule: EngineRatioRule
+): boolean {
+  if (techsCounting <= 0) return false;
+  return maxTechsAllowed(pharmacistsCounting - 1, rule) < techsCounting;
+}
+
 /** Does this segment's person count toward ratio while in this segment? */
 export function segmentCounts(seg: EngineSegment): boolean {
   if (seg.staff.ratio_type === "non_counting") return false;

@@ -100,6 +100,24 @@ export default function LocationCard({
         </p>
       </div>
 
+      {/* Pharmacist "can someone step away?" headroom — the lunch question. */}
+      {loc.status === "compliant" && loc.pharmacistsCounting.length > 0 && (
+        loc.headroom >= 1 ? (
+          <p
+            className={`mb-3 font-body font-medium text-compliant ${big ? "text-sm" : "text-[13px]"}`}
+          >
+            ✓ {loc.headroom} pharmacist{loc.headroom === 1 ? "" : "s"} can step
+            away and stay compliant
+          </p>
+        ) : (
+          <p
+            className={`mb-3 font-body font-medium text-alert ${big ? "text-sm" : "text-[13px]"}`}
+          >
+            At the ratio limit — no pharmacist can step away right now
+          </p>
+        )
+      )}
+
       {loc.reason && (
         <p
           className={`mb-3 rounded bg-deficiency-bg p-2.5 font-body text-deficiency ${big ? "text-sm" : "text-[13px]"}`}

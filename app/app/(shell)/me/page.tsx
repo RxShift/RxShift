@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
 import AvatarUpload from "@/components/app/avatar-upload";
 import { signedAvatarUrls } from "@/lib/avatars";
+import { buildBoardView } from "@/lib/board-data";
 import {
   addDaysStr,
   dateInTimeZone,
@@ -128,20 +129,43 @@ export default async function MePage() {
   // covers right now (tenant tz). Off shift → show "Off shift", don't default to
   // Working. A status only counts as current if it was set today (tenant tz).
   const { date: tzToday, minutes: tzNow } = nowInTimeZone(tenant.timezone);
-  const onShiftNow = shifts.some(
-    (s) =>
-      s.date === tzToday &&
-      (s.shift_segment ?? []).some((seg) => {
-        const start = timeToMinutes(seg.start_time);
-        const end0 = timeToMinutes(seg.end_time);
-        const end = end0 > start ? end0 : 1440;
-        return start <= tzNow && tzNow < end;
-      })
-  );
+  const coversNow = (s: Shift & { shift_segment: ShiftSegment[] }) =>
+    s.date === tzToday &&
+    (s.shift_segment ?? []).some((seg) => {
+      const start = timeToMinutes(seg.start_time);
+      const end0 = timeToMinutes(seg.end_time);
+      const end = end0 > start ? end0 : 1440;
+      return start <= tzNow && tzNow < end;
+    });
+  const currentShift = shifts.find(coversNow);
+  const onShiftNow = !!currentShift;
   const effectiveStatus =
     live && dateInTimeZone(live.effective_from, tenant.timezone) === tzToday
       ? live.status
       : "present_counting";
+
+  // "Can I step away without breaking ratio?" — only meaningful for a
+  // pharmacist on shift (techs leaving never break ratio). Reuse the live board
+  // view for this location; headroom >= 1 means at least one counting pharmacist
+  // (including them) can switch to non-counting and stay compliant.
+  let ratioImpact: { locationName: string; safeToLeave: boolean } | undefined;
+  if (
+    tenant.has_ratio &&
+    onShiftNow &&
+    staff.ratio_type === "pharmacist" &&
+    currentShift?.location_id
+  ) {
+    const view = await buildBoardView(supabase, tenant);
+    const card = view.locationCards.find(
+      (c) => c.locationId === currentShift.location_id
+    );
+    if (card) {
+      ratioImpact = {
+        locationName: card.locationName,
+        safeToLeave: card.headroom >= 1,
+      };
+    }
+  }
 
   // Team schedule for my home location, this week
   const weekEnd = addDaysStr(today, 6);
@@ -174,7 +198,11 @@ export default async function MePage() {
 
           {tenant.has_ratio &&
             (onShiftNow ? (
-              <MyStatusPicker current={effectiveStatus} options={statusOptions} />
+              <MyStatusPicker
+                current={effectiveStatus}
+                options={statusOptions}
+                ratioImpact={ratioImpact}
+              />
             ) : (
               <Card>
                 <h2 className="mb-1 font-brand text-base font-bold text-navy">

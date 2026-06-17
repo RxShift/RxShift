@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { evaluateZone, maxTechsAllowed, segmentCounts, timeToMinutes } from "../ratio";
+import {
+  evaluateZone,
+  maxTechsAllowed,
+  minPharmacistsFor,
+  pharmacistHeadroom,
+  segmentCounts,
+  timeToMinutes,
+  wouldBreakIfOneLeaves,
+} from "../ratio";
 import type { EngineSegment, EngineStaff, EngineWorkType } from "../types";
 
 const rph = (name = "Sue RPh"): EngineStaff => ({
@@ -234,5 +242,42 @@ describe("additive formula (California BPC 4115: max techs = 2P − 1)", () => {
         30
       ).get("2026-06-15")![0].status
     ).toBe("deficient");
+  });
+});
+
+describe("pharmacist headroom — can I step away without breaking ratio?", () => {
+  const CA = {
+    max_techs_per_pharmacist: 1,
+    formula: "additive" as const,
+    additive_first_techs: 1,
+    additive_additional_techs: 2,
+  };
+
+  it("minPharmacistsFor on a flat rule (3 techs/pharmacist)", () => {
+    expect(minPharmacistsFor(0, RULE)).toBe(0);
+    expect(minPharmacistsFor(1, RULE)).toBe(1);
+    expect(minPharmacistsFor(24, RULE)).toBe(8); // ceil(24/3)
+  });
+
+  it("OptumRx case: 10 RPh / 24 techs at 3 per RPh → 2 can step away", () => {
+    expect(pharmacistHeadroom(10, 24, RULE)).toBe(2);
+    expect(wouldBreakIfOneLeaves(10, 24, RULE)).toBe(false);
+  });
+
+  it("at the limit: 2 RPh / 4 techs → 0 headroom, one leaving breaks it", () => {
+    expect(pharmacistHeadroom(2, 4, RULE)).toBe(0);
+    expect(wouldBreakIfOneLeaves(2, 4, RULE)).toBe(true);
+  });
+
+  it("no counting techs → ratio can't break; full headroom", () => {
+    expect(pharmacistHeadroom(2, 0, RULE)).toBe(2);
+    expect(wouldBreakIfOneLeaves(2, 0, RULE)).toBe(false);
+  });
+
+  it("additive (CA 2P−1): 3 RPh / 3 techs → 1 can leave; 2 RPh / 3 techs → 0", () => {
+    expect(pharmacistHeadroom(3, 3, CA)).toBe(1);
+    expect(wouldBreakIfOneLeaves(3, 3, CA)).toBe(false);
+    expect(pharmacistHeadroom(2, 3, CA)).toBe(0);
+    expect(wouldBreakIfOneLeaves(2, 3, CA)).toBe(true);
   });
 });
