@@ -112,14 +112,19 @@ export default function Sidebar({
       <div className="flex h-[60px] items-center gap-2.5 bg-[#162650] px-5">
         <RxShiftMark size={30} variant="dark" />
         {showTenantLogo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={tenantLogoUrl!}
-            alt={tenantName}
-            className="max-h-7 max-w-[120px] object-contain"
-            referrerPolicy="no-referrer"
-            onError={() => setFailedLogoUrl(tenantLogoUrl!)}
-          />
+          <>
+            {/* Divider so the partner logo reads as a deliberate lockup
+                (Rx·Shift │ Pharmacy), not two marks colliding. */}
+            <span className="h-7 w-px shrink-0 bg-white/15" aria-hidden />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={tenantLogoUrl!}
+              alt={tenantName}
+              className="max-h-6 max-w-[108px] object-contain"
+              referrerPolicy="no-referrer"
+              onError={() => setFailedLogoUrl(tenantLogoUrl!)}
+            />
+          </>
         ) : (
           <span className="font-brand text-[17px] tracking-[-0.3px] text-white">
             <span className="font-bold">Rx</span>

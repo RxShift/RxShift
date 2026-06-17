@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { emulateAppUser, switchActiveTenant } from "@/lib/actions/platform";
 
 export default function PlatformBanner({
@@ -12,7 +12,11 @@ export default function PlatformBanner({
   emulatingLabel: string | null;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
+
+  // Clean marketing screenshots: ?screenshot=true hides the chrome banners.
+  if (searchParams.get("screenshot") === "true") return null;
 
   async function exit() {
     setBusy(true);

@@ -131,8 +131,10 @@ export default async function EmailLogPage({
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center font-body text-sm text-steel">
-                    No emails match.
+                  <td colSpan={5} className="px-3 py-8 text-center font-body text-sm text-steel">
+                    {kind || status || (q && q.trim())
+                      ? "No emails match these filters."
+                      : "No emails yet. Every message the app sends — notifications, sign-in links, the website demo form, feedback, and system alerts — appears here as it's sent."}
                   </td>
                 </tr>
               )}

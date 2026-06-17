@@ -3,6 +3,42 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 16, 2026 — Live presence is schedule-derived (off-shift), not manual
+
+**A person counts toward the live ratio only if a PUBLISHED shift covers right now.** The
+live board and "My status now" previously defaulted everyone to "Working" (counting) and
+never checked the schedule — so someone not yet on shift showed "Working." Now presence is
+derived from the published schedule (tenant tz): on shift → auto "Working" (you can still tap
+Lunch/Off-floor); off shift → **"Off shift"**, not counted, no clock-in. Matches how a manager
+actually thinks about coverage, and keeps the live ratio honest. Two correctness fixes rode
+along: the board now considers **published shifts only** (drafts aren't real coverage), and a
+`live_status` is honored only if set **today** (open rows with `effective_to = null` were
+letting yesterday's "Lunch" linger). No clock-in model (rejected as too much friction; Jamison
+chose schedule-derived auto). Shared logic in `lib/live-board.ts` so the board and the alert
+cron stay in lockstep.
+
+**Lead deletion is platform-admin only, append-safe.** `deleteLead` cascades notes but
+deliberately **keeps** `email_log` rows (loose `related_id`) — an audit trail shouldn't lose
+records because a CRM lead was removed.
+
+**`?screenshot=true` is a client-side, URL-only banner suppressant** for marketing captures —
+not persisted, gone on navigation. The platform "viewing as" banner is a safety signal, so
+hiding it is deliberately transient and opt-in.
+
+## June 16, 2026 — ASSESSED, deferred to Build 2: proactive compliance notifications + append-only reasons
+
+Jamison wants (1) to **email a pharmacy before a scheduled deficiency happens** (give them time
+to fix it; show the auditor we warned them), and (2) let the pharmacy **append a reason** to a
+deficiency **without editing the immutable record**. Assessed against the codebase: both reuse
+existing infra. (1) = a daily cron scanning published periods in a lookahead window
+(`validateRangeBundle`/`buildComplianceRecords` → `sendEmail`, with dedupe state mirroring
+`live_ratio_alert_state`) — today only a 3-day streak at publish + a live "now" alert fire, so
+*future* scheduled deficiencies go unannounced. (2) = a new append-only `compliance_annotation`
+table surfaced on `/app/log`; the `compliance_snapshot` stays immutable, so the auditor sees both
+the deficiency and the pharmacy's explanation. Substantial enough to be its own pass — **build on
+Jamison's greenlight.** (The full Squeeze/ProductBoard product remains a separate, later,
+Jamison-directed effort.)
+
 ## June 16, 2026 — Brand email: M365 shared mailbox, and the two-stream model
 
 **Send as `hello@rxshift.io` via a Microsoft 365 *shared mailbox*, not an alias.** An

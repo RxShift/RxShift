@@ -44,6 +44,19 @@ export function nowInTimeZone(timeZone: string): { date: string; minutes: number
   };
 }
 
+/** The local date (yyyy-mm-dd) of an instant in an IANA timezone — used to tell
+ *  whether a stored timestamp falls on the tenant's "today". */
+export function dateInTimeZone(instant: Date | string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(typeof instant === "string" ? new Date(instant) : instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

@@ -7,6 +7,41 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-16 — Off-shift presence, delete-leads, co-branding lockup, email-log copy, screenshot mode
+
+Post-demo-review polish pass. No schema, no migrations.
+
+### Shipped
+- **Off-shift presence (schedule-derived).** The live board + "My status now" no longer
+  default everyone to "Working." Presence is derived from the **published** schedule: you're
+  "on shift" only if a published shift covers right now (tenant tz). Off shift → shown as
+  **"Off shift"**, not counted (no clock-in). Fixes an emulated staffer showing "Working"
+  before their shift. Also: the board now uses **published shifts only** (drafts no longer
+  count), and a `live_status` is honored only if it was set **today** (a stale "Lunch" from
+  yesterday no longer lingers). `lib/live-board.ts` (shared with the alert cron),
+  `board/page.tsx` + `live-board.tsx`, `me/page.tsx` + `my-status-picker.tsx`; new
+  `dateInTimeZone` helper in `lib/dates.ts`.
+- **Delete leads (platform admin).** `deleteLead` in `lib/actions/crm.ts` + a confirm-by-name
+  Danger Zone on the lead detail page. Notes cascade; email-log audit rows are kept by design.
+- **Co-branding lockup.** Sidebar now separates the RxShift mark from a tenant logo with a thin
+  divider + height alignment (`Rx·Shift │ Pharmacy`) instead of two marks colliding.
+- **Email-log empty state.** Clearer copy explaining the log fills as the app sends mail.
+- **`?screenshot=true`** hides both the platform "viewing as" banner and the demo/trial
+  sub-banner for clean marketing captures (client-side, URL-only, not persisted). Extracted the
+  demo banner to `components/app/demo-banner.tsx`.
+
+### Verified
+- `tsc` clean, 45 tests pass, `next build` clean. Browser (Mesa Vista demo): only on-shift staff
+  show "Working" — everyone off-shift shows "Off shift"; `?screenshot=true` removes both banners;
+  co-branding divider renders. Not yet pushed (Jamison drives push).
+
+### Next (assessed, awaiting greenlight) — Build 2
+- **Proactive compliance notifications** (daily cron digest of upcoming scheduled deficiencies)
+  + **append-only compliance annotations** (pharmacy explains a deficiency without editing the
+  immutable record). See docs/decisions.md.
+
+---
+
 ## 2026-06-16 — Centralized email + email log + deliverability/error detection + feedback + demo-safe chrome
 
 One build (workstreams A–G). Migrations 0019 (email_log) + 0020 (feedback) applied.

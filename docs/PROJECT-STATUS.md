@@ -72,6 +72,9 @@ Full product built June 11–16, 2026. All features are live in the repo (`tsc` 
 | **In-app feedback / bug / feature capture + triage** (`/app/admin/feedback`) | Live (June 16) |
 | **Demo-safe admin chrome** (Platform nav hidden while emulating; slim banner) | Live (June 16) |
 | **M365 shared mailbox** sending as hello@ (brand email; DKIM/SPF authenticated) | Live (June 16) |
+| **Schedule-derived live presence** (Off shift vs Working; published-only; today-only status) | Live (June 16) |
+| **Delete leads** (platform admin, confirm-by-name) | Live (June 16) |
+| **Co-branding lockup** (RxShift mark │ tenant logo divider) + **`?screenshot=true`** clean-capture | Live (June 16) |
 
 \* Per-minute alert delivery needs a paid Vercel plan; on the free plan the cron runs ~daily and the on-screen board badge is the real-time signal.
 

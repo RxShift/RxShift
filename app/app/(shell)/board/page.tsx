@@ -11,7 +11,7 @@ import {
   labelByStatus,
   resolveStatuses,
 } from "@/lib/live-status-config";
-import { nowInTimeZone } from "@/lib/dates";
+import { nowInTimeZone, dateInTimeZone } from "@/lib/dates";
 import type {
   LiveStatus,
   LiveStatusConfig,
@@ -57,8 +57,15 @@ export default async function LiveBoardPage() {
       supabase.from("staff").select("*").eq("active", true).order("full_name"),
       supabase.from("live_status_config").select("*"),
     ]);
-  const live = (liveStatuses ?? []) as LiveStatus[];
+  // Only honor a status set TODAY (tenant tz) — yesterday's "Lunch" shouldn't
+  // linger (live_status rows stay open with effective_to null).
+  const live = ((liveStatuses ?? []) as LiveStatus[]).filter(
+    (l) => dateInTimeZone(l.effective_from, tenant.timezone) === today
+  );
   const liveByStaff = new Map(live.map((l) => [l.staff_id, l.status]));
+  // Staff with a PUBLISHED shift covering right now = "on shift"; everyone else
+  // is off shift (not counted, shown as Off shift — not defaulted to Working).
+  const onShiftStaffIds = new Set<string>();
 
   // Statuses are configurable per tenant (which to show, labels, and whether
   // each counts toward ratio). No config rows = the original built-in behavior.
@@ -100,7 +107,13 @@ export default async function LiveBoardPage() {
   for (const period of todaysPeriods) {
     const bundle = await loadPeriodBundle(period.id);
     if (!bundle?.ratioRule) continue;
-    const segments = toEngineSegments(bundle).filter((s) => s.date === today);
+    // PUBLISHED shifts only — the live board reflects the real schedule, not drafts.
+    const publishedIds = new Set(
+      bundle.shifts.filter((s) => s.status === "published").map((s) => s.id)
+    );
+    const segments = toEngineSegments(bundle).filter(
+      (s) => s.date === today && publishedIds.has(s.shift_id)
+    );
 
     const wtColorById = new Map(
       bundle.workTypes.map((w) => [w.id, w.color])
@@ -129,6 +142,7 @@ export default async function LiveBoardPage() {
         const end = end0 > start ? end0 : 1440;
         return start <= nowMinutes && nowMinutes < end;
       });
+      for (const seg of onNow) onShiftStaffIds.add(seg.staff.id);
 
       // Pharmacists get the same counting / not-counting split as techs —
       // a pharmacist at lunch shouldn't inflate the headline count
@@ -220,6 +234,7 @@ export default async function LiveBoardPage() {
             id: s.id,
             name: s.full_name,
             live: liveByStaff.get(s.id) ?? "present_counting",
+            offShift: !onShiftStaffIds.has(s.id),
           }))}
           isManager={["owner_admin", "scheduler", "supervisor"].includes(
             session!.appUser!.role

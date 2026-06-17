@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import LeadForm from "@/components/app/admin/lead-form";
 import LeadNotes from "@/components/app/admin/lead-notes";
+import DeleteLead from "@/components/app/admin/delete-lead";
 import type { Lead, LeadNote } from "@/lib/types";
 
 export default async function LeadDetailPage({
@@ -79,6 +80,8 @@ export default async function LeadDetailPage({
               </div>
             </div>
           )}
+
+          <DeleteLead leadId={id} pharmacyName={(lead as Lead).pharmacy_name} />
         </div>
       </div>
     </>

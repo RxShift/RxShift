@@ -105,6 +105,19 @@ export async function updateLead(
   });
 }
 
+export async function deleteLead(id: string): Promise<ActionResult> {
+  return runAction(async () => {
+    await requirePlatformAdmin();
+    const service = createServiceClient();
+    // lead_notes cascade automatically (FK on delete cascade). email_log rows
+    // are an audit trail with a loose related_id — left intact by design.
+    const { error } = await service.from("leads").delete().eq("id", id);
+    if (error) throw new ActionError(error.message);
+    revalidatePath("/app/admin/leads");
+    return undefined;
+  });
+}
+
 export async function addLeadNote(
   leadId: string,
   body: string

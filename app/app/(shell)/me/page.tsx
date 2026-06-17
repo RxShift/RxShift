@@ -7,7 +7,15 @@ import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
 import AvatarUpload from "@/components/app/avatar-upload";
 import { signedAvatarUrls } from "@/lib/avatars";
-import { addDaysStr, eachDate, fmtDay, todayStr } from "@/lib/dates";
+import {
+  addDaysStr,
+  dateInTimeZone,
+  eachDate,
+  fmtDay,
+  nowInTimeZone,
+  todayStr,
+} from "@/lib/dates";
+import { timeToMinutes } from "@/lib/engine/ratio";
 import { resolveStatuses } from "@/lib/live-status-config";
 import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
 
@@ -116,6 +124,25 @@ export default async function MePage() {
   const requests = (myRequests ?? []) as TimeOffRequest[];
   const live = myLive as LiveStatus | null;
 
+  // Presence is schedule-derived: you're "on shift" only if a PUBLISHED shift
+  // covers right now (tenant tz). Off shift → show "Off shift", don't default to
+  // Working. A status only counts as current if it was set today (tenant tz).
+  const { date: tzToday, minutes: tzNow } = nowInTimeZone(tenant.timezone);
+  const onShiftNow = shifts.some(
+    (s) =>
+      s.date === tzToday &&
+      (s.shift_segment ?? []).some((seg) => {
+        const start = timeToMinutes(seg.start_time);
+        const end0 = timeToMinutes(seg.end_time);
+        const end = end0 > start ? end0 : 1440;
+        return start <= tzNow && tzNow < end;
+      })
+  );
+  const effectiveStatus =
+    live && dateInTimeZone(live.effective_from, tenant.timezone) === tzToday
+      ? live.status
+      : "present_counting";
+
   // Team schedule for my home location, this week
   const weekEnd = addDaysStr(today, 6);
   const { data: teamShifts } = staff.home_location_id
@@ -145,12 +172,22 @@ export default async function MePage() {
             />
           </Card>
 
-          {tenant.has_ratio && (
-            <MyStatusPicker
-              current={live?.status ?? "present_counting"}
-              options={statusOptions}
-            />
-          )}
+          {tenant.has_ratio &&
+            (onShiftNow ? (
+              <MyStatusPicker current={effectiveStatus} options={statusOptions} />
+            ) : (
+              <Card>
+                <h2 className="mb-1 font-brand text-base font-bold text-navy">
+                  My status now
+                </h2>
+                <p className="font-body text-sm text-steel">
+                  You&rsquo;re{" "}
+                  <span className="font-bold text-navy">off shift</span> right
+                  now. Your status sets the live ratio board automatically once
+                  your scheduled shift begins.
+                </p>
+              </Card>
+            ))}
 
           <Card>
             <h2 className="mb-3 font-brand text-base font-bold text-navy">

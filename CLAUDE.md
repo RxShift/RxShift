@@ -330,6 +330,21 @@ wrapping `schedule-grid.tsx`). Earlier components (`schedule-builder.tsx`,
 - **Future (Jamison-directed, not auto-built):** a fuller Squeeze/ProductBoard-style
   feedback product, and per-tenant manager visibility of the email log. See decisions.md.
 
+## Live presence + polish (June 16, 2026)
+
+- **Live presence is schedule-derived.** On the live board + `/app/me`, a person is "on shift"
+  only if a **published** shift covers now (tenant tz) → auto "Working" (counts); otherwise
+  **"Off shift"** (not counted, no clock-in). Stale `live_status` is ignored unless set today.
+  Logic in `lib/live-board.ts` (shared with the alert cron); `dateInTimeZone` in `lib/dates.ts`.
+  Don't reintroduce the "default everyone to present_counting" behavior.
+- **Delete leads:** `deleteLead` (platform-admin) + Danger Zone on the lead detail page; notes
+  cascade, email_log audit rows are kept.
+- **`?screenshot=true`** hides both the platform + demo banners (client-side, URL-only) for
+  marketing captures — `components/app/demo-banner.tsx` + `platform-banner.tsx`.
+- **Co-branding:** sidebar separates the RxShift mark from a tenant logo with a divider.
+- **Assessed, not built (Build 2):** proactive compliance notifications + append-only
+  compliance annotations — see docs/decisions.md; build on Jamison's greenlight.
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.

@@ -57,7 +57,7 @@ export default function LiveBoard({
   labels,
 }: {
   locations: LocationCard[];
-  staff: { id: string; name: string; live: string }[];
+  staff: { id: string; name: string; live: string; offShift: boolean }[];
   isManager: boolean;
   statusOptions: { value: string; label: string }[];
   labels: Record<string, string>;
@@ -204,29 +204,37 @@ export default function LiveBoard({
           {staff.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-line p-2.5"
+              className={`flex items-center justify-between gap-2 rounded-lg border border-line p-2.5 ${
+                s.offShift ? "opacity-60" : ""
+              }`}
             >
               <span className="truncate font-body text-[13px] font-medium text-navy">
                 {s.name}
               </span>
-              <Select
-                value={s.live}
-                disabled={busy || !isManager}
-                onChange={(e) => changeStatus(s.id, e.target.value)}
-                className="!w-40 !py-1.5 text-xs"
-              >
-                {(statusOptions.some((o) => o.value === s.live)
-                  ? statusOptions
-                  : [
-                      { value: s.live, label: labels[s.live] ?? s.live },
-                      ...statusOptions,
-                    ]
-                ).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+              {s.offShift ? (
+                <span className="shrink-0 font-brand text-xs font-bold text-steel/70">
+                  Off shift
+                </span>
+              ) : (
+                <Select
+                  value={s.live}
+                  disabled={busy || !isManager}
+                  onChange={(e) => changeStatus(s.id, e.target.value)}
+                  className="!w-40 !py-1.5 text-xs"
+                >
+                  {(statusOptions.some((o) => o.value === s.live)
+                    ? statusOptions
+                    : [
+                        { value: s.live, label: labels[s.live] ?? s.live },
+                        ...statusOptions,
+                      ]
+                  ).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </div>
           ))}
         </div>

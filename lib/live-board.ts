@@ -9,7 +9,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPeriodBundle, toEngineRule, toEngineSegments } from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
-import { nowInTimeZone } from "@/lib/dates";
+import { nowInTimeZone, dateInTimeZone } from "@/lib/dates";
 import { countsByStatus } from "@/lib/live-status-config";
 import type { EngineSegment, SlotEval } from "@/lib/engine/types";
 import type {
@@ -90,8 +90,12 @@ export async function evaluateLiveLocations(
       supabase.from("location").select("id, name").eq("tenant_id", tenant.id),
     ]);
 
+  // Only honor a status set TODAY (tenant tz) — a stale "Lunch" from yesterday
+  // must not bleed into today (live_status rows stay open with effective_to null).
   const liveByStaff = new Map(
-    ((liveStatuses ?? []) as LiveStatus[]).map((l) => [l.staff_id, l.status])
+    ((liveStatuses ?? []) as LiveStatus[])
+      .filter((l) => dateInTimeZone(l.effective_from, tenant.timezone) === today)
+      .map((l) => [l.staff_id, l.status])
   );
   const countsCfg = countsByStatus((cfg ?? []) as LiveStatusConfig[]);
   const locName = new Map(
@@ -104,7 +108,14 @@ export async function evaluateLiveLocations(
   for (const period of (periods ?? []) as SchedulePeriod[]) {
     const bundle = await loadPeriodBundle(period.id, supabase);
     if (!bundle?.ratioRule) continue;
-    const segments = toEngineSegments(bundle).filter((s) => s.date === today);
+    // Live ratio reflects the PUBLISHED schedule only — draft shifts aren't real
+    // coverage and must never count toward (or mask) a live deficiency.
+    const publishedIds = new Set(
+      bundle.shifts.filter((s) => s.status === "published").map((s) => s.id)
+    );
+    const segments = toEngineSegments(bundle).filter(
+      (s) => s.date === today && publishedIds.has(s.shift_id)
+    );
     if (segments.length === 0) continue;
     const adjusted = adjustSegmentsForLive(segments, liveByStaff, countsCfg);
     const evals = evaluateZone(
