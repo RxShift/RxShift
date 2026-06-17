@@ -3,6 +3,31 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Live Board wall display (kiosk), collapsible sidebar, per-location status list
+
+**Wall display is a dedicated chrome-free route (`/app/display`), not just a fullscreen toggle.**
+Susie's pharmacies want the live ratio board on an always-on wall monitor next to their
+prescription-queue screen. Chosen: a separate route group `app/app/(kiosk)/` with its own minimal,
+auth-gated layout (no sidebar, no banners, **no status controls**) so a monitor's machine just leaves
+the URL running. It reuses the same `buildBoardView` (`lib/board-data.ts`) + `LocationCard`
+(`components/app/board/location-card.tsx`) as the in-shell board, so the two can never diverge.
+`?location=<id>` pins one site per monitor; a native Full-screen button covers the across-the-room
+glance. **Rejected** "fullscreen the current window only" (no URL to leave running on a dedicated
+screen) — shipped the dedicated page (Jamison's pick).
+
+**v1 limitation — the display requires a signed-in session.** The monitor's browser logs in once.
+A no-login **signed display-token URL** (so a truly unattended screen needs no account) is deferred
+until a customer asks — it adds a token issue/rotation surface we don't need for the demo.
+
+**Status board groups by location only when multi-location.** A single flat alphabetical list hid
+who's working where at a multi-site pharmacy. The change-status grid now groups under a per-location
+heading (card order) + an Off-shift group; single-location tenants keep the original flat list (no
+empty headers). Presentational only — no data-model change.
+
+**Sidebar collapse hides completely (vs. an icon rail).** Jamison wanted maximum real estate for the
+schedule and board. Persisted client-side (localStorage + no-flash script, mirroring dark mode) — no
+server state; a left-edge tab reopens it.
+
 ## June 16, 2026 — Live presence is schedule-derived (off-shift), not manual
 
 **A person counts toward the live ratio only if a PUBLISHED shift covers right now.** The

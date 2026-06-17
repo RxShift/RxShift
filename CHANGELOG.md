@@ -7,6 +7,46 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Live Board: collapsible sidebar, wall-display (kiosk) mode, per-location status list
+
+Three Live Board / app-shell improvements (Susie wants the board on an always-on wall monitor). No
+schema changes; one help-content migration (0022) **pending application**.
+
+### Shipped
+- **Collapsible sidebar (app-wide).** A « button in the sidebar header hides the left nav completely
+  (content goes edge to edge — more room for the schedule and board); a tab on the left edge brings
+  it back. The preference persists via localStorage + a no-flash script (mirrors dark mode).
+  `app/layout.tsx`, `app/globals.css`, `app/app/(shell)/layout.tsx`, `components/app/sidebar.tsx`.
+- **Wall-display (kiosk) mode** at **/app/display** — a read-only, chrome-free board (no sidebar, no
+  banners, no status controls) for an always-on monitor: large cards, `?location=<id>` to pin one
+  site, a location switcher, an "updated" clock, a **Full screen** button, 30s auto-refresh. An
+  **Open display** button on the Live Board header opens it in a new tab. New route group
+  `app/app/(kiosk)/` + `display/page.tsx`; `components/app/board/{display-board,fullscreen-button}.tsx`.
+- **Status board grouped by location.** The change-status list now groups people under a heading per
+  location (card order) with an **Off shift** group last, so you can tell who's working where.
+  Single-location pharmacies keep the simple flat list. `components/app/board/live-board.tsx`.
+- **Refactor (no behavior change):** the board-building logic moved to `lib/board-data.ts`
+  (`buildBoardView`) and the per-location card to `components/app/board/location-card.tsx`, shared by
+  the in-shell board and the wall display so they can never diverge.
+
+### Schema / migrations
+- `0022_help_wall_display.sql` — adds one tenant-facing Help article ("Putting the live board on a
+  wall display"). **Not yet applied to the RxShift Supabase** — apply via the supabase-rxshift MCP
+  (or `db push`) on Jamison's go-ahead.
+
+### Verified
+- `tsc` clean, **45/45** vitest tests pass, `next build` clean. Browser (Claude for Chrome, Mesa
+  Vista 3-location demo): sidebar collapse/reopen + persistence; status board grouped by location
+  with an Off-shift group; /app/display renders chrome-free with large cards, location pin, and the
+  Full screen button; "Open display" opens a new tab.
+
+### Open / future
+- The wall display still requires the monitor's browser to be **signed in** (a no-login signed
+  display-token URL is future work — see decisions.md).
+- Proactive "about to go deficient" alerts on the display — future (relates to Build 2).
+
+---
+
 ## 2026-06-16 — Tagline: "Built for pharmacists, by a pharmacist" on the homepage
 
 - Added the credibility line **"Built for pharmacists, by a pharmacist."** as an amber sign-off in

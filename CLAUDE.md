@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 13, 2026
+# Last updated: June 17, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -344,6 +344,32 @@ wrapping `schedule-grid.tsx`). Earlier components (`schedule-builder.tsx`,
 - **Co-branding:** sidebar separates the RxShift mark from a tenant logo with a divider.
 - **Assessed, not built (Build 2):** proactive compliance notifications + append-only
   compliance annotations — see docs/decisions.md; build on Jamison's greenlight.
+
+## Live Board wall display + collapsible sidebar (June 17, 2026)
+
+Susie's pharmacies will run the board on an always-on wall monitor, so the board got more important.
+
+- **Shared board data + card.** Board-building logic now lives in `lib/board-data.ts`
+  (`buildBoardView(supabase, tenant)` → `{ locationCards, statusList, statusOptions, labels,
+  noPeriodToday }`) and the per-location card in `components/app/board/location-card.tsx`
+  (`size="default" | "large"`). BOTH the in-shell board and the wall display call these — don't
+  duplicate the logic. `statusList` items now carry `locationId/locationName` (the person's current
+  shift location, null if off shift).
+- **Wall display (kiosk) at `/app/display`.** New route group `app/app/(kiosk)/` with its OWN
+  minimal layout (auth-gated via `getSession`, **no sidebar, no banners**). Read-only — no status
+  controls. Large cards, `?location=<id>` pins one site, location switcher + clock + Full-screen
+  button (`components/app/board/{display-board,fullscreen-button}.tsx`), 30s `router.refresh()`
+  (in-shell board stays 60s). An **Open display** button (PageHeader `actions`) on `/app/board`
+  opens it in a new tab. v1: the display URL still requires a signed-in session (see decisions.md).
+- **Status board grouped by location.** `live-board.tsx` groups the change-status grid under a
+  heading per location (card order) + an **Off shift** group; single-location tenants keep the flat
+  list. Per-person row extracted to a `StatusRow` helper.
+- **Collapsible sidebar (app-wide).** A « in the sidebar header hides the nav completely; a left-edge
+  tab reopens it. Persisted via `localStorage['rx-sidebar-collapsed']` + a no-flash script in
+  `app/layout.tsx` (mirrors the theme pattern); CSS in `globals.css` keyed on `html.sidebar-collapsed`
+  drives `.app-sidebar` (translateX) + `.app-content` (margin). Applies to every `/app` page.
+- **New route:** `/app/display`. **Migration 0022** adds one tenant Help article — *pending
+  application to the RxShift Supabase.*
 
 ## Pending TODOs (as of June 13, 2026)
 
