@@ -47,10 +47,10 @@ migrations.
   cards, live-board band, Nevada all stack to one column on phones).
 
 ### Open
-- The live-board **GIF isn't generated yet** — it needs a counting tech actually on shift at
-  capture time (demo staff work ~9a–7p PT). Until then the band shows the static board image. Re-run
-  `npx tsx scripts/capture-screenshots.ts` mid-day PT to produce it (a best-effort local timer is
-  set for ~9:03 AM PT June 17). The other four screenshots are live now.
+- **Live-board GIF — done.** Generated June 17, 2026 (~9:03 AM PT) by the scheduled re-capture (14
+  frames, Carlos Rivera on shift at Spring Valley) and committed; the live-board band now shows the
+  animated board instead of the static fallback. **Committed, pending push** (Jamison approves
+  pushes). The schedule + board jpgs also refreshed to the current week.
 
 ---
 
