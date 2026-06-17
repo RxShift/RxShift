@@ -56,6 +56,60 @@ async function springValleyPeriodId(today: string): Promise<string | null> {
   return (period?.id as string) ?? null;
 }
 
+function ptNow(): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const g = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return {
+    date: `${g("year")}-${g("month")}-${g("day")}`,
+    minutes: (parseInt(g("hour"), 10) % 24) * 60 + parseInt(g("minute"), 10),
+  };
+}
+
+function toMin(t: string): number {
+  const [h, m] = t.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+}
+
+// A counting technician on a published Spring Valley shift right NOW (PT), for
+// the live-board GIF. Returns the staff name, or null if none is on shift.
+async function onShiftTechName(): Promise<string | null> {
+  const { date, minutes } = ptNow();
+  const { data: loc } = await service
+    .from("location")
+    .select("id")
+    .eq("name", "Mesa Vista — Spring Valley")
+    .maybeSingle();
+  if (!loc) return null;
+  const { data: shifts } = await service
+    .from("shift")
+    .select("staff:staff_id(full_name, ratio_type), shift_segment(start_time, end_time)")
+    .eq("location_id", loc.id)
+    .eq("date", date)
+    .eq("status", "published");
+  const rows = (shifts ?? []) as unknown as Array<{
+    staff: { full_name: string; ratio_type: string } | null;
+    shift_segment: { start_time: string; end_time: string }[];
+  }>;
+  for (const s of rows) {
+    if (s.staff?.ratio_type !== "technician") continue;
+    for (const seg of s.shift_segment ?? []) {
+      const start = toMin(seg.start_time);
+      const e0 = toMin(seg.end_time);
+      const end = e0 > start ? e0 : 1440;
+      if (start <= minutes && minutes < end) return s.staff.full_name;
+    }
+  }
+  return null;
+}
+
 async function loginAsFrank(page: Page) {
   const { data: link, error } = await service.auth.admin.generateLink({
     type: "magiclink",
@@ -80,24 +134,32 @@ async function shot(page: Page, path: string, file: string, fullPage = false) {
   console.log("captured", file);
 }
 
-// Best-effort GIF: toggle an on-shift tech (Dana Holt, Spring Valley 11a–7p)
-// Working → Lunch → Working and capture the location-cards region as it updates.
+// Best-effort GIF: toggle whichever counting tech is on a Spring Valley shift
+// right now (Working → Lunch → Working) and capture the location-cards region.
 async function captureLiveBoardGif(page: Page) {
-  await page.goto(`${BASE}/app/board?screenshot=true`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1000);
-
-  const dana = page
-    .locator("div")
-    .filter({ has: page.getByText("Dana Holt", { exact: true }) })
-    .locator("select")
-    .first();
-
-  if ((await dana.count()) === 0) {
+  const techName = await onShiftTechName();
+  if (!techName) {
     console.warn(
-      "[gif] No on-shift counting tech right now (Dana Holt is off shift) — skipping the GIF. Re-run between ~9a and 7p Pacific. The 4 static shots are done."
+      "[gif] No counting tech on a Spring Valley shift right now — skipping the GIF. Run between ~9a and 6p Pacific. The static shots are done."
     );
     return;
   }
+  await page.goto(`${BASE}/app/board?screenshot=true`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+
+  const tech = page
+    .locator("div")
+    .filter({ has: page.getByText(techName, { exact: true }) })
+    .locator("select")
+    .first();
+
+  if ((await tech.count()) === 0) {
+    console.warn(
+      `[gif] Couldn't find ${techName}'s status control on the board — skipping the GIF.`
+    );
+    return;
+  }
+  console.log(`[gif] Recording the live board via ${techName}.`);
 
   const clip = { x: 240, y: 56, width: 1100, height: 340 };
   const frames: { data: Uint8Array; width: number; height: number }[] = [];
@@ -110,11 +172,11 @@ async function captureLiveBoardGif(page: Page) {
   // Working (counts)
   for (let i = 0; i < 4; i++) { await grab(); await page.waitForTimeout(150); }
   // → Lunch (count drops)
-  await dana.selectOption("on_lunch");
+  await tech.selectOption("on_lunch");
   await page.waitForTimeout(2200);
   for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(150); }
   // → Working (count recovers)
-  await dana.selectOption("present_counting");
+  await tech.selectOption("present_counting");
   await page.waitForTimeout(2200);
   for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(150); }
 
