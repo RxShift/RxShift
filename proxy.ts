@@ -85,6 +85,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except static assets and images
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|brand/|api/).*)"],
+  // Run on everything except static assets and images. The PWA files
+  // (manifest + home-screen icons) must serve on BOTH hosts — without this they
+  // get rewritten to /app/* on app.rxshift.io and bounce to /login, breaking
+  // "add to home screen."
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|icon-192.png|icon-512.png|apple-touch-icon.png|brand/|api/).*)",
+  ],
 };
