@@ -3,6 +3,24 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Mobile = a focused staff experience; pharmacist ratio-headroom indicator
+
+**Mobile is a focused subset, not a full port.** Staff use a phone for **My Schedule** (status,
+shifts) and **Requests**; the schedule builder and settings stay desktop-only (a `md:hidden` notice
+points to a computer — we deliberately don't invest in making them mobile-friendly). Nav on phones is
+a **bottom tab bar** (app-like, matches the add-to-home-screen goal); the desktop sidebar is
+`hidden md:flex`. **Rejected** a hamburger drawer (less app-like). Installable via a web manifest
+(standalone) + apple-touch-icon — chosen over an article-only approach so the home-screen icon opens
+chrome-free. Offline / service worker deferred.
+
+**Pharmacist "can I step away without breaking ratio?"** Pharmacists count toward ratio; a counting
+pharmacist leaving can break it (techs never do). The engine already owns the math —
+`pharmacistHeadroom` / `wouldBreakIfOneLeaves` (monotonic `maxTechsAllowed`). Surfaced on My Schedule
+(the pharmacist's own view — primary), the Live Board, and the wall display. On My Schedule, tapping a
+non-counting status that would break ratio **warns with a confirm but never blocks** (board-containment
+policy: RxShift never blocks or contacts a board — the call is always the pharmacy's). Shown only for a
+counting pharmacist on shift.
+
 ## June 17, 2026 — Live Board wall display (kiosk), collapsible sidebar, per-location status list
 
 **Wall display is a dedicated chrome-free route (`/app/display`), not just a fullscreen toggle.**

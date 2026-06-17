@@ -378,6 +378,30 @@ Susie's pharmacies will run the board on an always-on wall monitor, so the board
   so a rejected upload surfaces an error instead of hanging on "Sending…". (Config change → effective
   on deploy / after a dev-server restart.)
 
+## Mobile experience + ratio headroom (June 17, 2026)
+
+- **Mobile nav.** `components/app/sidebar.tsx` is `hidden md:flex` (desktop only); phones get a bottom
+  tab bar (`components/app/mobile-tab-bar.tsx`, `md:hidden`) — role-aware tabs (My Schedule, Requests,
+  + Dashboard/Live Board for managers) + a **More** sheet that reuses the sidebar's exported
+  `sections()`/`MANAGE`. Shell content is `ml-0 md:ml-60` + `pb-16 md:pb-0`. Collapse/reopen is now
+  desktop-only (the reopen-show CSS is gated to `@media (min-width:768px)`).
+- **Desktop-only notice** (`components/app/desktop-only-notice.tsx`, rendered once in the shell): a
+  `md:hidden` heads-up on build-heavy routes (schedule/settings/staff/reports/log/admin). My Schedule
+  + Requests are the intended mobile surfaces; the builder/settings are intentionally NOT
+  mobile-optimized.
+- **PWA / install.** `app/manifest.ts` (standalone, start_url `/app/me`, scope `/app`); `app/layout.tsx`
+  has `viewport` (navy themeColor) + `appleWebApp` + apple-touch-icon. PNG icons in `public/`
+  (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) are generated from the grid mark by
+  `scripts/generate-pwa-icons.ts` (rerun if the mark changes).
+- **Ratio headroom ("can I step away?").** Pure helpers in `lib/engine/ratio.ts`: `minPharmacistsFor`,
+  `pharmacistHeadroom`, `wouldBreakIfOneLeaves` (monotonic on `maxTechsAllowed`). `buildBoardView`'s
+  LocationCard exposes `headroom`; the shared `location-card.tsx` shows a per-location line on the Live
+  Board + `/app/display`. `/app/me` resolves the signed-in **pharmacist's** current location via
+  `buildBoardView` and passes `ratioImpact` to `my-status-picker.tsx` (safe/at-limit line + a confirm —
+  warn, never block — when a counting pharmacist taps a non-counting status that would break ratio).
+  Techs / non-counting / off-shift → no indicator.
+- **Migration 0023** adds the "Using RxShift on your phone" Help article — *pending apply.*
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
