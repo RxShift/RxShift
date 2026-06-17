@@ -3,6 +3,19 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Website uses only fictional demo data; Mesa Vista staffed up for the headroom story
+
+**No real customer data ever appears on the marketing site.** OptumRx is a real prospect, so its names
+(staff, "SMRX — Southwest Medical Pharmacy", any real tenant data) are off-limits for rxshift.io — the
+leak risk isn't worth it. All website imagery/GIFs come from the fully fictional **Mesa Vista** demo
+(made-up company, made-up @mesavistarx.com people). A real testimonial may come later, with permission.
+
+**Mesa Vista was staffed up to demo ratio headroom.** Its locations were all small enough to sit right
+at the ratio limit, so the new "who can step away?" feature could only show the warning, not the
+positive "✓ you can step away." Added a third fictional Spring Valley pharmacist (Dr. Lena Park) so the
+location carries real headroom — improving both the website visual and the live demo. Henderson's
+deficiency story is untouched.
+
 ## June 17, 2026 — Mobile = a focused staff experience; pharmacist ratio-headroom indicator
 
 **Mobile is a focused subset, not a full port.** Staff use a phone for **My Schedule** (status,

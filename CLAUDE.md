@@ -186,7 +186,7 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - **Unpaid breaks:** `shift.break_minutes` + `tenant.default_break_minutes`; paid-hours math subtracts per shift; ratio coverage untouched.
 - **Internal CRM:** `/app/admin/leads` (platform admins only; service-role tables `leads`/`lead_notes`). Website forms auto-capture leads with source page; duplicates merge via notes.
 - **Website:** interactive `/pricing` calculator, `/nevada` R113-24 deep-dive, `/states/california` + `/states/tennessee` stubs (Coming Soon), `/vs/when-i-work` battle card, States nav dropdown, columned footer. Marketing copy is HONEST about engine scope: volume minimums, certified/non-certified, trainee limits are ROADMAP, not shipped.
-- **Mesa Vista Pharmacy demo tenant:** fully fictional, 3 NV locations, 14 staff, 7 date-anchored weeks, engine-real Henderson Thursday 2–4 PM deficiency. Login: `demo@rxshift.io` (alias → Frank DiMaggio, catch-all delivers to Jamison). Reset: admin console "Restore demo data" or `npx tsx scripts/seed-mesa-vista.ts --reset` (core in `lib/demo/mesa-vista.ts`).
+- **Mesa Vista Pharmacy demo tenant:** fully fictional, 3 NV locations, 15 staff (Spring Valley has 3 pharmacists so it carries real ratio headroom — for the "who can step away?" demo), 7 date-anchored weeks, engine-real Henderson Thursday 2–4 PM deficiency. Login: `demo@rxshift.io` (alias → Frank DiMaggio, catch-all delivers to Jamison). Reset: admin console "Restore demo data" or `npx tsx scripts/seed-mesa-vista.ts --reset` (core in `lib/demo/mesa-vista.ts`).
 
 **Spec workflow:** feature specs land in `docs/specs/`; once implemented they move to `docs/specs/_archive/` (see `docs/specs/README.md`). Archived specs are history — code + this file are the source of truth. Durable scope decisions live in `docs/decisions.md`.
 
@@ -400,7 +400,15 @@ Susie's pharmacies will run the board on an always-on wall monitor, so the board
   `buildBoardView` and passes `ratioImpact` to `my-status-picker.tsx` (safe/at-limit line + a confirm —
   warn, never block — when a counting pharmacist taps a non-counting status that would break ratio).
   Techs / non-counting / off-shift → no indicator.
-- **Migration 0023** adds the "Using RxShift on your phone" Help article — *pending apply.*
+- **Migration 0023** adds the "Using RxShift on your phone" Help article — *applied.*
+- **Website (marketing):** the live-board band (`components/live-board-showcase.tsx`) is reframed as
+  "Know who can step away — without breaking ratio" with a headroom GIF + a one-line mobile note. The
+  GIF is captured by the rewritten `scripts/capture-screenshots.ts` (drops a pharmacist on the wall
+  display and shows the headroom count down). **All website imagery is fictional Mesa Vista only —
+  never real customer data.** Mesa Vista was staffed up (Dr. Lena Park at Spring Valley) so a location
+  shows positive headroom.
+- **PWA install fix** (`proxy.ts`): `/manifest.webmanifest` + the icon PNGs are excluded from the
+  host rewrite/auth so "add to home screen" works on app.rxshift.io (they were bouncing to /login).
 
 ## Pending TODOs (as of June 13, 2026)
 

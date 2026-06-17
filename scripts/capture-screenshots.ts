@@ -78,36 +78,59 @@ function toMin(t: string): number {
   return h * 60 + m;
 }
 
-// A counting technician on a published Spring Valley shift right NOW (PT), for
-// the live-board GIF. Returns the staff name, or null if none is on shift.
-async function onShiftTechName(): Promise<string | null> {
+// A counting PHARMACIST on a published Spring Valley shift right NOW (PT), plus
+// the location + tenant ids — for the "can I step away?" headroom GIF.
+async function svHeadroomTarget(): Promise<{
+  locationId: string;
+  tenantId: string;
+  pharmacist: { id: string; name: string };
+} | null> {
   const { date, minutes } = ptNow();
   const { data: loc } = await service
     .from("location")
-    .select("id")
+    .select("id, tenant_id")
     .eq("name", "Mesa Vista — Spring Valley")
     .maybeSingle();
   if (!loc) return null;
   const { data: shifts } = await service
     .from("shift")
-    .select("staff:staff_id(full_name, ratio_type), shift_segment(start_time, end_time)")
+    .select("staff:staff_id(id, full_name, ratio_type), shift_segment(start_time, end_time)")
     .eq("location_id", loc.id)
     .eq("date", date)
     .eq("status", "published");
   const rows = (shifts ?? []) as unknown as Array<{
-    staff: { full_name: string; ratio_type: string } | null;
+    staff: { id: string; full_name: string; ratio_type: string } | null;
     shift_segment: { start_time: string; end_time: string }[];
   }>;
   for (const s of rows) {
-    if (s.staff?.ratio_type !== "technician") continue;
+    if (s.staff?.ratio_type !== "pharmacist") continue;
     for (const seg of s.shift_segment ?? []) {
       const start = toMin(seg.start_time);
       const e0 = toMin(seg.end_time);
       const end = e0 > start ? e0 : 1440;
-      if (start <= minutes && minutes < end) return s.staff.full_name;
+      if (start <= minutes && minutes < end)
+        return {
+          locationId: loc.id,
+          tenantId: loc.tenant_id,
+          pharmacist: { id: s.staff.id, name: s.staff.full_name },
+        };
     }
   }
   return null;
+}
+
+// Set a person's live status directly (same close-then-open flow as the app's
+// setLiveStatus server action) so the GIF can drive the headroom from the script.
+async function setLive(tenantId: string, staffId: string, status: string) {
+  const now = new Date().toISOString();
+  await service
+    .from("live_status")
+    .update({ effective_to: now })
+    .eq("staff_id", staffId)
+    .is("effective_to", null);
+  await service
+    .from("live_status")
+    .insert({ tenant_id: tenantId, staff_id: staffId, status, effective_from: now });
 }
 
 async function loginAsFrank(page: Page) {
@@ -134,51 +157,48 @@ async function shot(page: Page, path: string, file: string, fullPage = false) {
   console.log("captured", file);
 }
 
-// Best-effort GIF: toggle whichever counting tech is on a Spring Valley shift
-// right now (Working → Lunch → Working) and capture the location-cards region.
-async function captureLiveBoardGif(page: Page) {
-  const techName = await onShiftTechName();
-  if (!techName) {
+// Best-effort GIF — the "can I step away without breaking ratio?" story.
+// On the chrome-free wall display (one Spring Valley card), drop a pharmacist to
+// lunch and watch the headroom line count down ("✓ N pharmacists can step away"
+// → at the limit), then recover. Skipped if no pharmacist is on shift now.
+async function captureHeadroomGif(page: Page) {
+  const t = await svHeadroomTarget();
+  if (!t) {
     console.warn(
-      "[gif] No counting tech on a Spring Valley shift right now — skipping the GIF. Run between ~9a and 6p Pacific. The static shots are done."
+      "[gif] No pharmacist on a Spring Valley shift right now — skipping the headroom GIF. Run ~9a–5p Pacific. The static shots are done."
     );
     return;
   }
-  await page.goto(`${BASE}/app/board?screenshot=true`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1000);
-
-  const tech = page
-    .locator("div")
-    .filter({ has: page.getByText(techName, { exact: true }) })
-    .locator("select")
-    .first();
-
-  if ((await tech.count()) === 0) {
-    console.warn(
-      `[gif] Couldn't find ${techName}'s status control on the board — skipping the GIF.`
-    );
-    return;
-  }
-  console.log(`[gif] Recording the live board via ${techName}.`);
-
-  const clip = { x: 240, y: 56, width: 1100, height: 340 };
+  const url = `${BASE}/app/display?location=${t.locationId}`;
+  const clip = { x: 0, y: 0, width: VIEWPORT.width, height: 380 };
   const frames: { data: Uint8Array; width: number; height: number }[] = [];
   const grab = async () => {
     const buf = await page.screenshot({ clip });
     const png = PNG.sync.read(buf);
     frames.push({ data: new Uint8Array(png.data), width: png.width, height: png.height });
   };
+  const reload = async () => {
+    await page.goto(url, { waitUntil: "networkidle" });
+    await page.waitForTimeout(900);
+  };
 
-  // Working (counts)
-  for (let i = 0; i < 4; i++) { await grab(); await page.waitForTimeout(150); }
-  // → Lunch (count drops)
-  await tech.selectOption("on_lunch");
-  await page.waitForTimeout(2200);
-  for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(150); }
-  // → Working (count recovers)
-  await tech.selectOption("present_counting");
-  await page.waitForTimeout(2200);
-  for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(150); }
+  console.log(`[gif] Recording headroom via ${t.pharmacist.name} at Spring Valley.`);
+  try {
+    await reload();
+    // Full headroom
+    for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(140); }
+    // Pharmacist steps away → headroom drops
+    await setLive(t.tenantId, t.pharmacist.id, "on_lunch");
+    await reload();
+    for (let i = 0; i < 6; i++) { await grab(); await page.waitForTimeout(140); }
+    // Back on the floor → headroom recovers
+    await setLive(t.tenantId, t.pharmacist.id, "present_counting");
+    await reload();
+    for (let i = 0; i < 5; i++) { await grab(); await page.waitForTimeout(140); }
+  } finally {
+    // Never leave the demo with a pharmacist parked at lunch.
+    await setLive(t.tenantId, t.pharmacist.id, "present_counting");
+  }
 
   const { width, height } = frames[0];
   const gif = GIFEncoder();
@@ -226,7 +246,7 @@ async function main() {
     await shot(page, "/app/dashboard?screenshot=true", "dashboard.jpg", true);
     await shot(page, "/app/board?screenshot=true", "live-board.jpg");
 
-    await captureLiveBoardGif(page);
+    await captureHeadroomGif(page);
   } finally {
     await browser.close();
     // Always restore the tenant's branding.

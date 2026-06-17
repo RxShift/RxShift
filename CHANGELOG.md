@@ -7,6 +7,37 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Website: "can I step away?" story + headroom GIF; Mesa Vista staffed up; PWA install fix
+
+Marketing + demo-data update showcasing the new ratio-headroom feature, plus the PWA install fix.
+
+### Shipped
+- **Homepage "Know who can step away — without breaking ratio" band**
+  (`components/live-board-showcase.tsx`): reframed the live-board section around the headroom feature —
+  pain-point copy (no mental math / no group chat), a new GIF, and a one-line mobile note ("staff set
+  their status from their phone — no computer needed").
+- **New headroom GIF** (`scripts/capture-screenshots.ts` rewritten): on the chrome-free wall display
+  for one Spring Valley card, a pharmacist steps away and the "✓ N pharmacists can step away" line
+  counts down to the limit and recovers (driven via the service client; the pharmacist is restored
+  afterward). Refreshed all four marketing JPGs too. **Fully fictional Mesa Vista — no real customer
+  data on the site, ever.**
+- **Mesa Vista demo staffed up** (`lib/demo/mesa-vista.ts`): added a third Spring Valley pharmacist
+  (fictional Dr. Lena Park) so a location has genuine ratio headroom — the website *and* the live demo
+  can show the positive "you can step away." Henderson's deficiency story unchanged. Reseeded (15 staff).
+- **PWA install fix** (`proxy.ts`): the manifest + home-screen icons were being rewritten to /app and
+  bounced to /login on app.rxshift.io; added them to the proxy's static-asset allow-list so "add to
+  home screen" works on the app domain. (Committed earlier as 521cb39; ships in this push.)
+
+### Infrastructure / data
+- Mesa Vista demo reseeded with the added pharmacist (live demo data changed — intentional, fictional).
+
+### Verified
+- `tsc` clean, 50/50 tests, `next build` clean. Browser: the homepage band shows the headroom GIF
+  ("✓ 1 pharmacist can step away") + copy + mobile line; the GIF animates step-away → at-limit →
+  recover.
+
+---
+
 ## 2026-06-17 — Mobile experience (focused) + "can I step away without breaking ratio?"
 
 Two staff/pharmacist features. No schema changes; one help-content migration (0023) pending apply.

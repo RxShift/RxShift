@@ -18,33 +18,38 @@ export default function LiveBoardShowcase() {
           Real-time ratio board
         </p>
         <h2 className="mt-4 font-brand text-[26px] font-bold leading-snug text-navy sm:text-[32px]">
-          Mark a tech to lunch — the ratio updates instantly.
+          Know who can step away — without breaking ratio.
         </h2>
-        <p className="mx-auto mt-4 max-w-[560px] font-body text-base leading-[1.7] text-steel">
-          The live board reflects who&rsquo;s actually working right now. One tap
-          and the counts recompute — so a deficiency surfaces the moment it
-          happens, not after the shift.
+        <p className="mx-auto mt-4 max-w-[580px] font-body text-base leading-[1.7] text-steel">
+          A pharmacist heading to lunch shouldn&rsquo;t need to do the math — or
+          ask the group chat — to know if the floor stays covered. RxShift shows
+          exactly how many pharmacists can step away and stay in ratio, and it
+          recomputes the instant anyone&rsquo;s status changes.
         </p>
         <div className="mx-auto mt-8 overflow-hidden rounded-xl border border-line shadow-[0_24px_60px_-15px_rgba(28,47,94,0.25)]">
           {hasGif ? (
             <Image
               src="/images/screenshots/live-board.gif"
-              alt="The RxShift live ratio board recomputing technician counts in real time as a staff member's status changes"
-              width={1100}
-              height={340}
+              alt="The RxShift live status board: a pharmacist steps away and the board recomputes how many pharmacists can still step away while staying in ratio"
+              width={1440}
+              height={380}
               className="w-full"
               unoptimized
             />
           ) : (
             <Image
               src="/images/screenshots/live-board.jpg"
-              alt="The RxShift live ratio board showing per-location pharmacist and technician counts"
+              alt="The RxShift live ratio board showing per-location pharmacist and technician counts with step-away headroom"
               width={1440}
               height={900}
               className="w-full"
             />
           )}
         </div>
+        <p className="mx-auto mt-5 max-w-[560px] font-body text-sm text-steel">
+          Staff set their status right from their phone — so the board is always
+          current, no computer needed.
+        </p>
       </div>
     </section>
   );
