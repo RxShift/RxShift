@@ -118,3 +118,27 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ─── Collapsible app sidebar ─────────────────────────────────────────────── */
+/* "Hide completely" behavior: the collapse button writes
+   localStorage('rx-sidebar-collapsed') and toggles .sidebar-collapsed on <html>
+   (applied pre-paint by a no-flash script in app/layout.tsx — mirrors dark mode).
+   When collapsed: the fixed sidebar slides off-screen, the content reclaims its
+   left margin, and a small reopen tab appears on the left edge. */
+.app-sidebar,
+.app-content {
+  transition: transform 0.2s ease, margin-left 0.2s ease;
+}
+html.sidebar-collapsed .app-sidebar {
+  transform: translateX(-100%);
+}
+html.sidebar-collapsed .app-content {
+  margin-left: 0;
+}
+.app-sidebar-reopen {
+  display: none;
+}
+html.sidebar-collapsed .app-sidebar-reopen {
+  display: flex;
+}
+/* (sidebar collapse styles above) */

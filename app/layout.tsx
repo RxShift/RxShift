@@ -48,6 +48,14 @@ export default function RootLayout({
             __html: `(function(){try{var isApp=location.hostname.indexOf('app.')===0||location.pathname.indexOf('/app')===0;if(!isApp)return;var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
+        {/* No-flash script: applies .sidebar-collapsed to <html> before first
+            paint if the user collapsed the nav last time — APP ONLY (same guard
+            as the theme script). Mirrors the dark-mode preference pattern. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var isApp=location.hostname.indexOf('app.')===0||location.pathname.indexOf('/app')===0;if(!isApp)return;if(localStorage.getItem('rx-sidebar-collapsed')==='1'){document.documentElement.classList.add('sidebar-collapsed')}}catch(e){}})()`,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

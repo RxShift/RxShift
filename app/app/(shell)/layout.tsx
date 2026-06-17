@@ -48,7 +48,7 @@ export default async function ShellLayout({
         isEmulating={isEmulating}
         tenantLogoUrl={logoUrl}
       />
-      <div className="ml-60 flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="app-content ml-60 flex min-h-screen min-w-0 flex-1 flex-col">
         {showBanner && (
           <PlatformBanner
             tenantName={session.tenant.name}
