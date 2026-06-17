@@ -7,6 +7,15 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-16 — Tagline: "Built for pharmacists, by a pharmacist" on the homepage
+
+- Added the credibility line **"Built for pharmacists, by a pharmacist."** as an amber sign-off in
+  the homepage Problem section (right after "RxShift does."). Deliberately not the primary hero
+  tagline — groundwork for a future Susie-led About page. `components/problem.tsx` only. No schema,
+  no migrations.
+
+---
+
 ## 2026-06-16 — Marketing homepage: real app screenshots (hero split, feature/Nevada imagery, live-board band)
 
 Added real product screenshots to the marketing homepage (previously all text). Captured from the

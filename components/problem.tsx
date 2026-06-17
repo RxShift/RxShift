@@ -15,6 +15,9 @@ export default function Problem() {
         <p className="font-brand text-lg font-bold leading-relaxed text-navy">
           RxShift does.
         </p>
+        <p className="font-brand text-lg font-bold leading-relaxed text-amber">
+          Built for pharmacists, by a pharmacist.
+        </p>
       </div>
     </section>
   );
