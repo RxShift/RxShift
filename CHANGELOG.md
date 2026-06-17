@@ -7,6 +7,44 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-16 — Marketing homepage: real app screenshots (hero split, feature/Nevada imagery, live-board band)
+
+Added real product screenshots to the marketing homepage (previously all text). Captured from the
+local app with Playwright (banner-free via `?screenshot=true`), saved into the repo, and wired into
+a restructured hero, the feature cards, the Nevada section, and a new live-board band. No schema, no
+migrations.
+
+### Shipped
+- **Capture script** (`scripts/capture-screenshots.ts`, run via `npx tsx`): logs in
+  programmatically as Frank (Mesa Vista owner_admin) via an admin magic link, temporarily clears
+  Mesa Vista's branding so shots use RxShift's own brand (restores it after), and captures four
+  1440×900 JPGs to `public/images/screenshots/` — schedule (all locations), compliance record
+  (Spring Valley, compliant), dashboard (full-page so location cards show), and the live board. It
+  best-effort also records a looping **`live-board.gif`** of the ratio recomputing when an on-shift
+  tech is toggled to lunch (pure-JS encode: pngjs + gifenc, no ffmpeg).
+- **Hero** (`components/hero.tsx`): centered → two-column split; the schedule screenshot on the
+  right inside a browser-chrome frame (`components/browser-frame.tsx`). Copy/CTAs unchanged.
+- **Feature cards** (`components/features.tsx`): each card gets a windowed screenshot header.
+- **Nevada section** (`components/nevada-callout.tsx`): two-column with the compliance record inset.
+- **Live-board band** (`components/live-board-showcase.tsx`): shows the GIF if present, else falls
+  back to the static board screenshot (graceful — no broken state when the GIF isn't generated).
+- `gifenc.d.ts` — minimal local types for gifenc (ships none).
+
+### Infrastructure
+- Dev deps added: `playwright` (+ chromium), `pngjs`, `gifenc`. No runtime/prod deps.
+
+### Verified
+- `tsc` clean, `next build` clean. Browser-reviewed on desktop + mobile widths (hero, feature
+  cards, live-board band, Nevada all stack to one column on phones).
+
+### Open
+- The live-board **GIF isn't generated yet** — it needs a counting tech actually on shift at
+  capture time (demo staff work ~9a–7p PT). Until then the band shows the static board image. Re-run
+  `npx tsx scripts/capture-screenshots.ts` mid-day PT to produce it (a best-effort local timer is
+  set for ~9:03 AM PT June 17). The other four screenshots are live now.
+
+---
+
 ## 2026-06-16 — Off-shift presence, delete-leads, co-branding lockup, email-log copy, screenshot mode
 
 Post-demo-review polish pass. No schema, no migrations.
