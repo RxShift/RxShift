@@ -23,12 +23,17 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "gifenc": "^1.0.3",
+    "playwright": "^1.61.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.8"

@@ -2,6 +2,7 @@ import Nav from "@/components/nav";
 import Hero from "@/components/hero";
 import Problem from "@/components/problem";
 import Features from "@/components/features";
+import LiveBoardShowcase from "@/components/live-board-showcase";
 import NevadaCallout from "@/components/nevada-callout";
 import WorksEverywhere from "@/components/works-everywhere";
 import PricingSignal from "@/components/pricing-signal";
@@ -16,6 +17,7 @@ export default function Home() {
         <Hero />
         <Problem />
         <Features />
+        <LiveBoardShowcase />
         <NevadaCallout />
         <WorksEverywhere />
         <PricingSignal />
