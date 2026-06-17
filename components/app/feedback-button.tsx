@@ -41,18 +41,31 @@ export default function FeedbackButton() {
       setError("Add a short subject.");
       return;
     }
+    if (file && file.size > 5 * 1024 * 1024) {
+      setError("That image is over 5 MB — please attach a smaller screenshot.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const fd = new FormData();
-    fd.append("kind", kind);
-    fd.append("subject", subject);
-    fd.append("body", body);
-    fd.append("page_url", pathname);
-    if (file) fd.append("screenshot", file, file.name);
-    const result = await submitFeedback(fd);
-    setBusy(false);
-    if (result.ok) setDone(true);
-    else setError(result.error);
+    try {
+      const fd = new FormData();
+      fd.append("kind", kind);
+      fd.append("subject", subject);
+      fd.append("body", body);
+      fd.append("page_url", pathname);
+      if (file) fd.append("screenshot", file, file.name);
+      const result = await submitFeedback(fd);
+      if (result.ok) setDone(true);
+      else setError(result.error);
+    } catch {
+      // A rejected server action (e.g. body too large, dropped connection)
+      // must never leave the button stuck on "Sending…".
+      setError(
+        "Couldn't send — the screenshot may be too large or the connection dropped. Try again, or remove the image."
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

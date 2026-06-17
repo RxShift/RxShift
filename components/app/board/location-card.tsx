@@ -5,15 +5,17 @@ import type { LocationCard as LocationCardData } from "@/lib/board-data";
 function GroupHead({
   children,
   big,
+  span,
 }: {
   children: React.ReactNode;
   big?: boolean;
+  span?: boolean;
 }) {
   return (
     <p
       className={`mt-2 font-brand font-bold uppercase tracking-[1px] text-steel first:mt-0 ${
         big ? "text-[11px]" : "text-[9px]"
-      }`}
+      } ${span ? "col-span-full" : ""}`}
     >
       {children}
     </p>
@@ -44,6 +46,13 @@ export default function LocationCard({
   size?: "default" | "large";
 }) {
   const big = size === "large";
+  // On the wall display (large), let the roster flow into as many columns as the
+  // width allows so a dense location fills the screen instead of one tall column
+  // that would need scrolling. Each row truncates to keep the columns clean.
+  const rosterClass = big
+    ? "grid items-start gap-x-8 gap-y-1 font-body text-[15px] text-navy [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]"
+    : "space-y-1 font-body text-[13px] text-navy";
+  const rowClass = big ? "truncate" : "";
   return (
     <Card
       className={loc.status === "deficient" ? "border-l-4 border-l-deficiency" : ""}
@@ -99,12 +108,12 @@ export default function LocationCard({
         </p>
       )}
 
-      <div
-        className={`space-y-1 font-body text-navy ${big ? "text-[15px]" : "text-[13px]"}`}
-      >
-        <GroupHead big={big}>Pharmacists</GroupHead>
+      <div className={rosterClass}>
+        <GroupHead big={big} span={big}>
+          Pharmacists
+        </GroupHead>
         {loc.pharmacistsCounting.map((p) => (
-          <p key={p.staffId}>
+          <p key={p.staffId} className={rowClass}>
             <Dot color={p.color} big={big} />
             <span className="font-medium">{p.name}</span>{" "}
             <span className="text-steel">
@@ -112,9 +121,11 @@ export default function LocationCard({
             </span>
           </p>
         ))}
-        <GroupHead big={big}>Techs — counting</GroupHead>
+        <GroupHead big={big} span={big}>
+          Techs — counting
+        </GroupHead>
         {loc.techsCounting.map((t) => (
-          <p key={t.staffId}>
+          <p key={t.staffId} className={rowClass}>
             <Dot color={t.color} big={big} />
             <span className="font-medium">{t.name}</span>{" "}
             <span className="text-steel">
@@ -124,9 +135,11 @@ export default function LocationCard({
         ))}
         {loc.othersOnNow.length > 0 && (
           <>
-            <GroupHead big={big}>Other staff</GroupHead>
+            <GroupHead big={big} span={big}>
+              Other staff
+            </GroupHead>
             {loc.othersOnNow.map((o) => (
-              <p key={o.staffId}>
+              <p key={o.staffId} className={rowClass}>
                 <Dot color={o.color} big={big} />
                 <span className="font-medium">{o.name}</span>{" "}
                 <span className="text-steel">{o.workType ?? "non-counting"}</span>
@@ -137,15 +150,17 @@ export default function LocationCard({
         {(loc.pharmacistsNotCounting.length > 0 ||
           loc.techsNotCounting.length > 0) && (
           <>
-            <GroupHead big={big}>Not counting right now</GroupHead>
+            <GroupHead big={big} span={big}>
+              Not counting right now
+            </GroupHead>
             {loc.pharmacistsNotCounting.map((p) => (
-              <p key={p.staffId} className="text-steel">
+              <p key={p.staffId} className={`text-steel ${rowClass}`}>
                 <Dot color={p.color} big={big} />
                 {p.name} · RPh · {p.reason}
               </p>
             ))}
             {loc.techsNotCounting.map((t) => (
-              <p key={t.staffId} className="text-steel">
+              <p key={t.staffId} className={`text-steel ${rowClass}`}>
                 <Dot color={t.color} big={big} />
                 {t.name} · {t.reason}
               </p>

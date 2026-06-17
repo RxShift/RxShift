@@ -364,12 +364,19 @@ Susie's pharmacies will run the board on an always-on wall monitor, so the board
 - **Status board grouped by location.** `live-board.tsx` groups the change-status grid under a
   heading per location (card order) + an **Off shift** group; single-location tenants keep the flat
   list. Per-person row extracted to a `StatusRow` helper.
-- **Collapsible sidebar (app-wide).** A « in the sidebar header hides the nav completely; a left-edge
-  tab reopens it. Persisted via `localStorage['rx-sidebar-collapsed']` + a no-flash script in
+- **Collapsible sidebar (app-wide).** A « in the sidebar header hides the nav completely; the reopen
+  » lives in the page header (`components/app/sidebar-reopen-button.tsx`, rendered by `PageHeader`),
+  where the « is — so it never overlaps banners. Persisted via `localStorage['rx-sidebar-collapsed']`
+  + a no-flash script in
   `app/layout.tsx` (mirrors the theme pattern); CSS in `globals.css` keyed on `html.sidebar-collapsed`
   drives `.app-sidebar` (translateX) + `.app-content` (margin). Applies to every `/app` page.
 - **New route:** `/app/display`. **Migration 0022** adds one tenant Help article — *pending
   application to the RxShift Supabase.*
+- **Server-action body limit:** `next.config.ts` sets `experimental.serverActions.bodySizeLimit` to
+  `6mb` so feedback screenshots (the action caps at 5 MB) aren't silently rejected by Next's 1 MB
+  default. The feedback submit also guards >5 MB client-side and wraps the call in try/catch/finally
+  so a rejected upload surfaces an error instead of hanging on "Sending…". (Config change → effective
+  on deploy / after a dev-server restart.)
 
 ## Pending TODOs (as of June 13, 2026)
 

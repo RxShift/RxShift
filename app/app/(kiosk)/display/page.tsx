@@ -45,7 +45,15 @@ export default async function DisplayPage({
             : "No one is on shift right now."}
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={`grid gap-5 ${
+            cards.length <= 1
+              ? "grid-cols-1"
+              : cards.length === 2
+                ? "md:grid-cols-2"
+                : "md:grid-cols-2 xl:grid-cols-3"
+          }`}
+        >
           {cards.map((c) => (
             <LocationCard key={c.locationId} loc={c} size="large" />
           ))}

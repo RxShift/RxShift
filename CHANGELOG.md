@@ -40,6 +40,20 @@ schema changes; one help-content migration (0022) **pending application**.
   with an Off-shift group; /app/display renders chrome-free with large cards, location pin, and the
   Full screen button; "Open display" opens a new tab.
 
+### Review fixes (pre-push, June 17)
+- **Reopen button moved into the page header** (left of the title), where the collapse « lives — it
+  was a left-edge tab at the vertical middle, which was hard to find and would overlap the trial/
+  platform banners. Now a flow element in `PageHeader` (`components/app/sidebar-reopen-button.tsx`),
+  shown only when collapsed.
+- **Wall display fills the width.** A dense single location used only ~1/3 of the screen and needed
+  scrolling; the large card's roster now flows into auto-fill columns and the cards grid goes
+  full-width for a single location — everything fits without scrolling.
+- **Feedback image upload no longer hangs.** A screenshot over Next's default 1 MB server-action body
+  limit was silently rejected and the form stuck on "Sending…". Raised
+  `experimental.serverActions.bodySizeLimit` to 6 MB (matches the action's 5 MB cap — **takes effect
+  on deploy / after a dev-server restart**), added a client-side >5 MB guard, and wrapped submit in
+  try/catch/finally so it always surfaces an error and re-enables the button.
+
 ### Open / future
 - The wall display still requires the monitor's browser to be **signed in** (a no-login signed
   display-token URL is future work — see decisions.md).

@@ -89,13 +89,6 @@ function collapseSidebar() {
     localStorage.setItem("rx-sidebar-collapsed", "1");
   } catch {}
 }
-function expandSidebar() {
-  try {
-    document.documentElement.classList.remove("sidebar-collapsed");
-    localStorage.setItem("rx-sidebar-collapsed", "0");
-  } catch {}
-}
-
 export default function Sidebar({
   tenantName,
   role,
@@ -122,7 +115,6 @@ export default function Sidebar({
     Boolean(tenantLogoUrl) && failedLogoUrl !== tenantLogoUrl;
 
   return (
-    <>
     <aside className="app-sidebar fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-[#1C2F5E]">
       {/* RxShift mark always stays — the tenant logo (if set) sits beside it */}
       <div className="flex h-[60px] items-center gap-2.5 bg-[#162650] px-5">
@@ -223,20 +215,5 @@ export default function Sidebar({
         <ThemeToggle />
       </div>
     </aside>
-    {/* Reopen tab — pinned to the left edge, shown only while collapsed (CSS in
-        globals.css). Lives outside <aside> so it stays visible when the sidebar
-        slides off-screen. */}
-    <button
-      type="button"
-      onClick={expandSidebar}
-      aria-label="Show navigation"
-      title="Show menu"
-      className="app-sidebar-reopen fixed left-0 top-1/2 z-50 -translate-y-1/2 items-center rounded-r-lg bg-[#1C2F5E] px-1.5 py-3 text-white/80 shadow-md transition-colors hover:bg-[#162650] hover:text-white"
-    >
-      <span aria-hidden className="font-brand text-sm font-bold">
-        »
-      </span>
-    </button>
-    </>
   );
 }
