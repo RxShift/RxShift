@@ -7,6 +7,30 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 1): real-time schedule propagation
+
+First phase of the post-demo hardening plan (`/plan` approved; full plan covers 9 phases — flags,
+dashboard interactivity, request warnings, audit/compliance/PDF, work types vs departments, demo-data
+rebuild + demo-clock, "Ask AI" restore, Team-this-week, living docs).
+
+### Shipped
+- **Schedule changes now propagate live.** The bug: extending a shift (e.g. Dr. Nguyen +60 min) never
+  updated "My Status Now" — the shift-mutating actions only revalidated `/app/schedule`. Added a shared
+  `revalidateScheduleViews()` (`lib/actions/helpers.ts`) that revalidates every schedule-derived view
+  (`/app/schedule`, `/app/me`, `/app/board`, `/app/display`, `/app/log`, `/app/dashboard`) and wired it
+  into `upsertShift` / `deleteShift` / `copyForward` / `publishPeriod` / `copyForwardWindow`
+  (`lib/actions/schedule.ts`) and the shift-mutating approvals `decideTimeOff` / `decideSwap`
+  (`lib/actions/requests.ts`).
+- **My Schedule self-refreshes.** New `components/app/auto-refresh.tsx` (a tiny client poller, ~45s,
+  mirrors the Live Board's pattern) mounted on `/app/me` so an open page (e.g. a pharmacist's phone)
+  picks up a manager's change without a manual reload.
+
+### Open
+- True sub-second cross-device push (Supabase Realtime) deferred — revalidate + poll covers the demo.
+- Phases 2–9 of the plan still to build (test as needed between phases).
+
+---
+
 ## 2026-06-17 — /about team page (unlinked draft) + softened homepage pilot-pricing note
 
 - **`/about` (`app/about/page.tsx`)** — two-founder team page (navy hero, two bio cards with treated

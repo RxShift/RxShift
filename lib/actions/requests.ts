@@ -11,6 +11,7 @@ import {
   logActivity,
   requireManager,
   requireMember,
+  revalidateScheduleViews,
   runAction,
   type ActionResult,
   type AuthedContext,
@@ -247,7 +248,7 @@ export async function decideTimeOff(
 
     await logActivity(ctx, decision, "time_off_request", id);
     revalidatePath("/app/requests");
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return undefined;
   });
 }
@@ -448,7 +449,7 @@ export async function decideSwap(
 
     await logActivity(ctx, decision, "swap_request", id);
     revalidatePath("/app/requests");
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return undefined;
   });
 }

@@ -20,6 +20,7 @@ import {
   ActionError,
   logActivity,
   requireManager,
+  revalidateScheduleViews,
   runAction,
   type ActionResult,
 } from "./helpers";
@@ -190,7 +191,7 @@ export async function upsertShift(
       staff_id: data.staff_id,
       date: data.date,
     });
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return { id };
   });
 }
@@ -206,7 +207,7 @@ export async function deleteShift(shiftId: string): Promise<ActionResult> {
       .eq("tenant_id", ctx.tenantId);
     if (error) throw new ActionError(error.message);
     await logActivity(ctx, "delete", "shift", shiftId);
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return undefined;
   });
 }
@@ -286,7 +287,7 @@ export async function copyForward(
       from: prev.id,
       copied,
     });
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return { copied };
   });
 }
@@ -401,8 +402,7 @@ export async function publishPeriod(
       flags_overridden: flagCount,
       streak_alerts: streakAlerts.length,
     });
-    revalidatePath("/app/schedule");
-    revalidatePath("/app/log");
+    revalidateScheduleViews();
     return undefined;
   });
 }
@@ -555,7 +555,7 @@ export async function copyForwardWindow(
       viewEnd,
       copied,
     });
-    revalidatePath("/app/schedule");
+    revalidateScheduleViews();
     return { copied };
   });
 }

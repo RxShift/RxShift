@@ -6,6 +6,7 @@ import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
 import AvatarUpload from "@/components/app/avatar-upload";
+import AutoRefresh from "@/components/app/auto-refresh";
 import { signedAvatarUrls } from "@/lib/avatars";
 import { buildBoardView } from "@/lib/board-data";
 import {
@@ -183,6 +184,9 @@ export default async function MePage() {
   return (
     <>
       <PageHeader title="My Schedule" />
+      {/* Keep "My Status Now" live: re-fetch periodically so a shift change a
+          manager just made (e.g. extending a shift) flips on-shift here too. */}
+      <AutoRefresh />
       <div className="flex-1 space-y-5 p-4 sm:p-8">
         <div className="max-w-[640px] space-y-5">
           <Card>

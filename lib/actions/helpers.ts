@@ -1,8 +1,30 @@
 import "server-only";
+import { revalidatePath } from "next/cache";
 import { getSession, type SessionContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export class ActionError extends Error {}
+
+/**
+ * A schedule change ripples into every schedule-derived view. Revalidate them
+ * all so live presence (My Schedule / "My Status Now"), the Live Board, the
+ * wall display, the compliance record, and the dashboard never show stale data
+ * after a shift edit. (Previously only /app/schedule was revalidated — so e.g.
+ * extending a shift never updated My Status Now.) Call from any server action
+ * that creates, edits, deletes, reassigns, or removes a shift.
+ */
+export function revalidateScheduleViews() {
+  for (const p of [
+    "/app/schedule",
+    "/app/me",
+    "/app/board",
+    "/app/display",
+    "/app/log",
+    "/app/dashboard",
+  ]) {
+    revalidatePath(p);
+  }
+}
 
 export interface AuthedContext extends SessionContext {
   appUser: NonNullable<SessionContext["appUser"]>;
