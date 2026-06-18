@@ -25,8 +25,16 @@ export function todayStr(): string {
  * Wall-clock "now" in an IANA timezone: local date string + minutes since
  * midnight. Server clocks (UTC on Vercel) must never decide what "today"
  * or "right now" means for a tenant.
+ *
+ * `overrideMinutes` is a DEMO-ONLY hook: when a number is passed (from a demo
+ * tenant's `demo_clock`), the returned minutes are pinned to it while the date
+ * stays real — so an after-hours demo still lands inside today's shifts. Real
+ * tenants pass nothing and get the true wall clock.
  */
-export function nowInTimeZone(timeZone: string): { date: string; minutes: number } {
+export function nowInTimeZone(
+  timeZone: string,
+  overrideMinutes?: number | null
+): { date: string; minutes: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -40,8 +48,17 @@ export function nowInTimeZone(timeZone: string): { date: string; minutes: number
   return {
     date: `${get("year")}-${get("month")}-${get("day")}`,
     // % 24 guards the "24:xx at midnight" quirk in some Intl implementations
-    minutes: (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10),
+    minutes:
+      overrideMinutes ?? (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10),
   };
+}
+
+/** Parse a demo_clock "HH:MM" into minutes-since-midnight, or null if unset/invalid. */
+export function demoClockMinutes(demoClock: string | null | undefined): number | null {
+  if (!demoClock || !/^\d{1,2}:\d{2}$/.test(demoClock)) return null;
+  const [h, m] = demoClock.split(":").map(Number);
+  if (h > 23 || m > 59) return null;
+  return h * 60 + m;
 }
 
 /** The local date (yyyy-mm-dd) of an instant in an IANA timezone — used to tell

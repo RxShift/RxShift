@@ -11,6 +11,7 @@ import { Table, Td, Th, Tr } from "@/components/ui/table";
 import {
   emulateAppUser,
   resetDemoTenant,
+  setDemoClock,
   switchActiveTenant,
   updateTenantBilling,
   updateTenantEmailMode,
@@ -28,6 +29,7 @@ interface TenantSummary {
   email_allowlist: string[];
   is_demo: boolean;
   demo_redirect_email: string;
+  demo_clock: string | null;
   billing_label: string;
   billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
   billed_locations: number | null;
@@ -428,6 +430,52 @@ export default function AdminConsole({
                                   Restore demo data…
                                 </button>
                               )}
+
+                              <div className="mt-3">
+                                <Label htmlFor={`clock-${t.id}`}>
+                                  Demo clock (after-hours demos)
+                                </Label>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <input
+                                    id={`clock-${t.id}`}
+                                    type="time"
+                                    defaultValue={t.demo_clock ?? ""}
+                                    className="rounded-md border-[1.5px] border-line bg-surface px-3 py-1.5 font-body text-sm text-navy"
+                                  />
+                                  <Button
+                                    variant="secondary"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      const el = document.getElementById(
+                                        `clock-${t.id}`
+                                      ) as HTMLInputElement | null;
+                                      act(() =>
+                                        setDemoClock(t.id, el?.value || null)
+                                      );
+                                    }}
+                                  >
+                                    Pin time
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    disabled={busy}
+                                    onClick={() => act(() => setDemoClock(t.id, null))}
+                                  >
+                                    Use real time
+                                  </Button>
+                                  <span className="font-body text-xs text-steel">
+                                    {t.demo_clock
+                                      ? `Pinned to ${t.demo_clock}`
+                                      : "Live clock"}
+                                  </span>
+                                </div>
+                                <p className="mt-1 max-w-[520px] font-body text-xs text-steel">
+                                  Pins the board, My Schedule, and live status to
+                                  this time of day on today&rsquo;s date, so a demo
+                                  after business hours still shows staff on shift.
+                                  Real tenants never use this.
+                                </p>
+                              </div>
                             </div>
                           )}
                         </td>

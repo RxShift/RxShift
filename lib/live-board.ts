@@ -9,7 +9,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPeriodBundle, toEngineRule, toEngineSegments } from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
-import { nowInTimeZone, dateInTimeZone } from "@/lib/dates";
+import { nowInTimeZone, dateInTimeZone, demoClockMinutes } from "@/lib/dates";
 import { countsByStatus } from "@/lib/live-status-config";
 import type { EngineSegment, SlotEval } from "@/lib/engine/types";
 import type {
@@ -71,7 +71,10 @@ export async function evaluateLiveLocations(
   tenant: Tenant,
   supabase: SupabaseClient
 ): Promise<LiveLocationEval[]> {
-  const { date: today, minutes: nowMinutes } = nowInTimeZone(tenant.timezone);
+  const { date: today, minutes: nowMinutes } = nowInTimeZone(
+    tenant.timezone,
+    demoClockMinutes(tenant.demo_clock)
+  );
 
   const [{ data: periods }, { data: liveStatuses }, { data: cfg }, { data: locations }] =
     await Promise.all([

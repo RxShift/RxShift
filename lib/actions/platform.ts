@@ -143,6 +143,40 @@ export async function resetDemoTenant(tenantId: string): Promise<ActionResult> {
   });
 }
 
+/**
+ * Set (or clear) a demo tenant's "pretend it's this time" clock. "HH:MM" pins
+ * the live board / My Schedule / status to that time of day on today's real
+ * date so after-hours demos still show staff on shift; null restores the real
+ * clock. Demo tenants only.
+ */
+export async function setDemoClock(
+  tenantId: string,
+  clock: string | null
+): Promise<ActionResult> {
+  return runAction(async () => {
+    await requirePlatformAdmin();
+    const service = createServiceClient();
+
+    const { data: tenant } = await service
+      .from("tenant")
+      .select("id, is_demo")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (!tenant?.is_demo)
+      throw new ActionError("The demo clock is only for demo tenants.");
+
+    const value = clock && /^\d{1,2}:\d{2}$/.test(clock.trim()) ? clock.trim() : null;
+    const { error } = await service
+      .from("tenant")
+      .update({ demo_clock: value })
+      .eq("id", tenantId);
+    if (error) throw new ActionError(error.message);
+
+    revalidatePath("/app", "layout");
+    return undefined;
+  });
+}
+
 export async function emulateAppUser(
   appUserId: string | null
 ): Promise<ActionResult> {

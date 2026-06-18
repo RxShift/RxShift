@@ -61,6 +61,13 @@ export interface Tenant {
   is_demo: boolean;
   /** When set on a demo tenant, ALL app email is rewritten to this address */
   demo_redirect_email: string | null;
+  /**
+   * Demo-only "pretend it's this time of day" override ("HH:MM"). When set, the
+   * live board / My Schedule / live status evaluate "now" at this time on the
+   * real (tenant-tz) date, so after-hours demos still show staff on shift. Real
+   * tenants leave this null and always use the real clock.
+   */
+  demo_clock: string | null;
   /** When true, every shift must be assigned a department */
   require_department: boolean;
   // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)

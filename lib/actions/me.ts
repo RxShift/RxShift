@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { nowInTimeZone } from "@/lib/dates";
+import { nowInTimeZone, demoClockMinutes } from "@/lib/dates";
 import { timeToMinutes, minutesToTime } from "@/lib/engine/ratio";
 import type { ShiftSegment } from "@/lib/types";
 import {
@@ -61,7 +61,10 @@ export async function setMyWorkType(input: unknown): Promise<ActionResult> {
       if (!wt) throw new ActionError("Unknown work type.");
     }
 
-    const { date: today, minutes: nowMin } = nowInTimeZone(ctx.tenant.timezone);
+    const { date: today, minutes: nowMin } = nowInTimeZone(
+      ctx.tenant.timezone,
+      demoClockMinutes(ctx.tenant.demo_clock)
+    );
     if (shift.date !== today)
       throw new ActionError("You can only change your work type on today's shift.");
 

@@ -7,6 +7,32 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 6): demo clock (after-hours demos) + departments
+
+### Shipped
+- **Demo clock — after-hours demos work.** `nowInTimeZone(tz, overrideMinutes?)` (`lib/dates.ts`) gained a
+  demo-only override; `demoClockMinutes()` parses a tenant's `demo_clock` ("HH:MM"). Threaded through every
+  presence surface (`lib/board-data.ts`, `lib/live-board.ts`, `app/app/(shell)/me/page.tsx`,
+  `lib/actions/me.ts`): when set on a **demo tenant**, "now" is pinned to that time of day on today's real
+  date, so a walkthrough at 9pm still shows staff on shift. Real tenants pass nothing → true clock. Toggle in
+  the Admin Console per demo tenant ("Pin time" / "Use real time"); action `setDemoClock` (`platform.ts`).
+- **Departments in Mesa Vista.** The demo seeded zero departments, so the feature was undemoable. Now seeds
+  four tenant-level departments (Retail Counter, Compounding, Specialty, Drive-Thru) and tags every shift via
+  a per-person map, so the schedule's department filter shows a real, varied roster. (Departments are area
+  tags — they don't affect the ratio, unlike work types.)
+- **Reset robustness.** `clearMesaVistaData` now clears `activity_log_note` explicitly (also cascades from
+  `activity_log`) so a restore is clean with the new Phase-4 table.
+
+### Schema
+- **Migration `0027_demo_clock.sql`** — `tenant.demo_clock text` (nullable). **File written; pending apply on
+  go-ahead.** Code is safe without it (an undefined column reads as null → real clock); the toggle needs it.
+
+### To see departments
+- Run **Restore demo data** (Admin Console) or `npx tsx scripts/seed-mesa-vista.ts --reset` — departments
+  appear after a re-seed.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 5): work types vs departments — rule documented + staff self-change
 
 ### Shipped

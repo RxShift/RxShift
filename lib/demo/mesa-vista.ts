@@ -141,6 +141,22 @@ const WORK_TYPES = [
   { name: "Meeting", counts_as: "none", counting_default: false, is_specialized: false, color: "#6A5ACD" },
 ];
 
+// Departments — tenant-level area tags on a shift (organize + filter; they do
+// NOT affect the ratio, unlike work types). Gives the department filter on the
+// schedule something real to show.
+const DEPARTMENTS = ["Retail Counter", "Compounding", "Specialty", "Drive-Thru"];
+
+// Which department each person works in (default = Retail Counter). Spread so a
+// manager filtering by department sees a meaningful, varied roster.
+const STAFF_DEPARTMENT: Record<string, string> = {
+  "Dr. Marcus Webb": "Compounding",
+  "Dana Holt": "Compounding",
+  "Dr. Lena Park": "Specialty",
+  "Tyler Brooks": "Specialty",
+  "Keisha Brown": "Drive-Thru",
+  "Miguel Santos": "Drive-Thru",
+};
+
 /** Monday of the current week in the demo tenant's timezone. */
 export function currentWeekMonday(): string {
   const { date } = nowInTimeZone(TZ);
@@ -164,6 +180,7 @@ export async function clearMesaVistaData(
   const tables = [
     "compliance_snapshot",
     "override_log",
+    "activity_log_note",
     "activity_log",
     "notification",
     "live_status",
@@ -425,6 +442,17 @@ export async function seedMesaVista(
   if (wtErr) throw new Error(wtErr.message);
   const wtIds = new Map(wtRows.map((w) => [w.name, w.id]));
 
+  // Departments (tenant-level area tags)
+  const { data: deptRows, error: deptErr } = await service
+    .from("department")
+    .insert(DEPARTMENTS.map((name) => ({ tenant_id: tenantId, name })))
+    .select("id, name");
+  if (deptErr) throw new Error(deptErr.message);
+  const deptIds = new Map(deptRows.map((d) => [d.name, d.id]));
+  const deptFor = (staffName: string) =>
+    deptIds.get(STAFF_DEPARTMENT[staffName] ?? "Retail Counter") ?? null;
+  log(`${deptRows.length} departments.`);
+
   // Staff — fictional @mesavistarx.com addresses (demo gate guarantees
   // no mail can ever reach them)
   const { data: staffRows, error: stErr } = await service
@@ -571,6 +599,7 @@ export async function seedMesaVista(
             schedule_period_id: period.id,
             status: "published",
             break_minutes: s.breakMin,
+            department_id: deptFor(s.staff),
           }))
         )
         .select("id");

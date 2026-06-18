@@ -29,7 +29,7 @@ import {
   labelByStatus,
   resolveStatuses,
 } from "@/lib/live-status-config";
-import { nowInTimeZone, dateInTimeZone } from "@/lib/dates";
+import { nowInTimeZone, dateInTimeZone, demoClockMinutes } from "@/lib/dates";
 import type { createClient } from "@/lib/supabase/server";
 
 export interface BoardPerson {
@@ -83,7 +83,10 @@ export async function buildBoardView(
 ): Promise<BoardView> {
   // "Today" and "now" in the TENANT's timezone — the server clock (UTC on
   // Vercel) would otherwise blank the board outside its own business hours.
-  const { date: today, minutes: nowMinutes } = nowInTimeZone(tenant.timezone);
+  const { date: today, minutes: nowMinutes } = nowInTimeZone(
+    tenant.timezone,
+    demoClockMinutes(tenant.demo_clock)
+  );
 
   const { data: periods } = await supabase
     .from("schedule_period")

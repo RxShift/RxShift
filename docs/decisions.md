@@ -3,6 +3,17 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — After-hours demos use a demo-only clock override (time-of-day, real date)
+
+Phase 6. The demo broke after business hours because every presence surface reads the real wall clock, so at
+9pm no shift covers "now" and the board / My Schedule go empty. Chosen fix: a per-tenant **`demo_clock`**
+("HH:MM") that, on a **demo tenant only**, pins the *time of day* while keeping the *real date* — so today's
+shifts still show, anchored to a business hour. Threaded as an optional arg to `nowInTimeZone`. **Rejected**
+seeding 24/7 coverage (clutters the deficiency story) and a per-tenant "always daytime" hack baked into the
+data (this keeps real tenants on the true clock and is one toggle in the admin console). Departments were
+also added to Mesa Vista (tenant-level area tags on shifts) so the department filter is demoable; they
+organize/filter and do not affect the ratio.
+
 ## June 17, 2026 — Work-type counting precedence confirmed; staff change their own work type by splitting at "now"
 
 Phase 5. **Counting precedence** (confirmed + documented, no logic change): non_counting staff → segment

@@ -49,6 +49,7 @@ export default async function AdminPage() {
     email_allowlist: t.email_allowlist ?? [],
     is_demo: t.is_demo,
     demo_redirect_email: t.demo_redirect_email ?? "",
+    demo_clock: t.demo_clock ?? null,
     billing_label: describeTenantBilling(t).label,
     billing_status: t.billing_status,
     billed_locations: t.billed_locations,

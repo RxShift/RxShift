@@ -13,6 +13,7 @@ import { buildBoardView } from "@/lib/board-data";
 import {
   addDaysStr,
   dateInTimeZone,
+  demoClockMinutes,
   eachDate,
   fmtDay,
   nowInTimeZone,
@@ -65,7 +66,10 @@ export default async function MePage() {
   // was filtered out of the results and the page always read "off shift" — even
   // when the board correctly showed the person working. Use one tz-anchored
   // "now" for the query bounds, the calendar, and the presence check.
-  const { date: today, minutes: tzNow } = nowInTimeZone(tenant.timezone);
+  const { date: today, minutes: tzNow } = nowInTimeZone(
+    tenant.timezone,
+    demoClockMinutes(tenant.demo_clock)
+  );
   const horizon = addDaysStr(today, 14);
 
   const [
