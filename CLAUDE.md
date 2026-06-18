@@ -141,11 +141,12 @@ This is a **multi-tenant** platform. Each tenant = one pharmacy organization (wh
 
 Documentation that goes stale is worse than no documentation: it creates false confidence and costs real time to untangle. We learned this the hard way. Do not push a commit without completing the checklist below.
 
-### The five files you must consider after every session
+### The files you must consider after every session
 
 | File | Update when… |
 |------|-------------|
 | **`CHANGELOG.md`** | Every session without exception. One H2 entry: date + summary heading, then Shipped / Schema / Infrastructure / Open sections. Bullets, not prose. This is what a future agent reads first to understand current state — keep it honest. |
+| **`docs/DEMO-GUIDE.md`** + **`docs/FEATURE-MAP.md`** | When a change alters what a screen does, adds/removes a route, or changes the demo flow or demo data. These are the source of truth for running a demo (the demo script kept drifting from reality) — keep them accurate so a script can be generated from them. |
 | **`CLAUDE.md`** (this file) | A feature ships, a route is added, the stack changes, TODOs are completed or discovered, architecture decisions are made, or any section becomes inaccurate. Update the `Last updated` date at the top. |
 | **`INFRASTRUCTURE.md`** | Any account, credential, DNS record, Vercel config, Supabase project, email routing, or hosting change. If Jamison makes an infra change outside Claude Code, he should tell you and you update this file. |
 | **`docs/decisions.md`** | A durable scope or architecture decision is made — something that explains WHY the code is the way it is, or rules out a future direction. Especially: deferred features, blocked items, and deliberate design choices. |
@@ -409,6 +410,36 @@ Susie's pharmacies will run the board on an always-on wall monitor, so the board
   shows positive headroom.
 - **PWA install fix** (`proxy.ts`): `/manifest.webmanifest` + the icon PNGs are excluded from the
   host rewrite/auth so "add to home screen" works on app.rxshift.io (they were bouncing to /login).
+
+## Demo-debrief hardening (June 17, 2026) — 9 phases
+
+Post-demo pass after the Susie walkthrough. Built in phases; see `CHANGELOG.md` for per-phase detail and
+`docs/decisions.md` for the durable choices. New: a living **`docs/DEMO-GUIDE.md`** (run a demo accurately)
+and **`docs/FEATURE-MAP.md`** (every screen × role) — keep both current.
+
+1. **Real-time propagation.** A shared `revalidateScheduleViews()` (`lib/actions/helpers.ts`) revalidates
+   `/app/me`, `/app/board`, `/app/display`, `/app/log`, `/app/dashboard` on every shift mutation; My Schedule
+   self-refreshes (`components/app/auto-refresh.tsx`). Also fixed `/app/me` reading "off shift" in the
+   evening — it used the UTC date as the query bound but the tenant-tz date for presence; now tenant-tz throughout.
+2. **Dashboard interactivity + one flag vocabulary.** `StatCard` takes an `href`; counts + AI insights deep-link
+   to the offending slot. `lib/flags.ts` is the single flag definition (ratio vs constraint) + link builders.
+3. **Request warnings + reasons.** `lib/actions/requests.ts` pre-checks PTO/swap/callout impact via the engine;
+   approving a ratio-deficiency-causing PTO/swap requires a logged reason → `override_log` (0024). `swap.ratio_effect` now populated.
+4. **Audit log + append-note + PDF.** New `/app/log/audit` over the append-only `activity_log`; managers append
+   immutable notes (`activity_log_note`, 0025). Compliance Record shows override reasons + prints them; the
+   official export is **Save as PDF** (print-to-PDF, non-editable). Override Log labels publish vs request overrides.
+5. **Work types vs departments.** Counting precedence documented (`segmentCounts` + Settings → Work types):
+   a non-counting work type wins over a counting status. Staff self-change their current work type on My Schedule
+   (`setMyWorkType` splits the segment at "now"; `lib/actions/me.ts`).
+6. **Demo clock + departments.** `nowInTimeZone(tz, overrideMinutes?)` + `tenant.demo_clock` (0027): a demo
+   tenant can pin "now" to a business hour so after-hours demos show staff on shift (Admin Console toggle). Mesa
+   Vista now seeds 4 departments + tags shifts; reset clears the new note table.
+7. **Ask AI restored.** The command bar (relabeled **Ask AI**) is mounted on the schedule, bound to the working
+   location's current-week period; full ask + propose/validate/confirm ops (`lib/actions/ai.ts` unchanged).
+8. **"Who's on this week."** My Schedule's team block is now a day-grouped read-only view of the home location.
+9. **Living docs:** `docs/DEMO-GUIDE.md` + `docs/FEATURE-MAP.md` (this pass).
+
+**Migrations 0024 / 0025 / 0027 applied** to the RxShift Supabase. New routes: `/app/log/audit`.
 
 ## Pending TODOs (as of June 13, 2026)
 

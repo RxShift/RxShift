@@ -7,6 +7,21 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 9): living demo docs
+
+- **`docs/DEMO-GUIDE.md`** — the accurate, single source for running a demo: pre-demo checklist (login,
+  reset, demo clock, AI key), the story, a **screen-by-screen walkthrough with correct facts** (live
+  statuses live on the **Live Board / My Schedule**, NOT the dashboard — the mistake that drifted the old
+  script), the built-in Henderson deficiency story, the Mesa Vista data summary, reset behavior, and honest
+  known-limitations.
+- **`docs/FEATURE-MAP.md`** — every route × what it does × who sees it (management + platform-admin + kiosk),
+  plus the compliance-engine summary. The at-a-glance index.
+- **`CLAUDE.md`** — added a "Demo-debrief hardening (June 17)" summary of all 9 phases (migrations
+  0024/0025/0027 applied; new route `/app/log/audit`) and a documentation-discipline entry to keep
+  DEMO-GUIDE + FEATURE-MAP current.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 8): "Team this week" → "Who's on this week"
 
 - Redesigned the My Schedule team block (`app/app/(shell)/me/page.tsx`) from a flat run-on list into a
