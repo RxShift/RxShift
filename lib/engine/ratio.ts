@@ -97,7 +97,22 @@ export function wouldBreakIfOneLeaves(
   return maxTechsAllowed(pharmacistsCounting - 1, rule) < techsCounting;
 }
 
-/** Does this segment's person count toward ratio while in this segment? */
+/**
+ * Does this segment's person count toward ratio while in this segment?
+ *
+ * COUNTING PRECEDENCE (highest wins):
+ *   1. staff.ratio_type === "non_counting"  → never counts, full stop.
+ *   2. segment counts_override (true/false)  → explicit per-segment decision.
+ *   3. work_type.counting_default            → the work type decides.
+ *   4. role default                          → pharmacist counts, tech doesn't.
+ *
+ * Work type vs. live status: a non-counting WORK TYPE wins over a counting
+ * status. `adjustSegmentsForLive` (lib/live-board.ts) only ever forces a segment
+ * OFF (a non-counting live status sets counts_override=false); it never forces a
+ * segment ON. So if a tech's work type says "doesn't count" (e.g. Inventory),
+ * they don't count regardless of their live status. A person counts only when
+ * BOTH their work type / role default says count AND their live status counts.
+ */
 export function segmentCounts(seg: EngineSegment): boolean {
   if (seg.staff.ratio_type === "non_counting") return false;
   if (seg.counts_override !== null) return seg.counts_override;

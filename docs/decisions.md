@@ -3,6 +3,20 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Work-type counting precedence confirmed; staff change their own work type by splitting at "now"
+
+Phase 5. **Counting precedence** (confirmed + documented, no logic change): non_counting staff → segment
+override → work_type.counting_default → role default. Because `adjustSegmentsForLive` only ever forces a
+segment OFF, a **non-counting work type wins over a counting status** — the assumption was correct.
+
+**Staff self-change is a live segment split, not a schedule overwrite.** When a tech/RPh changes their work
+type from My Schedule, the segment covering the current minute is split at "now": the earlier part keeps the
+old type (history preserved), the remainder takes the new one — exactly what a manager would do by hand, and
+it makes the live ratio recompute from this moment. **Rejected** modeling it as a separate live overlay
+(more moving parts) and overwriting the whole segment (loses history). Writes use the service client (shift
+segments are manager-only under RLS) gated by an ownership check. Any tenant work type is self-selectable; a
+curated subset was deferred as unnecessary for v1.
+
 ## June 17, 2026 — Audit log is append-only with notes; compliance PDF carries override context
 
 Phase 4. Two durable choices:

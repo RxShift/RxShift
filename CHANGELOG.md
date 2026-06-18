@@ -7,6 +7,29 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 5): work types vs departments — rule documented + staff self-change
+
+### Shipped
+- **Counting precedence documented** at the source (`lib/engine/ratio.ts` `segmentCounts`) and in-app on
+  Settings → Work types: a person counts only when their work type / role default says count **and** their
+  live status counts; a **non-counting work type always wins** (a tech on Inventory never counts, whatever
+  their status). Confirms Jamison's assumption. Also spelled out work types (shift-level, affect ratio) vs
+  departments (optional area tag, don't affect ratio).
+- **Staff self-change work type in real time** (`lib/actions/me.ts` `setMyWorkType` + new
+  `components/app/me/my-work-type-picker.tsx` on My Schedule). A tech/RPh switches their current work type
+  on the floor; the segment covering "now" is **split at now** (history preserved — what they were doing
+  stays; the new type applies going forward), and the live board + My Schedule update immediately. Writes go
+  through the service client but only after verifying the shift is theirs and the work type is their
+  tenant's. Audit-logged.
+- Managers' in-advance path (split a shift into per-segment work types in the shift editor) verified — no
+  change needed; the self-service picker is the ad-hoc complement.
+
+### Notes
+- No migration: staff may self-select any of the tenant's work types (a curated "self_selectable" subset
+  was considered and deferred — not needed for v1).
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 4): audit log + append-note, override↔compliance, official PDF
 
 Makes the compliance story auditor-credible: a comprehensive immutable audit log you can annotate (never

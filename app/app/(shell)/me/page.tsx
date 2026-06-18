@@ -5,6 +5,7 @@ import Badge from "@/components/ui/badge";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import MyStatusPicker from "@/components/app/me/my-status-picker";
+import MyWorkTypePicker from "@/components/app/me/my-work-type-picker";
 import AvatarUpload from "@/components/app/avatar-upload";
 import AutoRefresh from "@/components/app/auto-refresh";
 import { signedAvatarUrls } from "@/lib/avatars";
@@ -96,7 +97,10 @@ export default async function MePage() {
         .eq("staff_id", appUser.staff_id)
         .is("effective_to", null)
         .maybeSingle(),
-      supabase.from("work_type").select("id, color"),
+      supabase
+        .from("work_type")
+        .select("id, name, counting_default, color")
+        .order("name"),
       supabase.from("live_status_config").select("*"),
     ]);
 
@@ -119,12 +123,13 @@ export default async function MePage() {
       });
   }
 
-  const wtColorById = new Map(
-    ((workTypes ?? []) as { id: string; color: string | null }[]).map((w) => [
-      w.id,
-      w.color,
-    ])
-  );
+  const workTypeList = (workTypes ?? []) as {
+    id: string;
+    name: string;
+    counting_default: boolean;
+    color: string | null;
+  }[];
+  const wtColorById = new Map(workTypeList.map((w) => [w.id, w.color]));
 
   const staff = me as Staff;
   const myAvatarUrl = (await signedAvatarUrls(supabase, [staff]))[staff.id];
@@ -145,6 +150,15 @@ export default async function MePage() {
     });
   const currentShift = shifts.find(coversNow);
   const onShiftNow = !!currentShift;
+
+  // Work type of the segment covering right now — for the self-service picker.
+  const currentSeg = (currentShift?.shift_segment ?? []).find((seg) => {
+    const start = timeToMinutes(seg.start_time);
+    const end0 = timeToMinutes(seg.end_time);
+    const end = end0 > start ? end0 : 1440;
+    return start <= tzNow && tzNow < end;
+  });
+  const currentWorkTypeId = currentSeg?.work_type_id ?? null;
   const effectiveStatus =
     live && dateInTimeZone(live.effective_from, tenant.timezone) === today
       ? live.status
@@ -225,6 +239,14 @@ export default async function MePage() {
                 </p>
               </Card>
             ))}
+
+          {onShiftNow && currentShift && workTypeList.length > 0 && (
+            <MyWorkTypePicker
+              shiftId={currentShift.id}
+              currentWorkTypeId={currentWorkTypeId}
+              workTypes={workTypeList}
+            />
+          )}
 
           <Card>
             <h2 className="mb-3 font-brand text-base font-bold text-navy">
