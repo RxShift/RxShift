@@ -225,6 +225,8 @@ export interface AppUser {
   scheduler_scope: string[] | null; // department ids
   is_pto_approver: boolean;
   pto_approver_rank: "primary" | "backup" | null;
+  /** Human name for owners/admins not on the staff roster; null = use role/staff */
+  display_name: string | null;
   created_at: string;
 }
 

@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 17, 2026
+# Last updated: June 18, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -440,6 +440,29 @@ and **`docs/FEATURE-MAP.md`** (every screen × role) — keep both current.
 9. **Living docs:** `docs/DEMO-GUIDE.md` + `docs/FEATURE-MAP.md` (this pass).
 
 **Migrations 0024 / 0025 / 0027 applied** to the RxShift Supabase. New routes: `/app/log/audit`.
+
+## Demo QA fixes (June 18, 2026)
+
+Three defects CoWork found dry-running the demo against the live build — all fixed in the seed/engine/
+shared code so they survive `--reset`:
+
+- **Override "who" → a real name.** Added `app_user.display_name` (**migration 0028, applied**); the
+  Override Log + Compliance Record now resolve an actor as staff name → `display_name` → role. Frank
+  DiMaggio (the Mesa Vista owner, no staff record) gets his name set in the seed (idempotently across
+  resets). Seeded override reason rewritten to the demo narrative.
+- **Acknowledged exception now surfaces on the Compliance Record.** The seed linked the override to the
+  Henderson current-week **period id** (was a human-readable string), so `/app/log`'s existing
+  "Acknowledged exceptions" section populates; plus an inline **⚠ Acknowledged exception** line on each
+  deficient row (`components/app/log/compliance-view.tsx`), which also prints.
+- **Overtime renders amber, not red.** `lib/engine/constraints.ts` `overtime`/`hour_cap` now attach the
+  flag to the **tipping shift** (new `accumulateHours` helper) instead of `shift_id: null`, so the
+  schedule grid shows the amber constraint ring. Jerome (43h) → amber on Saturday; his Thursday keeps the
+  red ⚠ ratio-gap. The two ring channels (red = ratio deficiency, amber = constraint) are intentionally
+  distinct — don't collapse them.
+
+**Demo-clock reminder** (documented in `docs/DEMO-GUIDE.md`): the Demo clock + Restore demo data live in
+the **Admin Console** (`/app/admin`), **platform-admin only**, and the Platform nav is hidden while
+emulating — set the clock + reset *before* you emulate a tenant person.
 
 ## Pending TODOs (as of June 13, 2026)
 

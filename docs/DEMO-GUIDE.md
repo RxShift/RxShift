@@ -2,22 +2,33 @@
 
 > The single, accurate source for running a demo. Built because the old demo script drifted from reality
 > (it claimed live statuses live on the Dashboard — they don't; they're on the **Live Board** and
-> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 17, 2026.
+> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 18, 2026.
 
 ---
 
 ## 0. Pre-demo checklist (5 minutes)
 
-1. **Sign in to the demo tenant.** Login `demo@rxshift.io` (delivers to Jamison's catch-all → Frank
-   DiMaggio, owner_admin). To demo the staff/pharmacist view, **emulate** a person in the Admin Console, or
-   use the staff aliases `jerome@rxshift.io` (technician) / `patricia@rxshift.io` (managing pharmacist).
-2. **Fresh data?** Admin Console → the Mesa Vista tenant → **Restore demo data** (or
-   `npx tsx scripts/seed-mesa-vista.ts --reset`). This wipes + re-seeds and **re-anchors every date to the
-   current week**, so the demo always looks current. Departments + the deficiency story come back each time.
-3. **Demoing outside 9–5 Pacific?** Admin Console → Mesa Vista → **Demo clock** → "Pin time" to e.g.
-   `13:00`. The Live Board / My Schedule / live status then evaluate "now" at that time on today's real
-   date, so staff show on shift. Click **Use real time** when done. (Real customers never use this.)
-4. **AI working?** Ask AI needs `OPENAI_API_KEY`. If unset, the bar shows a friendly "not configured" note.
+**Two different sign-ins — don't confuse them.** "Restore demo data" and the "Demo clock" live in the
+**Admin Console** (`/app/admin`), which is visible **only to a platform-admin account** (e.g. Susie's
+platform-admin login). `demo@rxshift.io` is the in-tenant **owner** (Frank DiMaggio) you *present* as —
+it is NOT a platform admin and has no Admin Console. Also: the whole **Platform nav disappears while you're
+"viewing as"/emulating** a tenant, so **do the reset + clock first, then emulate.**
+
+1. **Sign in as a platform admin** and open **Platform → Admin Console**. Click the **Mesa Vista** row to
+   expand its controls.
+2. **Fresh data?** In that expanded row → **Restore demo data** (or `npx tsx scripts/seed-mesa-vista.ts
+   --reset`). This wipes + re-seeds and **re-anchors every date to the current week**, so the demo always
+   looks current. Departments, the deficiency story, the override/acknowledged-exception, and Jerome's
+   overtime all come back each time.
+3. **Demoing outside 9–5 Pacific?** Same expanded row → **Demo clock (after-hours demos)** → type a time
+   (e.g. `13:00`) → **Pin time**. The Live Board / My Schedule / live status then evaluate "now" at that
+   time on today's real date, so staff show on shift. Click **Use real time** when done. (Real customers
+   never use this; it only shows for demo tenants.)
+4. **Then present.** Sign in / emulate the person you want to demo as: `demo@rxshift.io` (Frank, owner) for
+   the manager view, or the staff aliases `jerome@rxshift.io` (technician) / `patricia@rxshift.io`
+   (managing pharmacist) for the staff/pharmacist view. Typical demo = ~4 tabs: **Live Board** (or
+   `/app/display` wall view), **Schedule**, **Compliance Record** (`/app/log`), **My Schedule**.
+5. **AI working?** Ask AI needs `OPENAI_API_KEY`. If unset, the bar shows a friendly "not configured" note.
 
 ---
 
@@ -47,7 +58,11 @@ the record.
 
 **Schedule (`/app/schedule`)** — the build surface.
 - One matrix; the location pills filter the view; the window selector switches week/2-week/month.
-- Deficient slots carry a red ⚠; constraint issues an amber ring. Publish / Copy last week / Export CSV.
+- **Two distinct ring channels:** a **ratio deficiency** is a **red ring + ⚠**; a **constraint** (hours
+  cap, availability, double-booking) is an **amber ring**. On **Henderson, current week**: Jerome Williams
+  (43h) shows an **amber** ring on **Saturday** (the shift that tips him over 40h), while his **Thursday**
+  shows the **red ⚠** ratio-gap — both visible at once, a clean "these are different things" moment.
+- Publish / Copy last week / Export CSV.
 - **Ask AI** (top): type "is anything non-compliant coming up?", "who's short Thursday?", or
   "schedule Marcus 9–5 Mon–Fri this week." It answers from the live schedule or proposes a change; the
   engine validates it ("✓ removes 2 deficient slots") and you **confirm** before it applies. (It works on the
@@ -67,7 +82,12 @@ the record.
 **Compliance Record (`/app/log`)** — the auditor's hourly staffing record.
 - Hour-by-hour per location, deficient hours highlighted, an **Acknowledged exceptions** section with the
   override reasons, and **Save as PDF (official record)** — a non-editable document that carries the *why*.
-- **Override Log** and **Audit Log** sit alongside: the Audit Log is the full append-only action trail, and
+- **Pick the location in the dropdown** — the record shows one location/week at a time. Select **Mesa Vista
+  — Henderson [current week]** to see the deficiency story. Thursday 14:00–16:00 shows two **deficient**
+  rows, each carrying an inline **⚠ Acknowledged exception (Frank DiMaggio)** with the family-emergency
+  reason — the documentation sits right on the deficient hours, and prints with the PDF.
+- **Override Log** and **Audit Log** sit alongside: the Override Log shows the same acknowledgment
+  (**Frank DiMaggio**, the owner, with the reason); the Audit Log is the full append-only action trail, and
   you can **append a note** to any entry (e.g. "RPh forgot to clock back from lunch") without altering it.
 
 ---

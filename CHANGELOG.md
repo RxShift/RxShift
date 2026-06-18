@@ -7,6 +7,52 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-18 — Demo QA fixes: override actor name, acknowledged exception inline, overtime amber ring
+
+Three defects found when CoWork dry-ran the demo against the live build. All fixed in the seed
+script / engine / shared resolution code so they survive `npx tsx scripts/seed-mesa-vista.ts --reset`.
+
+### Shipped
+- **Override "who" shows a real name.** The Override Log and the Compliance Record resolved an
+  action's actor from the linked staff member; an owner_admin with no staff record (Frank DiMaggio,
+  the Mesa Vista demo owner) fell back to the raw role string `"owner_admin"`. Added an optional
+  `app_user.display_name`, set Frank's to **Frank DiMaggio** in the seed (idempotently, so it sticks
+  across a reset that preserves his account), and made both resolution sites fall back
+  staff name → `display_name` → role. Also rewrote the seeded override **reason** to the demo
+  narrative (Dr. Patel family emergency; float held at Spring Valley until 4 PM; single isolated day).
+- **Acknowledged exception now shows on the Compliance Record.** The seed linked the override to a
+  human-readable string (`"<date> 14:00-16:00 Henderson"`) instead of the Henderson current-week
+  **period id**, so `/app/log`'s `override_log WHERE target_id = periodId` matched nothing and the
+  existing "Acknowledged exceptions" section never rendered. The seed now captures and links the
+  Henderson current-week period id. Added an inline **⚠ Acknowledged exception (actor): reason** line
+  on each deficient compliance row (and in the printed PDF), so the "why" sits with the specific
+  deficient hours, not only in the section/Override Log.
+- **Overtime renders amber, not red.** `lib/engine/constraints.ts` emitted `overtime` / `hour_cap`
+  flags with `shift_id: null`, so the schedule grid (which rings only shifts carrying a `shift_id`)
+  never showed the amber constraint ring — the only ring on Jerome's row was the red Thursday ratio
+  deficiency. New `accumulateHours` helper sums paid hours chronologically and names the **tipping
+  shift** (the one that crosses the threshold); the flag now carries that `shift_id`. Jerome's 43h
+  week now shows an **amber** ring on **Saturday** (the tipping shift, not deficient), while his
+  Thursday keeps the **red ⚠** ratio-gap ring — both visible at once. Flag count unchanged (1/week).
+
+### Schema
+- **Migration `0028_app_user_display_name.sql`** — `app_user.display_name text` (nullable). **Applied**
+  to the RxShift Supabase. Staff-linked users are unaffected (staff name still wins).
+
+### Verified
+- `tsc` clean, **50/50** vitest pass (constraint tests assert length/type/message/date, not `shift_id`),
+  `next build` clean. Demo reset run; data confirmed via SQL (Frank's name + override→Henderson period
+  link). Browser (Claude in Chrome, Mesa Vista, signed in as Frank): Override Log shows Frank DiMaggio +
+  the new reason; the Henderson Jun 15–21 Compliance Record shows the Acknowledged exceptions section
+  AND the inline cue on both deficient Thursday 14:00–16:00 rows; the Henderson week schedule shows
+  Jerome's Saturday amber ring with the Thursday red ⚠ still present.
+
+### Notes
+- The request-impact diff (`lib/actions/requests.ts`) keys on `staff_id|rule_id|date|message`, not
+  `shift_id`, so naming the tipping shift doesn't affect approval-warning de-duplication.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 9): living demo docs
 
 - **`docs/DEMO-GUIDE.md`** — the accurate, single source for running a demo: pre-demo checklist (login,

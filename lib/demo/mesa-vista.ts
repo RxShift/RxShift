@@ -278,6 +278,15 @@ async function ensureFrank(
     log("Created Frank DiMaggio (owner_admin, no staff record).");
   }
 
+  // Frank has no staff record, so the override log / compliance record can't
+  // resolve his name from staff.full_name — give his app_user a display name so
+  // the "who" reads "Frank DiMaggio" instead of the raw role. Set on every run
+  // (idempotent) so a reset, which preserves Frank's app_user, still applies it.
+  await service
+    .from("app_user")
+    .update({ display_name: "Frank DiMaggio" })
+    .eq("id", appUserId);
+
   // Sign-in path for real humans: typing demo@rxshift.io at /app/login
   // delivers Frank's magic link to that address (the rxshift.io catch-all).
   const { data: alias } = await service
@@ -526,6 +535,10 @@ export async function seedMesaVista(
 
   let totalShifts = 0;
   let deficientHours = 0;
+  // Henderson's CURRENT-week period id — the override below links to it so the
+  // compliance record's "Acknowledged exceptions" section surfaces on the right
+  // record (the page matches override_log.target_id to the selected period).
+  let henGapPeriodId: string | null = null;
 
   for (const offset of WEEK_OFFSETS) {
     const weekStart = addDaysStr(anchor, offset * 7);
@@ -547,6 +560,7 @@ export async function seedMesaVista(
         .select("id")
         .single();
       if (pErr) throw new Error(pErr.message);
+      if (loc.key === "HD" && offset === 0) henGapPeriodId = period.id;
 
       // Build this week's shift rows from the location's recurring lines
       const shiftInputs: {
@@ -669,10 +683,12 @@ export async function seedMesaVista(
     tenant_id: tenantId,
     actor_user_id: frankAuthId,
     target_type: "slot",
-    target_id: `${gapThursday} 14:00-16:00 Henderson`,
+    // Link to Henderson's current-week period so the compliance record's
+    // "Acknowledged exceptions" section shows it on the right record.
+    target_id: henGapPeriodId ?? `${gapThursday} 14:00-16:00 Henderson`,
     warning_type: "ratio",
     reason:
-      "Pharmacist coverage gap 2:00–4:00 PM documented. Single isolated day — no 3-day board notification required.",
+      "Dr. Patel had a family emergency and left at 2:00 PM. Float pharmacist Dr. Fitzgerald was notified immediately but was held at Spring Valley until 4:00 PM. Coverage gap documented. Single isolated day — no 3-consecutive-day board notification triggered.",
   });
   await service.from("activity_log").insert({
     tenant_id: tenantId,

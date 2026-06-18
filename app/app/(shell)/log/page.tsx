@@ -87,7 +87,7 @@ export default async function ComplianceLogPage({
         .select("*")
         .eq("target_id", periodId)
         .order("created_at", { ascending: false }),
-      supabase.from("app_user").select("supabase_user_id, staff_id, role"),
+      supabase.from("app_user").select("supabase_user_id, staff_id, role, display_name"),
       supabase.from("staff").select("id, full_name"),
     ]);
   const staffNameById = new Map(
@@ -101,10 +101,11 @@ export default async function ComplianceLogPage({
     supabase_user_id: string;
     staff_id: string | null;
     role: string;
+    display_name: string | null;
   }[]) {
     actorName.set(
       u.supabase_user_id,
-      (u.staff_id && staffNameById.get(u.staff_id)) || u.role || "User"
+      (u.staff_id && staffNameById.get(u.staff_id)) || u.display_name || u.role || "User"
     );
   }
   const overrides = ((overrideRows ?? []) as OverrideLog[]).map((o) => ({

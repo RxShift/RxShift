@@ -100,6 +100,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
           scheduler_scope: null,
           is_pto_approver: false,
           pto_approver_rank: null,
+          display_name: null,
           created_at: adminRow.created_at,
         },
         tenant: tenant as Tenant,

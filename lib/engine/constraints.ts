@@ -35,6 +35,46 @@ function weekStart(date: string): string {
   return addDays(date, wd === 0 ? -6 : 1 - wd);
 }
 
+/**
+ * Sum paid hours into buckets (e.g. by week) and, per bucket, identify the
+ * "tipping" shift — the one whose hours first push the running total over the
+ * threshold. Used by hour-cap / overtime so the resulting flag can name a shift
+ * for the schedule grid's amber constraint ring. Segments are summed in
+ * chronological order so the tipping shift is deterministic; the unpaid break is
+ * a per-shift value, subtracted once per shift, not once per segment.
+ */
+function accumulateHours(
+  segments: EngineSegment[],
+  threshold: number,
+  bucketKey: (s: EngineSegment) => string
+): Map<string, { hours: number; tippingShiftId: string | null }> {
+  const ordered = [...segments].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time)
+  );
+  const buckets = new Map<
+    string,
+    { hours: number; tippingShiftId: string | null }
+  >();
+  const breakTaken = new Set<string>();
+  for (const s of ordered) {
+    const key = bucketKey(s);
+    let hours = segmentHours(s);
+    if (!breakTaken.has(s.shift_id)) {
+      breakTaken.add(s.shift_id);
+      hours -= (s.break_minutes ?? 0) / 60;
+    }
+    const bucket = buckets.get(key) ?? { hours: 0, tippingShiftId: null };
+    const prev = bucket.hours;
+    bucket.hours = prev + hours;
+    if (bucket.tippingShiftId === null && prev <= threshold && bucket.hours > threshold) {
+      bucket.tippingShiftId = s.shift_id;
+    }
+    buckets.set(key, bucket);
+  }
+  return buckets;
+}
+
 function ruleActiveOn(rule: ConstraintRule, date: string): boolean {
   if (!rule.active) return false;
   if (rule.effective_start && date < rule.effective_start) return false;
@@ -82,32 +122,24 @@ export function evaluateConstraints(
         case "hour_cap": {
           const cap = Number(rule.params.hours ?? 0);
           const period = String(rule.params.period ?? "week");
-          const buckets = new Map<string, number>();
-          // Unpaid break is a per-SHIFT value carried on each segment —
-          // subtract it once per shift, not once per segment.
-          const breakTaken = new Set<string>();
-          for (const s of applicable) {
-            const key =
+          const buckets = accumulateHours(
+            applicable,
+            cap,
+            (s) =>
               period === "year"
                 ? s.date.slice(0, 4)
                 : period === "pay_period"
                   ? weekStart(s.date) // approximation: weekly buckets
-                  : weekStart(s.date);
-            let hours = segmentHours(s);
-            if (!breakTaken.has(s.shift_id)) {
-              breakTaken.add(s.shift_id);
-              hours -= (s.break_minutes ?? 0) / 60;
-            }
-            buckets.set(key, (buckets.get(key) ?? 0) + hours);
-          }
-          for (const [bucket, hours] of buckets) {
+                  : weekStart(s.date)
+          );
+          for (const [bucket, { hours, tippingShiftId }] of buckets) {
             if (hours > cap) {
               flags.push({
                 rule_id: rule.id,
                 rule_type: rule.rule_type,
                 staff_id: staffId,
                 staff_name: staffName,
-                shift_id: null,
+                shift_id: tippingShiftId,
                 date: bucket.length === 4 ? null : bucket,
                 message: `${staffName} is scheduled ${hours.toFixed(1)} hours in the ${period} ${bucket.length === 4 ? bucket : `starting ${bucket}`} — cap is ${cap}`,
               });
@@ -118,25 +150,20 @@ export function evaluateConstraints(
 
         case "overtime": {
           const threshold = Number(rule.params.threshold_hours ?? 40);
-          const weeks = new Map<string, number>();
-          const breakTaken = new Set<string>();
-          for (const s of applicable) {
-            const wk = weekStart(s.date);
-            let hours = segmentHours(s);
-            if (!breakTaken.has(s.shift_id)) {
-              breakTaken.add(s.shift_id);
-              hours -= (s.break_minutes ?? 0) / 60;
-            }
-            weeks.set(wk, (weeks.get(wk) ?? 0) + hours);
-          }
-          for (const [wk, hours] of weeks) {
+          const weeks = accumulateHours(applicable, threshold, (s) =>
+            weekStart(s.date)
+          );
+          for (const [wk, { hours, tippingShiftId }] of weeks) {
             if (hours > threshold) {
               flags.push({
                 rule_id: rule.id,
                 rule_type: rule.rule_type,
                 staff_id: staffId,
                 staff_name: staffName,
-                shift_id: null,
+                // The shift whose hours pushed the week over the threshold, so the
+                // schedule grid can mark it with the amber constraint ring (a
+                // weekly cap isn't one shift, but this gives the flag a home).
+                shift_id: tippingShiftId,
                 date: wk,
                 message: `${staffName} is at ${hours.toFixed(1)} hours the week of ${wk} — over the ${threshold}-hour overtime threshold`,
               });

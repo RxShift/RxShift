@@ -45,6 +45,11 @@ export default function ComplianceView({
   const deficientHours = allRows.filter(
     (r) => r.ratio_status === "deficient"
   ).length;
+  // A logged ratio override for this period is the documented justification for
+  // its deficient hours — surface it inline on those rows so the "why" sits with
+  // the hours themselves (not only in the section below / the Override Log).
+  const ratioException =
+    overrides.find((o) => o.warning_type === "ratio") ?? null;
 
   function exportCsv() {
     const blob = new Blob([complianceRecordToCsv(allRows)], {
@@ -255,6 +260,17 @@ export default function ComplianceView({
                         {r.deficiency_reason && (
                           <p className="mt-1 font-body text-[11px] text-deficiency">
                             {r.deficiency_reason}
+                          </p>
+                        )}
+                        {r.ratio_status === "deficient" && ratioException && (
+                          <p className="mt-1.5 max-w-[280px] font-body text-[11px] leading-snug text-alert">
+                            <span className="font-brand font-bold uppercase tracking-[0.5px]">
+                              ⚠ Acknowledged exception
+                            </span>{" "}
+                            <span className="text-steel">
+                              ({ratioException.actor}):
+                            </span>{" "}
+                            {ratioException.reason}
                           </p>
                         )}
                       </td>

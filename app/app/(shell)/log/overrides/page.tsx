@@ -20,7 +20,7 @@ export default async function OverrideLogPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(200),
-    supabase.from("app_user").select("supabase_user_id, staff_id, role"),
+    supabase.from("app_user").select("supabase_user_id, staff_id, role, display_name"),
     supabase.from("staff").select("id, full_name"),
   ]);
   const overrides = (data ?? []) as OverrideLog[];
@@ -36,10 +36,11 @@ export default async function OverrideLogPage() {
     supabase_user_id: string;
     staff_id: string | null;
     role: string;
+    display_name: string | null;
   }[]) {
     actorName.set(
       u.supabase_user_id,
-      (u.staff_id && staffName.get(u.staff_id)) || u.role || "User"
+      (u.staff_id && staffName.get(u.staff_id)) || u.display_name || u.role || "User"
     );
   }
 
