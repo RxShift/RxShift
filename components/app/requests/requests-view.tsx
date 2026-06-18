@@ -12,9 +12,13 @@ import {
   decideSwap,
   decideTimeOff,
   logCallout,
+  previewCalloutImpact,
+  previewSwapImpact,
+  previewTimeOffImpact,
   proposeSwap,
   respondToSwap,
   submitTimeOff,
+  type RequestImpact,
 } from "@/lib/actions/requests";
 import type {
   Callout,
@@ -64,10 +68,85 @@ export default function RequestsView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Approval gate: before approving a PTO/swap, show its compliance impact and
+  // (when it creates a ratio deficiency) require a logged reason.
+  type ApproveTarget =
+    | {
+        kind: "timeoff";
+        id: string;
+        name: string;
+        staffId: string;
+        start: string;
+        end: string;
+      }
+    | { kind: "swap"; id: string; name: string };
+  const [approve, setApprove] = useState<ApproveTarget | null>(null);
+  const [impact, setImpact] = useState<RequestImpact | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
+  const [reason, setReason] = useState("");
+
+  // Pre-submit / pre-log visibility notes.
+  const [submitImpact, setSubmitImpact] = useState<RequestImpact | null>(null);
+  const [calloutImpact, setCalloutImpact] = useState<RequestImpact | null>(null);
+
   const name = (id: string) =>
     staff.find((s) => s.id === id)?.full_name ?? "Unknown";
 
   const myShifts = upcomingShifts.filter((s) => s.staff_id === myStaffId);
+
+  async function openApprove(target: ApproveTarget) {
+    setApprove(target);
+    setImpact(null);
+    setReason("");
+    setError(null);
+    setImpactLoading(true);
+    const res =
+      target.kind === "timeoff"
+        ? await previewTimeOffImpact(target.staffId, target.start, target.end)
+        : await previewSwapImpact(target.id);
+    setImpact(res.ok ? (res.data ?? null) : null);
+    setImpactLoading(false);
+  }
+
+  async function confirmApprove() {
+    if (!approve) return;
+    setBusy(true);
+    setError(null);
+    const res =
+      approve.kind === "timeoff"
+        ? await decideTimeOff(approve.id, "approved", reason || null)
+        : await decideSwap(approve.id, "approved", reason || null);
+    if (res.ok) {
+      setApprove(null);
+      setReason("");
+      router.refresh();
+    } else {
+      setError(res.error ?? "Something went wrong.");
+    }
+    setBusy(false);
+  }
+
+  // Recompute the PTO submit note when both dates are present.
+  async function checkSubmitImpact(form: HTMLFormElement) {
+    const start = (form.elements.namedItem("start_date") as HTMLInputElement)
+      ?.value;
+    const end = (form.elements.namedItem("end_date") as HTMLInputElement)?.value;
+    if (!myStaffId || !start || !end || end < start) {
+      setSubmitImpact(null);
+      return;
+    }
+    const res = await previewTimeOffImpact(myStaffId, start, end);
+    setSubmitImpact(res.ok ? (res.data ?? null) : null);
+  }
+
+  async function checkCalloutImpact(shiftId: string) {
+    if (!shiftId) {
+      setCalloutImpact(null);
+      return;
+    }
+    const res = await previewCalloutImpact(shiftId);
+    setCalloutImpact(res.ok ? (res.data ?? null) : null);
+  }
 
   async function act(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
@@ -166,16 +245,33 @@ export default function RequestsView({
               <Button variant="secondary" onClick={() => setModal("swap")}>
                 Propose Swap
               </Button>
-              <Button variant="secondary" onClick={() => setModal("callout")}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setCalloutImpact(null);
+                  setModal("callout");
+                }}
+              >
                 Log Callout
               </Button>
-              <Button onClick={() => setModal("timeoff")}>
+              <Button
+                onClick={() => {
+                  setSubmitImpact(null);
+                  setModal("timeoff");
+                }}
+              >
                 Request Time Off
               </Button>
             </>
           )}
           {!myStaffId && isManager && (
-            <Button variant="secondary" onClick={() => setModal("callout")}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCalloutImpact(null);
+                setModal("callout");
+              }}
+            >
               Log Callout
             </Button>
           )}
@@ -220,7 +316,14 @@ export default function RequestsView({
                           <button
                             disabled={busy}
                             onClick={() =>
-                              act(() => decideTimeOff(t.id, "approved"))
+                              openApprove({
+                                kind: "timeoff",
+                                id: t.id,
+                                name: name(t.staff_id),
+                                staffId: t.staff_id,
+                                start: t.start_date,
+                                end: t.end_date,
+                              })
                             }
                             className="rounded bg-compliant px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                           >
@@ -349,7 +452,13 @@ export default function RequestsView({
                           <>
                             <button
                               disabled={busy}
-                              onClick={() => act(() => decideSwap(s.id, "approved"))}
+                              onClick={() =>
+                                openApprove({
+                                  kind: "swap",
+                                  id: s.id,
+                                  name: name(s.requesting_staff_id),
+                                })
+                              }
                               className="rounded bg-compliant px-2.5 py-1 font-brand text-[11px] font-bold text-white"
                             >
                               Approve
@@ -372,7 +481,7 @@ export default function RequestsView({
           </Table>
         ))}
 
-      {error && !modal && (
+      {error && !modal && !approve && (
         <p className="mt-3 font-body text-sm text-deficiency">{error}</p>
       )}
 
@@ -396,11 +505,23 @@ export default function RequestsView({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="start_date">First day off</Label>
-              <Input id="start_date" name="start_date" type="date" required />
+              <Input
+                id="start_date"
+                name="start_date"
+                type="date"
+                required
+                onChange={(e) => checkSubmitImpact(e.currentTarget.form!)}
+              />
             </div>
             <div>
               <Label htmlFor="end_date">Last day off</Label>
-              <Input id="end_date" name="end_date" type="date" required />
+              <Input
+                id="end_date"
+                name="end_date"
+                type="date"
+                required
+                onChange={(e) => checkSubmitImpact(e.currentTarget.form!)}
+              />
             </div>
           </div>
           <div>
@@ -416,6 +537,18 @@ export default function RequestsView({
             <Label htmlFor="staff_message">Note (optional)</Label>
             <Textarea id="staff_message" name="staff_message" rows={2} />
           </div>
+          {submitImpact && submitImpact.ratioAdded > 0 && (
+            <p className="rounded-md bg-alert-bg px-3 py-2 font-body text-[13px] text-alert">
+              Heads up — approving this would create {submitImpact.ratioAdded}{" "}
+              deficient ratio slot
+              {submitImpact.ratioAdded === 1 ? "" : "s"}
+              {submitImpact.dates.length
+                ? ` on ${submitImpact.dates.join(", ")}`
+                : ""}
+              . You can still submit; your manager sees the impact before
+              approving.
+            </p>
+          )}
           {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
       </Modal>
@@ -451,7 +584,12 @@ export default function RequestsView({
           )}
           <div>
             <Label htmlFor="shift_id">Affected shift (optional)</Label>
-            <Select id="shift_id" name="shift_id" defaultValue="">
+            <Select
+              id="shift_id"
+              name="shift_id"
+              defaultValue=""
+              onChange={(e) => checkCalloutImpact(e.currentTarget.value)}
+            >
               <option value="">— Not tied to a specific shift —</option>
               {(isManager ? upcomingShifts : myShifts).slice(0, 60).map((s) => (
                 <option key={s.id} value={s.id}>
@@ -462,6 +600,21 @@ export default function RequestsView({
             <HelpText>
               Picking the shift lets RxShift compute the resulting ratio gap.
             </HelpText>
+            {calloutImpact &&
+              (calloutImpact.ratioAdded > 0 ? (
+                <p className="mt-2 rounded-md bg-deficiency-bg px-3 py-2 font-body text-[13px] text-deficiency">
+                  This callout would create {calloutImpact.ratioAdded} deficient
+                  ratio slot{calloutImpact.ratioAdded === 1 ? "" : "s"}
+                  {calloutImpact.dates.length
+                    ? ` on ${calloutImpact.dates.join(", ")}`
+                    : ""}
+                  . It will be logged and documented either way.
+                </p>
+              ) : (
+                <p className="mt-2 rounded-md bg-compliant-bg px-3 py-2 font-body text-[13px] text-compliant">
+                  No new ratio deficiency results from this callout.
+                </p>
+              ))}
           </div>
           <div>
             <Label htmlFor="reason">Reason (optional)</Label>
@@ -529,6 +682,101 @@ export default function RequestsView({
           </div>
           {error && <p className="font-body text-sm text-deficiency">{error}</p>}
         </form>
+      </Modal>
+
+      {/* Approve gate — show the compliance impact; require a logged reason when
+          it creates a ratio deficiency (warn, never block). */}
+      <Modal
+        open={approve !== null}
+        onClose={() => {
+          setApprove(null);
+          setReason("");
+          setError(null);
+        }}
+        title={approve?.kind === "swap" ? "Approve shift swap" : "Approve time off"}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setApprove(null);
+                setReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApprove}
+              disabled={
+                busy ||
+                impactLoading ||
+                (!!impact?.requiresReason && reason.trim().length < 3)
+              }
+            >
+              {busy ? "Approving…" : "Approve"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {approve && (
+            <p className="font-body text-sm text-navy">
+              {approve.kind === "swap"
+                ? `Approve the swap proposed by ${approve.name}?`
+                : `Approve time off for ${approve.name}?`}
+            </p>
+          )}
+          {impactLoading && (
+            <p className="font-body text-sm text-steel">
+              Checking compliance impact…
+            </p>
+          )}
+          {!impactLoading && impact && impact.messages.length === 0 && (
+            <p className="rounded-md bg-compliant-bg px-3 py-2 font-body text-[13px] text-compliant">
+              No compliance impact — safe to approve.
+            </p>
+          )}
+          {!impactLoading && impact && impact.messages.length > 0 && (
+            <div
+              className={`rounded-md px-3 py-2 ${
+                impact.requiresReason ? "bg-deficiency-bg" : "bg-alert-bg"
+              }`}
+            >
+              <ul className="space-y-1">
+                {impact.messages.map((m, i) => (
+                  <li
+                    key={i}
+                    className={`font-body text-[13px] ${
+                      impact.requiresReason ? "text-deficiency" : "text-alert"
+                    }`}
+                  >
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!impactLoading && impact?.requiresReason && (
+            <div>
+              <Label htmlFor="approve-reason">Reason (required, logged)</Label>
+              <Textarea
+                id="approve-reason"
+                rows={2}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. Per-diem RPh covering the gap; documented for the record."
+              />
+              <HelpText>
+                RxShift never blocks you — but approving despite a ratio
+                deficiency records this reason in the override log and the
+                compliance record.
+              </HelpText>
+            </div>
+          )}
+          {error && approve && (
+            <p className="font-body text-sm text-deficiency">{error}</p>
+          )}
+        </div>
       </Modal>
     </div>
   );

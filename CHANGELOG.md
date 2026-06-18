@@ -7,6 +7,37 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 3): request/approval/swap/callout warnings + required reasons
+
+Compliance impact is now shown *before* a request is acted on, and a manager who approves something that
+creates a ratio deficiency must enter a reason that is logged. Warn, never block.
+
+### Shipped
+- **Pre-check engine** (`lib/actions/requests.ts`): `computeTimeOffImpact` / `computeSwapImpact` reuse the
+  real validation engine — load every location's shifts over the affected window, validate as-is, then
+  validate again with the request **simulated** (person removed for PTO; shifts reassigned for a swap). New
+  flags = what the approval would introduce. Exposed as server actions `previewTimeOffImpact` /
+  `previewSwapImpact` / `previewCalloutImpact` (any member; RLS already lets members read tenant shifts).
+- **Manager approval gate.** Approving a PTO or swap now opens a confirmation showing the specific impact;
+  if it creates a **ratio deficiency**, a reason is **required** and written to `override_log`
+  (`target_type` 'time_off' / 'swap'). `decideTimeOff` / `decideSwap` re-compute the impact server-side and
+  enforce the reason (can't be bypassed from the client). The reason is also recorded in the activity log.
+- **Employee visibility.** The PTO request form shows "approving this would create N deficient slot(s)…"
+  once dates are filled; the callout form shows the resulting ratio gap when a shift is selected (callouts
+  are facts, so they log either way — no reason gate).
+- **Swaps populate `ratio_effect`.** The long-unused `swap_request.ratio_effect` column is now filled at
+  peer-accept and at manager decision, and the approver's email states the swap's ratio effect.
+
+### Schema
+- **Migration `0024_override_request_targets.sql`** — widen `override_log.target_type` check to include
+  `time_off` / `swap` / `callout`. **File written; pending apply to Supabase on Jamison's go-ahead.** The
+  deficiency-approval path needs it; non-deficiency approvals work without it.
+
+### Open
+- Proposer-side swap visibility (the manager gate + email already cover the risk).
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 2): dashboard interactivity + one flag vocabulary
 
 ### Shipped

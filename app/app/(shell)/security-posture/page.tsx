@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-16";
+const LAST_REVIEWED = "2026-06-17";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -62,7 +62,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     items: [
       "Append-only activity log for schedule changes, approvals, imports, role changes, offboarding, and AI-applied operations.",
       "Offboarding blocks a departed employee's sign-in while preserving their name in historical schedules, logs, and compliance records.",
-      "Override log: every published-past warning records who, when, warning type, and the required reason.",
+      "Override log: every time a manager proceeds past a compliance warning — publishing a flagged schedule, or approving a time-off/swap that creates a ratio deficiency — records who, when, the warning type, and the required reason.",
       "Compliance records snapshot at publish and are retained for two years; exportable to CSV and print.",
     ],
   },

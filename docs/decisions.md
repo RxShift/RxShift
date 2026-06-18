@@ -3,6 +3,21 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Requests show compliance impact before acting; ratio-deficiency approvals require a logged reason
+
+Post-demo hardening (Phase 3). PTO/swap approvals used to execute instantly with no warning; callouts
+computed the gap but only after the fact. Now compliance impact is computed on the **real engine**
+(simulate the change over the affected window, diff the validation flags) and surfaced *before* the
+action: employees see it when submitting PTO / before logging a callout; managers see it before approving.
+
+**Warn, never block — but a ratio deficiency must be justified.** Consistent with the board-containment
+policy (RxShift never blocks or contacts a board), approval is always allowed. But when an approval
+**creates a ratio deficiency**, the manager must enter a reason, which is written to `override_log`
+(same table as publish-time overrides — `target_type` extended to `time_off`/`swap`/`callout` in 0024)
+and the activity log, so the compliance record stays complete. Constraint-only impacts (hours/availability)
+are shown as a warning but don't gate the approval. Enforcement is server-side (can't be bypassed from the
+client). `swap_request.ratio_effect` (long unused) is now populated at peer-accept + decision.
+
 ## June 17, 2026 — Website uses only fictional demo data; Mesa Vista staffed up for the headroom story
 
 **No real customer data ever appears on the marketing site.** OptumRx is a real prospect, so its names

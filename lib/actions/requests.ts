@@ -4,8 +4,17 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendNotificationEmail } from "@/lib/email";
-import { loadPeriodBundle, toEngineSegments } from "@/lib/schedule-data";
+import {
+  loadAllLocationsBundle,
+  loadPeriodBundle,
+  toEngineSegments,
+  validateRangeBundle,
+  type RatioFlagOut,
+  type ValidationOut,
+} from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
+import type { ConstraintFlag } from "@/lib/engine/types";
+import type { SwapRequest } from "@/lib/types";
 import {
   ActionError,
   logActivity,
@@ -128,6 +137,172 @@ async function calloutGap(
   };
 }
 
+// ─── Compliance impact of a request (warn before it happens) ──────────────────
+//
+// Reuse the real validation engine: load every location's shifts over the
+// affected window, validate it as-is, then validate again with the request
+// SIMULATED (person removed for PTO; shifts reassigned for a swap). New flags =
+// what approving would introduce. We warn on everything and require a logged
+// reason only when it creates a *ratio* deficiency (the regulatory one).
+
+export interface RequestImpact {
+  ratioAdded: number;
+  constraintAdded: number;
+  dates: string[];
+  messages: string[];
+  /** A ratio deficiency was introduced — approval must capture a logged reason. */
+  requiresReason: boolean;
+}
+
+const NO_IMPACT: RequestImpact = {
+  ratioAdded: 0,
+  constraintAdded: 0,
+  dates: [],
+  messages: [],
+  requiresReason: false,
+};
+
+function diffFlags(before: ValidationOut, after: ValidationOut) {
+  const beforeRatio = new Set(
+    before.ratioFlags.map((f) => `${f.location_id}|${f.date}|${f.slot_label}`)
+  );
+  const addedRatio = after.ratioFlags.filter(
+    (f) => !beforeRatio.has(`${f.location_id}|${f.date}|${f.slot_label}`)
+  );
+  const beforeC = new Set(
+    before.constraintFlags.map(
+      (c) => `${c.staff_id}|${c.rule_id}|${c.date}|${c.message}`
+    )
+  );
+  const addedConstraint = after.constraintFlags.filter(
+    (c) => !beforeC.has(`${c.staff_id}|${c.rule_id}|${c.date}|${c.message}`)
+  );
+  return { addedRatio, addedConstraint };
+}
+
+function impactFromDiff(
+  addedRatio: RatioFlagOut[],
+  addedConstraint: ConstraintFlag[]
+): RequestImpact {
+  const dates = [...new Set(addedRatio.map((f) => f.date))].sort();
+  const messages: string[] = [];
+  if (addedRatio.length > 0) {
+    messages.push(
+      `Creates ${addedRatio.length} deficient ratio slot${addedRatio.length === 1 ? "" : "s"}${dates.length ? ` on ${dates.join(", ")}` : ""}.`
+    );
+  }
+  for (const c of addedConstraint) messages.push(c.message);
+  return {
+    ratioAdded: addedRatio.length,
+    constraintAdded: addedConstraint.length,
+    dates,
+    messages,
+    requiresReason: addedRatio.length > 0,
+  };
+}
+
+/** Impact of approving a PTO request: the person's shifts in [start,end] go away. */
+async function computeTimeOffImpact(
+  ctx: AuthedContext,
+  staffId: string,
+  start: string,
+  end: string
+): Promise<RequestImpact> {
+  if (!ctx.tenant.has_ratio) return NO_IMPACT;
+  const range = await loadAllLocationsBundle(start, end);
+  const before = validateRangeBundle(range, ctx.tenant);
+  const afterShifts = range.shifts.filter(
+    (s) => !(s.staff_id === staffId && s.date >= start && s.date <= end)
+  );
+  const after = validateRangeBundle({ ...range, shifts: afterShifts }, ctx.tenant);
+  const { addedRatio, addedConstraint } = diffFlags(before, after);
+  return impactFromDiff(addedRatio, addedConstraint);
+}
+
+/** Impact of approving a swap: shift A → counter, shift B (if any) → requester. */
+async function computeSwapImpact(
+  ctx: AuthedContext,
+  swap: SwapRequest
+): Promise<RequestImpact> {
+  if (!ctx.tenant.has_ratio) return NO_IMPACT;
+  const supabase = await createClient();
+  const ids = [swap.shift_a_id, swap.shift_b_id].filter(Boolean) as string[];
+  if (ids.length === 0) return NO_IMPACT;
+  const { data: sh } = await supabase
+    .from("shift")
+    .select("id, date")
+    .in("id", ids);
+  const rows = (sh ?? []) as { id: string; date: string }[];
+  if (rows.length === 0) return NO_IMPACT;
+  const dates = rows.map((r) => r.date).sort();
+  const range = await loadAllLocationsBundle(dates[0], dates[dates.length - 1]);
+  const before = validateRangeBundle(range, ctx.tenant);
+  const afterShifts = range.shifts.map((s) => {
+    if (s.id === swap.shift_a_id)
+      return { ...s, staff_id: swap.counter_staff_id };
+    if (swap.shift_b_id && s.id === swap.shift_b_id)
+      return { ...s, staff_id: swap.requesting_staff_id };
+    return s;
+  });
+  const after = validateRangeBundle({ ...range, shifts: afterShifts }, ctx.tenant);
+  const { addedRatio, addedConstraint } = diffFlags(before, after);
+  return impactFromDiff(addedRatio, addedConstraint);
+}
+
+/** Pre-submit / pre-approve preview for a time-off request (any member). */
+export async function previewTimeOffImpact(
+  staffId: string,
+  start: string,
+  end: string
+): Promise<ActionResult<RequestImpact>> {
+  return runAction(async () => {
+    const ctx = await requireMember();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end))
+      return NO_IMPACT;
+    return computeTimeOffImpact(ctx, staffId, start, end);
+  });
+}
+
+/** Pre-approve preview for a swap (any member; managers see it before deciding). */
+export async function previewSwapImpact(
+  swapId: string
+): Promise<ActionResult<RequestImpact>> {
+  return runAction(async () => {
+    const ctx = await requireMember();
+    const supabase = await createClient();
+    const { data: swap } = await supabase
+      .from("swap_request")
+      .select("*")
+      .eq("id", swapId)
+      .maybeSingle();
+    if (!swap) throw new ActionError("Swap not found.");
+    return computeSwapImpact(ctx, swap as SwapRequest);
+  });
+}
+
+/** Pre-log preview for a callout (visibility only — callouts are facts, not approvals). */
+export async function previewCalloutImpact(
+  shiftId: string
+): Promise<ActionResult<RequestImpact>> {
+  return runAction(async () => {
+    const ctx = await requireMember();
+    const gap = await calloutGap(ctx, shiftId);
+    const added = gap ? Number(gap.deficient_slots_added) : 0;
+    return {
+      ratioAdded: added,
+      constraintAdded: 0,
+      dates: gap?.date ? [String(gap.date)] : [],
+      messages:
+        added > 0
+          ? [
+              `Creates ${added} deficient ratio slot${added === 1 ? "" : "s"} on ${gap!.date}.`,
+            ]
+          : [],
+      requiresReason: false,
+    };
+  });
+}
+
 // ─── Time off ────────────────────────────────────────────────────────────────
 
 const timeOffSchema = z.object({
@@ -177,7 +352,8 @@ export async function submitTimeOff(input: unknown): Promise<ActionResult> {
 
 export async function decideTimeOff(
   id: string,
-  decision: "approved" | "denied"
+  decision: "approved" | "denied",
+  overrideReason: string | null = null
 ): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requireManager();
@@ -192,6 +368,34 @@ export async function decideTimeOff(
     if (!request) throw new ActionError("Request not found.");
     if (request.status !== "pending")
       throw new ActionError("This request was already decided.");
+
+    // Approving a PTO that creates a ratio deficiency requires a logged reason
+    // (warn, never block) — computed on the real engine, enforced server-side.
+    let impactReason: string | null = null;
+    if (decision === "approved") {
+      const impact = await computeTimeOffImpact(
+        ctx,
+        request.staff_id,
+        request.start_date,
+        request.end_date
+      );
+      if (impact.requiresReason) {
+        if (!overrideReason || overrideReason.trim().length < 3) {
+          throw new ActionError(
+            `Approving this creates ${impact.ratioAdded} deficient ratio slot${impact.ratioAdded === 1 ? "" : "s"}${impact.dates.length ? ` on ${impact.dates.join(", ")}` : ""}. A reason is required and will be logged.`
+          );
+        }
+        impactReason = overrideReason.trim();
+        await supabase.from("override_log").insert({
+          tenant_id: ctx.tenantId,
+          actor_user_id: ctx.userId,
+          target_type: "time_off",
+          target_id: id,
+          warning_type: "ratio",
+          reason: impactReason,
+        });
+      }
+    }
 
     const { error } = await supabase
       .from("time_off_request")
@@ -246,7 +450,13 @@ export async function decideTimeOff(
       });
     }
 
-    await logActivity(ctx, decision, "time_off_request", id);
+    await logActivity(
+      ctx,
+      decision,
+      "time_off_request",
+      id,
+      impactReason ? { override_reason: impactReason } : undefined
+    );
     revalidatePath("/app/requests");
     revalidateScheduleViews();
     return undefined;
@@ -370,11 +580,18 @@ export async function respondToSwap(
     if (swap.counter_staff_id !== ctx.appUser.staff_id)
       throw new ActionError("This swap isn't addressed to you.");
 
+    // On peer-accept, pre-compute the swap's ratio/hours effect so the manager
+    // sees it on the approval screen (the column existed but was never populated).
+    const impact = accept ? await computeSwapImpact(ctx, swap as SwapRequest) : null;
     const { error } = await supabase
       .from("swap_request")
       .update(
         accept
-          ? { status: "pending_manager", peer_accepted_at: new Date().toISOString() }
+          ? {
+              status: "pending_manager",
+              peer_accepted_at: new Date().toISOString(),
+              ratio_effect: impact,
+            }
           : { status: "denied" }
       )
       .eq("id", id);
@@ -383,11 +600,16 @@ export async function respondToSwap(
     if (accept) {
       const requester = await staffName(swap.requesting_staff_id);
       const counter = await staffName(swap.counter_staff_id);
+      const effectLine =
+        impact && impact.ratioAdded > 0
+          ? `Heads up: this swap would add ${impact.ratioAdded} deficient ratio slot(s)${impact.dates.length ? ` on ${impact.dates.join(", ")}` : ""}.`
+          : "No new ratio deficiency results from this swap.";
       for (const email of await approverEmails(ctx)) {
         await sendNotificationEmail(ctx.tenant, email, "Shift swap awaiting approval", [
           `${requester} and ${counter} agreed on a shift swap.`,
-          "Review the ratio and hours effect in RxShift → Requests, then approve or deny.",
-        ]);
+          ctx.tenant.has_ratio ? effectLine : "",
+          "Review and approve or deny in RxShift → Requests.",
+        ].filter(Boolean));
       }
     }
 
@@ -399,7 +621,8 @@ export async function respondToSwap(
 
 export async function decideSwap(
   id: string,
-  decision: "approved" | "denied"
+  decision: "approved" | "denied",
+  overrideReason: string | null = null
 ): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requireManager();
@@ -412,6 +635,29 @@ export async function decideSwap(
       .maybeSingle();
     if (!swap || swap.status !== "pending_manager")
       throw new ActionError("This swap isn't awaiting manager approval.");
+
+    // Approving a swap that creates a ratio deficiency requires a logged reason.
+    let impactReason: string | null = null;
+    let impact: RequestImpact | null = null;
+    if (decision === "approved") {
+      impact = await computeSwapImpact(ctx, swap as SwapRequest);
+      if (impact.requiresReason) {
+        if (!overrideReason || overrideReason.trim().length < 3) {
+          throw new ActionError(
+            `Approving this swap creates ${impact.ratioAdded} deficient ratio slot${impact.ratioAdded === 1 ? "" : "s"}${impact.dates.length ? ` on ${impact.dates.join(", ")}` : ""}. A reason is required and will be logged.`
+          );
+        }
+        impactReason = overrideReason.trim();
+        await supabase.from("override_log").insert({
+          tenant_id: ctx.tenantId,
+          actor_user_id: ctx.userId,
+          target_type: "swap",
+          target_id: id,
+          warning_type: "ratio",
+          reason: impactReason,
+        });
+      }
+    }
 
     if (decision === "approved") {
       // Execute: reassign shift A to the counter staff; B (if any) to requester
@@ -431,7 +677,11 @@ export async function decideSwap(
 
     const { error } = await supabase
       .from("swap_request")
-      .update({ status: decision, manager_id: ctx.userId })
+      .update({
+        status: decision,
+        manager_id: ctx.userId,
+        ...(impact ? { ratio_effect: impact } : {}),
+      })
       .eq("id", id);
     if (error) throw new ActionError(error.message);
 
@@ -447,7 +697,13 @@ export async function decideSwap(
       }
     }
 
-    await logActivity(ctx, decision, "swap_request", id);
+    await logActivity(
+      ctx,
+      decision,
+      "swap_request",
+      id,
+      impactReason ? { override_reason: impactReason } : undefined
+    );
     revalidatePath("/app/requests");
     revalidateScheduleViews();
     return undefined;
