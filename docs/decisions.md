@@ -3,6 +3,24 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — Audit log is append-only with notes; compliance PDF carries override context
+
+Phase 4. Two durable choices:
+
+**Audit entries are immutable; context is added by appending, never editing.** The `activity_log` is the
+comprehensive action trail and an entry is never modified or removed (hard rule). Real life still needs
+corrections ("the RPh forgot to clock back from lunch"), so an authorized manager **appends a note** in a
+separate append-only table (`activity_log_note`, 0025 — select + insert policies only, no update/delete).
+The original stands; the note is attributed and timestamped. The Audit Log view (`/app/log/audit`) makes
+the distinction explicit: Audit Log = every action; Compliance Record = the auditor's hourly staffing record.
+
+**The official compliance export is a print-to-PDF, not a server-generated file.** The record view already
+prints cleanly; we made it an official document (header + an "Acknowledged exceptions" section listing the
+period's override reasons) so "Save as PDF" yields a non-editable record that carries the *why* behind any
+deficiency. **Rejected** server-side Chromium/Playwright PDF (fragile on Vercel serverless, heavy binary)
+and a new PDF library (unneeded) — browser print-to-PDF is reliable and genuinely non-editable. The editable
+xlsx/CSV remain as raw-data exports, not the official record.
+
 ## June 17, 2026 — Requests show compliance impact before acting; ratio-deficiency approvals require a logged reason
 
 Post-demo hardening (Phase 3). PTO/swap approvals used to execute instantly with no warning; callouts

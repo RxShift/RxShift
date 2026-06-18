@@ -7,6 +7,34 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 4): audit log + append-note, override↔compliance, official PDF
+
+Makes the compliance story auditor-credible: a comprehensive immutable audit log you can annotate (never
+edit), and a compliance record/PDF that carries the "why" behind any deficiency.
+
+### Shipped
+- **Audit Log view** (`/app/log/audit`, manager-only by RLS): the full append-only `activity_log` — when,
+  who, action, and (for overrides) the logged reason. New sidebar item under Compliance. Clarifies the
+  distinction in-app: Audit Log = comprehensive action trail; Compliance Record = hourly staffing record.
+- **Append-note (HARD RULE preserved).** Entries are never edited or deleted; a manager can **append** a
+  note (e.g. "RPh forgot to clock back from lunch; corrected"). Notes live in a separate append-only table
+  and are attributed + timestamped. Action `appendActivityNote` (`lib/actions/audit.ts`); the annotation is
+  itself audit-logged.
+- **Override → compliance link.** The compliance record now shows an **Acknowledged exceptions** section —
+  the override reasons for that period (who/when/why) — and it prints. The Override Log page now labels each
+  override (Schedule publish / Time-off approval / Swap approval) and shows who.
+- **Official, non-editable export.** The compliance record's print view gained an official document header
+  (tenant, record title, period) and includes the acknowledged-exceptions section, so "Save as PDF
+  (official record)" produces a non-editable PDF carrying the override context. CSV relabeled "Export CSV
+  (data)". Chose browser print-to-PDF over serverless Chromium (reliable on Vercel, no heavy dependency).
+
+### Schema
+- **Migration `0025_activity_log_notes.sql`** — `activity_log_note` (append-only: select + insert policies
+  for managers, no update/delete). **File written; pending apply to Supabase on Jamison's go-ahead.** The
+  Audit Log view works now; adding/showing notes needs the table.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 3): request/approval/swap/callout warnings + required reasons
 
 Compliance impact is now shown *before* a request is acted on, and a manager who approves something that

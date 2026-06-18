@@ -60,10 +60,11 @@ const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Audit & retention",
     items: [
-      "Append-only activity log for schedule changes, approvals, imports, role changes, offboarding, and AI-applied operations.",
+      "Append-only activity log for schedule changes, approvals, imports, role changes, offboarding, and AI-applied operations — viewable by managers at Audit Log.",
+      "Audit entries are never edited or deleted; an authorized manager can append a note for context (e.g. a missed clock-back), attributed and timestamped, leaving the original entry intact.",
       "Offboarding blocks a departed employee's sign-in while preserving their name in historical schedules, logs, and compliance records.",
       "Override log: every time a manager proceeds past a compliance warning — publishing a flagged schedule, or approving a time-off/swap that creates a ratio deficiency — records who, when, the warning type, and the required reason.",
-      "Compliance records snapshot at publish and are retained for two years; exportable to CSV and print.",
+      "Compliance records snapshot at publish and are retained for two years; the official record exports as a non-editable PDF that includes any acknowledged exceptions (override reasons), with CSV available for raw data.",
     ],
   },
   {

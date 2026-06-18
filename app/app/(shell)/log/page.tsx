@@ -10,7 +10,7 @@ import {
 } from "@/lib/schedule-data";
 import { deficiencyStreaks } from "@/lib/engine/compliance";
 import { fmtRange, todayStr } from "@/lib/dates";
-import type { Location, SchedulePeriod } from "@/lib/types";
+import type { Location, OverrideLog, SchedulePeriod } from "@/lib/types";
 
 export default async function ComplianceLogPage({
   searchParams,
@@ -78,6 +78,43 @@ export default async function ComplianceLogPage({
   const streaks = deficiencyStreaks(allRows);
   const validation = validateBundle(bundle, tenant);
 
+  // Overrides recorded when this period was published past a warning — shown on
+  // the record and in the printed PDF so a deficiency carries its justification.
+  const [{ data: overrideRows }, { data: users }, { data: staffRows }] =
+    await Promise.all([
+      supabase
+        .from("override_log")
+        .select("*")
+        .eq("target_id", periodId)
+        .order("created_at", { ascending: false }),
+      supabase.from("app_user").select("supabase_user_id, staff_id, role"),
+      supabase.from("staff").select("id, full_name"),
+    ]);
+  const staffNameById = new Map(
+    ((staffRows ?? []) as { id: string; full_name: string }[]).map((s) => [
+      s.id,
+      s.full_name,
+    ])
+  );
+  const actorName = new Map<string, string>();
+  for (const u of (users ?? []) as {
+    supabase_user_id: string;
+    staff_id: string | null;
+    role: string;
+  }[]) {
+    actorName.set(
+      u.supabase_user_id,
+      (u.staff_id && staffNameById.get(u.staff_id)) || u.role || "User"
+    );
+  }
+  const overrides = ((overrideRows ?? []) as OverrideLog[]).map((o) => ({
+    id: o.id,
+    when: o.created_at,
+    warning_type: o.warning_type,
+    reason: o.reason,
+    actor: actorName.get(o.actor_user_id) ?? "User",
+  }));
+
   return (
     <>
       <PageHeader
@@ -98,6 +135,9 @@ export default async function ComplianceLogPage({
           streaks={streaks}
           constraintFlags={validation.constraintFlags}
           hasRatio={tenant.has_ratio}
+          overrides={overrides}
+          tenantName={tenant.name}
+          periodLabel={fmtRange(bundle.period.start_date, bundle.period.end_date)}
         />
       </div>
     </>

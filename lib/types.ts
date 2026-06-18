@@ -397,10 +397,20 @@ export interface OverrideLog {
   id: string;
   tenant_id: string;
   actor_user_id: string;
-  target_type: "shift" | "slot";
+  target_type: "shift" | "slot" | "time_off" | "swap" | "callout";
   target_id: string;
   warning_type: WarningType;
   reason: string;
+  created_at: string;
+}
+
+/** Append-only annotation on an activity_log entry. The original is never edited. */
+export interface ActivityLogNote {
+  id: string;
+  tenant_id: string;
+  activity_log_id: string;
+  author_user_id: string | null;
+  note: string;
   created_at: string;
 }
 
