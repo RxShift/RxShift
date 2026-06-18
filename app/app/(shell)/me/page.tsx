@@ -442,29 +442,52 @@ export default async function MePage() {
 
           {(teamShifts ?? []).length > 0 && (
             <Card>
-              <h2 className="mb-3 font-brand text-base font-bold text-navy">
-                Team this week
+              <h2 className="mb-1 font-brand text-base font-bold text-navy">
+                Who&rsquo;s on this week
               </h2>
-              <div className="space-y-1.5">
-                {(teamShifts ?? []).map((s) => {
-                  const day = fmtDay(s.date);
+              <p className="mb-3 font-body text-xs text-steel">
+                Your home location, next 7 days.
+              </p>
+              <div className="space-y-3">
+                {eachDate(today, weekEnd).map((date) => {
+                  const dayShifts = (teamShifts ?? []).filter(
+                    (s) => s.date === date
+                  );
+                  if (dayShifts.length === 0) return null;
+                  const day = fmtDay(date);
+                  const isToday = date === today;
                   return (
-                    <p key={s.id} className="font-body text-[13px] text-navy">
-                      <span className="font-brand text-[11px] font-semibold text-steel">
+                    <div
+                      key={date}
+                      className={
+                        isToday ? "rounded-md border border-amber/50 p-2.5" : ""
+                      }
+                    >
+                      <p className="mb-1.5 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
                         {day.dow} {day.label}
-                      </span>{" "}
-                      <span className="font-medium">
-                        {(s.staff as { full_name?: string })?.full_name}
-                      </span>{" "}
-                      <span className="text-steel">
-                        {(s.shift_segment ?? [])
-                          .map(
-                            (seg: ShiftSegment) =>
-                              `${String(seg.start_time).slice(0, 5)}–${String(seg.end_time).slice(0, 5)}`
-                          )
-                          .join(", ")}
-                      </span>
-                    </p>
+                        {isToday && <span className="text-amber"> · Today</span>}
+                      </p>
+                      <ul className="space-y-1">
+                        {dayShifts.map((s) => (
+                          <li
+                            key={s.id}
+                            className="flex items-baseline justify-between gap-3"
+                          >
+                            <span className="font-body text-[13px] font-medium text-navy">
+                              {(s.staff as { full_name?: string })?.full_name}
+                            </span>
+                            <span className="shrink-0 font-body text-[12px] text-steel">
+                              {(s.shift_segment ?? [])
+                                .map(
+                                  (seg: ShiftSegment) =>
+                                    `${compactTime(seg.start_time)}–${compactTime(seg.end_time)}`
+                                )
+                                .join(", ")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   );
                 })}
               </div>

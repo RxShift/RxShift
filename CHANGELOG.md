@@ -7,6 +7,15 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 8): "Team this week" → "Who's on this week"
+
+- Redesigned the My Schedule team block (`app/app/(shell)/me/page.tsx`) from a flat run-on list into a
+  clean, **day-grouped read-only** view of who's on at the person's home location over the next 7 days —
+  today highlighted, each teammate with their hours (name left, time right), legible on a phone. Empty days
+  are omitted. No editing — coverage awareness only.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 7): "Ask AI" restored on the schedule
 
 ### Shipped
