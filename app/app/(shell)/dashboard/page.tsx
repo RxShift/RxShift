@@ -4,9 +4,15 @@ import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import Badge from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
-import { loadPeriodBundle, validateBundle } from "@/lib/schedule-data";
+import {
+  loadPeriodBundle,
+  validateBundle,
+  type RatioFlagOut,
+} from "@/lib/schedule-data";
 import { computeInsights, type Insight } from "@/lib/insights";
+import { ratioFlagHref, scheduleHref } from "@/lib/flags";
 import { fmtRange, todayStr } from "@/lib/dates";
+import type { ConstraintFlag } from "@/lib/engine/types";
 import type { Location, SchedulePeriod } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -64,15 +70,27 @@ export default async function DashboardPage() {
   let insights: Insight[] = [];
   let deficientSlots = 0;
   let openFlags = 0;
+  // Capture the first of each flag kind so the headline cards can deep-link
+  // straight to the offending slot on the schedule.
+  let firstRatio: RatioFlagOut | null = null;
+  let firstConstraint: ConstraintFlag | null = null;
   for (const period of scope) {
     const bundle = await loadPeriodBundle(period.id);
     if (!bundle) continue;
     const validation = validateBundle(bundle, tenant);
     deficientSlots += validation.ratioFlags.length;
     openFlags += validation.constraintFlags.length;
+    if (!firstRatio && validation.ratioFlags.length > 0)
+      firstRatio = validation.ratioFlags[0];
+    if (!firstConstraint && validation.constraintFlags.length > 0)
+      firstConstraint = validation.constraintFlags[0];
     insights.push(...computeInsights(bundle, validation));
   }
   insights = insights.slice(0, 5);
+
+  const pendingRequests = (pendingTimeOff ?? 0) + (pendingSwaps ?? 0);
+  const deficientHref = firstRatio ? ratioFlagHref(firstRatio) : undefined;
+  const flagsHref = scheduleHref({ anchor: firstConstraint?.date ?? null });
 
   if (locs.length === 0) {
     return (
@@ -104,13 +122,15 @@ export default async function DashboardPage() {
             label="Current period"
             value={current ? fmtRange(current.start_date, current.end_date) : "—"}
             sub={current?.status === "published" ? "Published" : current ? "Draft" : "No periods yet"}
+            href={current ? scheduleHref({ anchor: current.start_date }) : "/app/schedule"}
           />
           {tenant.has_ratio && (
             <StatCard
               label="Deficient slots"
               value={deficientSlots}
               tone={deficientSlots > 0 ? "deficiency" : "compliant"}
-              sub={deficientSlots > 0 ? "Needs attention" : "Fully compliant"}
+              sub={deficientSlots > 0 ? "Tap to see the slot" : "Fully compliant"}
+              href={deficientHref}
             />
           )}
           <StatCard
@@ -118,12 +138,14 @@ export default async function DashboardPage() {
             value={openFlags}
             tone={openFlags > 0 ? "alert" : "compliant"}
             sub="Hours & availability"
+            href={openFlags > 0 ? flagsHref : undefined}
           />
           <StatCard
             label="Pending requests"
-            value={(pendingTimeOff ?? 0) + (pendingSwaps ?? 0)}
-            tone={(pendingTimeOff ?? 0) + (pendingSwaps ?? 0) > 0 ? "alert" : "default"}
+            value={pendingRequests}
+            tone={pendingRequests > 0 ? "alert" : "default"}
             sub={`${pendingTimeOff ?? 0} time off · ${pendingSwaps ?? 0} swaps`}
+            href="/app/requests"
           />
         </div>
 
@@ -144,9 +166,21 @@ export default async function DashboardPage() {
                           : "bg-[#2E7D5E]"
                     }`}
                   />
-                  <span className="font-body text-sm leading-relaxed text-navy">
-                    {insight.text}
-                  </span>
+                  {insight.href ? (
+                    <Link
+                      href={insight.href}
+                      className="font-body text-sm leading-relaxed text-navy underline-offset-2 hover:underline"
+                    >
+                      {insight.text}{" "}
+                      <span className="whitespace-nowrap font-medium text-amber">
+                        →
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="font-body text-sm leading-relaxed text-navy">
+                      {insight.text}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

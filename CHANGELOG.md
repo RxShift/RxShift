@@ -7,6 +7,26 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 2): dashboard interactivity + one flag vocabulary
+
+### Shipped
+- **Every dashboard headline is now actionable.** `StatCard` (`components/ui/card.tsx`) takes an optional
+  `href` and renders as a hover-highlighted link. On `/app/dashboard`: **Deficient slots** → the schedule
+  anchored to the first deficiency's location + week; **Open flags** → the schedule at the first constraint
+  flag's week; **Pending requests** → `/app/requests`; **Current period** → the schedule for that period.
+  Each **Insight** now carries a deep link too (deficiency / recurring-gap insights jump straight to the
+  offending slot). Previously only the Quick-Action links navigated.
+- **One flag vocabulary** (`lib/flags.ts`): a single documented definition — a *flag* is a **ratio** issue
+  (slot non-compliant / at the limit) or a **constraint** issue (hours / availability / double-booking) —
+  plus shared link builders (`scheduleHref` / `ratioFlagHref` / `constraintFlagHref`) so wording and
+  click-through are consistent. Wired into the dashboard + insights; available for the board/compliance.
+
+### Open
+- A scroll-to + flash highlight of the exact cell on the schedule grid (deep link lands on the week +
+  location today; the deficient block is already marked red ⚠).
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 1): real-time schedule propagation
 
 First phase of the post-demo hardening plan (`/plan` approved; full plan covers 9 phases — flags,

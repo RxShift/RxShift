@@ -1,4 +1,5 @@
 import { type HTMLAttributes } from "react";
+import Link from "next/link";
 
 export function Card({
   highlighted = false,
@@ -20,11 +21,14 @@ export function StatCard({
   value,
   sub,
   tone = "default",
+  href,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   tone?: "default" | "compliant" | "alert" | "deficiency";
+  /** When set, the whole card becomes a link to the relevant detail. */
+  href?: string;
 }) {
   const valueColor = {
     default: "text-navy",
@@ -33,8 +37,8 @@ export function StatCard({
     deficiency: "text-deficiency",
   }[tone];
 
-  return (
-    <Card>
+  const body = (
+    <>
       <p className="font-brand text-[10px] font-bold uppercase tracking-[1px] text-steel">
         {label}
       </p>
@@ -42,6 +46,23 @@ export function StatCard({
         {value}
       </p>
       {sub && <p className="mt-1 font-body text-xs text-steel">{sub}</p>}
-    </Card>
+      {href && (
+        <p className="mt-2 font-brand text-[11px] font-bold text-amber">
+          View →
+        </p>
+      )}
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="group block">
+        <Card className="h-full transition-colors group-hover:border-amber">
+          {body}
+        </Card>
+      </Link>
+    );
+  }
+
+  return <Card>{body}</Card>;
 }

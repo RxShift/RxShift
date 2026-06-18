@@ -6,10 +6,13 @@ import "server-only";
 
 import type { PeriodBundle, ValidationOut } from "@/lib/schedule-data";
 import { timeToMinutes } from "@/lib/engine/ratio";
+import { ratioFlagHref, scheduleHref } from "@/lib/flags";
 
 export interface Insight {
   tone: "alert" | "deficiency" | "neutral";
   text: string;
+  /** Optional deep link to where this insight can be seen/fixed. */
+  href?: string;
 }
 
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -27,6 +30,7 @@ export function computeInsights(
     insights.push({
       tone: "deficiency",
       text: `${deficientSlotCount} deficient ratio slot${deficientSlotCount === 1 ? "" : "s"} across ${dates.size} day${dates.size === 1 ? "" : "s"} in this period. Open the schedule to see exactly where.`,
+      href: ratioFlagHref(validation.ratioFlags[0]),
     });
   }
 
@@ -38,14 +42,16 @@ export function computeInsights(
   }
   for (const [dow, count] of byDow) {
     if (count >= 3) {
-      const morning = validation.ratioFlags.filter(
-        (f) =>
-          new Date(`${f.date}T00:00:00Z`).getUTCDay() === dow &&
-          timeToMinutes(f.slot_label.split("–")[0]) < 12 * 60
+      const dowFlags = validation.ratioFlags.filter(
+        (f) => new Date(`${f.date}T00:00:00Z`).getUTCDay() === dow
+      );
+      const morning = dowFlags.filter(
+        (f) => timeToMinutes(f.slot_label.split("–")[0]) < 12 * 60
       ).length;
       insights.push({
         tone: "alert",
         text: `${DOW[dow]}s are a recurring gap — ${count} deficient slots${morning > count / 2 ? ", mostly mornings" : ""}. Consider a standing staffing change.`,
+        href: dowFlags[0] ? ratioFlagHref(dowFlags[0]) : undefined,
       });
     }
   }
@@ -72,15 +78,18 @@ export function computeInsights(
       insights.push({
         tone: "alert",
         text: `${person.full_name} is at ${hours.toFixed(0)} of ${cap} capped hours (${pct.toFixed(0)}%) this period — trending toward the cap.`,
+        href: scheduleHref({}),
       });
     }
   }
 
   // Constraint flags
   if (validation.constraintFlags.length > 0) {
+    const dated = validation.constraintFlags.find((c) => c.date);
     insights.push({
       tone: "alert",
       text: `${validation.constraintFlags.length} hours/availability flag${validation.constraintFlags.length === 1 ? "" : "s"} open — review them on the schedule before publishing.`,
+      href: scheduleHref({ anchor: dated?.date ?? null }),
     });
   }
 
