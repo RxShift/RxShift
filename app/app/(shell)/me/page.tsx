@@ -15,7 +15,6 @@ import {
   eachDate,
   fmtDay,
   nowInTimeZone,
-  todayStr,
 } from "@/lib/dates";
 import { timeToMinutes } from "@/lib/engine/ratio";
 import { resolveStatuses } from "@/lib/live-status-config";
@@ -58,7 +57,14 @@ export default async function MePage() {
     );
   }
 
-  const today = todayStr();
+  // Everything below is in the TENANT's timezone. A shift that runs to 8pm
+  // Pacific is still "today" even though it's already tomorrow in UTC. The Live
+  // Board computes "now" this way; My Schedule used to take the UTC date
+  // (todayStr) as the query's lower bound, so after ~5pm Pacific today's shift
+  // was filtered out of the results and the page always read "off shift" — even
+  // when the board correctly showed the person working. Use one tz-anchored
+  // "now" for the query bounds, the calendar, and the presence check.
+  const { date: today, minutes: tzNow } = nowInTimeZone(tenant.timezone);
   const horizon = addDaysStr(today, 14);
 
   const [
@@ -129,9 +135,8 @@ export default async function MePage() {
   // Presence is schedule-derived: you're "on shift" only if a PUBLISHED shift
   // covers right now (tenant tz). Off shift → show "Off shift", don't default to
   // Working. A status only counts as current if it was set today (tenant tz).
-  const { date: tzToday, minutes: tzNow } = nowInTimeZone(tenant.timezone);
   const coversNow = (s: Shift & { shift_segment: ShiftSegment[] }) =>
-    s.date === tzToday &&
+    s.date === today &&
     (s.shift_segment ?? []).some((seg) => {
       const start = timeToMinutes(seg.start_time);
       const end0 = timeToMinutes(seg.end_time);
@@ -141,7 +146,7 @@ export default async function MePage() {
   const currentShift = shifts.find(coversNow);
   const onShiftNow = !!currentShift;
   const effectiveStatus =
-    live && dateInTimeZone(live.effective_from, tenant.timezone) === tzToday
+    live && dateInTimeZone(live.effective_from, tenant.timezone) === today
       ? live.status
       : "present_counting";
 

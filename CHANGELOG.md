@@ -44,6 +44,13 @@ rebuild + demo-clock, "Ask AI" restore, Team-this-week, living docs).
 - **My Schedule self-refreshes.** New `components/app/auto-refresh.tsx` (a tiny client poller, ~45s,
   mirrors the Live Board's pattern) mounted on `/app/me` so an open page (e.g. a pharmacist's phone)
   picks up a manager's change without a manual reload.
+- **My Schedule timezone bug (root cause of the demo "off shift" symptom).** Found while testing: even
+  after the revalidation fix, `/app/me` still read "off shift" in the evening while the Live Board
+  correctly showed the person working. Cause: the page used the **UTC** date (`todayStr()`) as the shift
+  query's lower bound, but derived presence from the **tenant-tz** date. After ~5pm Pacific (next-day
+  UTC), today's shift was filtered out of the query entirely. Fixed `app/app/(shell)/me/page.tsx` to use
+  one tenant-tz "now" (`nowInTimeZone(tenant.timezone)`) for the query bounds, the calendar, the team
+  week, and the presence check — matching the Live Board.
 
 ### Open
 - True sub-second cross-device push (Supabase Realtime) deferred — revalidate + poll covers the demo.
