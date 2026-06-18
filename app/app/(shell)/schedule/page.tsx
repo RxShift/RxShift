@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import ScheduleMatrix from "@/components/app/schedule/schedule-matrix";
+import AiCommandBar from "@/components/app/schedule/ai-command-bar";
 import {
   loadAllLocationsBundle,
   validateRangeBundle,
@@ -10,6 +11,7 @@ import {
 import { signedAvatarUrls } from "@/lib/avatars";
 import {
   addDaysStr,
+  fmtRange,
   mondayOf,
   monthStart,
   nowInTimeZone,
@@ -182,6 +184,21 @@ export default async function SchedulePage({
     ? `Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
     : "Schedule — All locations";
 
+  // Ask AI works on the period covering the current week for the WORKING
+  // location (the selected one, or the first). Resolved from the data already
+  // loaded — switching the location pill changes the AI's scope.
+  const workingLocationId = locationFilter ?? locs[0]?.id ?? null;
+  const refDate = today >= start && today <= end ? today : start;
+  const aiPeriod = workingLocationId
+    ? allBundle.periods.find(
+        (p) =>
+          p.location_id === workingLocationId &&
+          p.start_date <= refDate &&
+          p.end_date >= refDate
+      )
+    : undefined;
+  const aiLocName = locs.find((l) => l.id === workingLocationId)?.name ?? "";
+
   return (
     <>
       <PageHeader title={title} />
@@ -208,6 +225,12 @@ export default async function SchedulePage({
             </Link>
           </div>
         </div>
+        {aiPeriod && (
+          <AiCommandBar
+            periodId={aiPeriod.id}
+            contextNote={`Working in ${aiLocName} · ${fmtRange(aiPeriod.start_date, aiPeriod.end_date)}`}
+          />
+        )}
         <ScheduleMatrix
           tenant={tenant}
           today={today}

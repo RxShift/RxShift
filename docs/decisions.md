@@ -3,6 +3,15 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 17, 2026 — "Ask AI" restored, bound to the working-location week
+
+Phase 7 (reverses the June 15 "deferred" note). The command bar is mounted on the schedule again, bound to
+the period covering the current week for the **working location** (the selected pill, or the first),
+resolved from the data the page already loads. **Rejected** a full all-locations/window refactor of the AI
+engine (the period-scoped simulation + create-clamp is tested and correct; a faithful restore beats a risky
+rewrite before the demo). Switching the location pill re-scopes the AI; the bar shows which location + week
+it's working in. The propose → engine-validate → human-confirm contract is unchanged — AI never decides a ratio.
+
 ## June 17, 2026 — After-hours demos use a demo-only clock override (time-of-day, real date)
 
 Phase 6. The demo broke after business hours because every presence surface reads the real wall clock, so at

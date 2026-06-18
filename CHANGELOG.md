@@ -7,6 +7,22 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-17 — Demo-debrief hardening (Phase 7): "Ask AI" restored on the schedule
+
+### Shipped
+- **The natural-language command bar is back**, relabeled **Ask AI** and mounted on the schedule
+  (`app/app/(shell)/schedule/page.tsx`). It was unmounted June 15 because it was period-bound and the
+  schedule went window-based; now the page resolves the period covering the current week for the working
+  location (the selected location pill, or the first) from the data it already loads, and binds the bar to
+  it. Switching the location pill changes the AI's scope; a context note shows "Working in {location} · {week}".
+- **Full scope, unchanged intelligence** (`lib/actions/ai.ts`, all intact): ask questions answered from the
+  live schedule ("is anything non-compliant coming up?", "who's short Thursday?"), and propose changes —
+  create recurring shifts (PTO-aware, date-clamped), reassign, delete, add availability constraints. Every
+  proposal is **simulated through the deterministic engine** and shown ("✓ removes 2 deficient slots / ⚠ adds
+  1") before the manager confirms. AI never commits a ratio decision on its own.
+
+---
+
 ## 2026-06-17 — Demo-debrief hardening (Phase 6): demo clock (after-hours demos) + departments
 
 ### Shipped
