@@ -4,6 +4,9 @@
 export type ScheduleCycle = "weekly" | "biweekly" | "monthly";
 export type RatioSlotMinutes = 15 | 30 | 60;
 export type RatioType = "pharmacist" | "technician" | "non_counting";
+/** Role classification (distinct from RatioType, which is how a person COUNTS).
+ *  Adds the technician-in-training distinction R072-25 needs for the sublimit. */
+export type StaffType = "pharmacist" | "tech" | "tech_in_training";
 export type EmploymentType =
   | "full_time"
   | "part_time"
@@ -70,6 +73,9 @@ export interface Tenant {
   demo_clock: string | null;
   /** When true, every shift must be assigned a department */
   require_department: boolean;
+  /** Nevada R072-25 (proposed, not adopted): when on, retail locations use the
+   *  4-tech ceiling + 2-trainee sublimit + the solo-pharmacist staffing floor. */
+  nevada_r072_25: boolean;
   // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)
   billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
   billing_provider: "manual" | "stripe" | "chargebee" | null;
@@ -175,6 +181,8 @@ export interface Feedback {
   updated_at: string;
 }
 
+export type LocationType = "retail" | "telepharmacy" | "institutional";
+
 export interface Location {
   id: string;
   tenant_id: string;
@@ -185,6 +193,17 @@ export interface Location {
     { open: string; close: string } | null
   > | null;
   timezone_override: string | null;
+  /** R072-25: retail non-institutional gets the 4-tech ceiling/floor; others 3 */
+  location_type: LocationType;
+  has_drive_through: boolean;
+  /** Expected daily Rx volume per weekday — informational (no enforcement) */
+  expected_rx_mon: number | null;
+  expected_rx_tue: number | null;
+  expected_rx_wed: number | null;
+  expected_rx_thu: number | null;
+  expected_rx_fri: number | null;
+  expected_rx_sat: number | null;
+  expected_rx_sun: number | null;
   created_at: string;
 }
 
@@ -207,8 +226,10 @@ export interface Staff {
   work_email: string | null;
   job_title: string | null;
   ratio_type: RatioType;
+  /** Role classification; adds tech-in-training. ratio_type still drives counting. */
+  staff_type: StaffType;
   employment_type: EmploymentType;
-  /** CPhT national certification — informational + shown in exports */
+  /** CPhT national certification — drives the Tennessee certified-uncapped ceiling */
   certified: boolean;
   active: boolean;
   /** Path within the private 'avatars' Storage bucket; null = no photo */
@@ -455,6 +476,9 @@ export interface ComplianceRecordRow {
   technicians_present_non_counting: { name: string; function: string }[];
   ratio_status: "compliant" | "deficient";
   deficiency_reason: string | null;
+  /** Whether a deficiency is over the ceiling (too many techs), under the floor
+   *  (too few staff for a solo pharmacist), or both. Null when compliant. */
+  flag_type?: "ceiling" | "floor" | "both" | null;
 }
 
 // The Compliance Record (as-worked): an IMMUTABLE, frozen-once-the-hour-passes
@@ -468,6 +492,7 @@ export interface ComplianceRecord {
   hour: number; // 0–23 (tenant tz)
   ratio_status: "compliant" | "deficient";
   deficiency_reason: string | null;
+  flag_type: "ceiling" | "floor" | "both" | null;
   required_max_techs: number | null;
   detail: ComplianceRecordRow;
   recorded_at: string;

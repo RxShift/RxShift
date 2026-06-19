@@ -1,5 +1,12 @@
 # RxShift Product Scoping Document
 **Tag:** [JWC] | **Status:** Final, build-ready, v4 | **Date:** June 11, 2026
+
+> **⚠️ Regulatory update (June 19, 2026):** every mention of **R113-24** below is superseded by **R072-25**
+> (LCB File No. R072-25; public hearing June 4, 2026; not adopted). R072-25 raised the retail ceiling to 4
+> technicians, added a solo-pharmacist *staffing floor*, and has **no** hourly-documentation mandate or
+> 3-day board-notification trigger. RxShift implements it behind the `nevada_r072_25` toggle; volume
+> thresholds are collect-only (never enforced). The build is documented in `docs/rxshift-r072-25-build.md` —
+> read that for the current engine behavior. This scoping doc is retained as original-intent history.
 **Purpose:** the single source of truth for the v1 build. Hand this to Claude Code as the build brief. It states what to build, why, the boundaries, the data model, and the build sequence. It does not contain code.
 **Source inputs:** Optum prototype architecture, Southwest Medical Business Brief, Susie's requirements transcription and 11-point operational validation, pharmacy-scheduling research summary, and the working-session decisions through June 11.
 

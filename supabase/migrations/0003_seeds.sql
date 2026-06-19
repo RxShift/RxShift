@@ -3,7 +3,7 @@
 
 -- ─── Nevada ratio seed ──────────────────────────────────────────────────────
 -- Current law from verified primary sources (NAC 639.250, NRS 639.1371).
--- R113-24 is proposed, NOT adopted (June 2026) — not enforced here.
+-- R072-25 is proposed, NOT adopted (June 2026 hearing) — not enforced here.
 insert into ratio_rule
   (tenant_id, state, max_techs_per_pharmacist, trainee_sublimits, composition_rules, source_citation, notes)
 values
@@ -14,7 +14,7 @@ values
     '{"max_trainees": 2, "alternative": "1 technician plus 2 trainees"}',
     '{"options": [{"technicians": 3, "trainees": 0}, {"technicians": 1, "trainees": 2}]}',
     'NAC 639.250; NRS 639.1371',
-    'Non-institutional retail default: one pharmacist may supervise up to three technicians, or one technician plus two trainees. Base statutory default is 1:1 unless expanded by regulation. R113-24 (proposed, not adopted as of June 2026) would add volume-based minimums and hourly documentation; RxShift builds the documentation record regardless but does not enforce non-final rules. Verify exact language before relying on this for a new state.'
+    'Non-institutional retail default: one pharmacist may supervise up to three technicians, or one technician plus two trainees. Base statutory default is 1:1 unless expanded by regulation. R072-25 (proposed, not adopted as of June 2026) would raise the retail ceiling to four technicians, add a solo-pharmacist staffing floor, and collect daily volume data; RxShift can apply it behind a tenant toggle but does not enforce non-final rules. Verify exact language before relying on this for a new state.'
   );
 
 -- ─── Help center articles ───────────────────────────────────────────────────
@@ -124,7 +124,7 @@ Every published schedule automatically generates an hourly staffing record per r
 - Each technician **present but not counting**, annotated with their assigned non-technician function (cleaning, procurement, clerical) — this documented exception is your audit defense
 - Compliant or deficient status, with the reason when deficient
 
-The record tracks **consecutive deficient days** and surfaces a board-report flag after three — matching the structure of Nevada''s proposed R113-24, and useful defensibility everywhere.
+The record tracks **consecutive deficient days** and flags a sustained deficiency after several in a row — a heads-up to your own managers. RxShift never contacts a board; whether to act is your pharmacy''s decision.
 
 Records are retained for two years and exportable to spreadsheet or a print-ready report. Any acknowledged warning (an override) is cross-referenced in the Override Log with who, when, and the required reason.
 

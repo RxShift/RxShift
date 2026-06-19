@@ -30,6 +30,8 @@ export function generateComplianceRecord(
       const nonCounting = new Map<string, string>();
       let deficient = false;
       let reason: string | null = null;
+      let hasCeiling = false;
+      let hasFloor = false;
 
       for (const slot of hourSlots) {
         slot.pharmacists.forEach((n) => pharmacists.add(n));
@@ -41,8 +43,18 @@ export function generateComplianceRecord(
           deficient = true;
           reason = slot.deficiency_reason;
         }
+        if (slot.flag_type === "ceiling" || slot.flag_type === "both") hasCeiling = true;
+        if (slot.flag_type === "floor" || slot.flag_type === "both") hasFloor = true;
       }
       for (const name of techsCounting) nonCounting.delete(name);
+      const flag_type =
+        hasCeiling && hasFloor
+          ? "both"
+          : hasCeiling
+            ? "ceiling"
+            : hasFloor
+              ? "floor"
+              : null;
 
       rows.push({
         date,
@@ -57,6 +69,7 @@ export function generateComplianceRecord(
           .sort((a, b) => a.name.localeCompare(b.name)),
         ratio_status: deficient ? "deficient" : "compliant",
         deficiency_reason: reason,
+        flag_type,
       });
     }
   }
@@ -64,14 +77,24 @@ export function generateComplianceRecord(
   return rows;
 }
 
+/** Default number of consecutive deficient days that counts as a SUSTAINED
+ *  deficiency — the point at which RxShift gives the pharmacy's own managers a
+ *  heads-up. Not a regulatory threshold: RxShift never contacts a board, and
+ *  whether to report anything is always the pharmacy's decision. */
+export const SUSTAINED_DEFICIENCY_DAYS = 3;
+
 /**
- * Consecutive-deficient-day tracking + the board-report trigger after
- * three consecutive deficient days (per the structure of proposed R113-24).
+ * Consecutive-deficient-day tracking. A streak that reaches `thresholdDays`
+ * (default {@link SUSTAINED_DEFICIENCY_DAYS}) sets `sustainedDeficiency` — an
+ * internal signal to alert the pharmacy's managers, nothing more.
  */
-export function deficiencyStreaks(rows: ComplianceRecordRow[]): {
+export function deficiencyStreaks(
+  rows: ComplianceRecordRow[],
+  thresholdDays: number = SUSTAINED_DEFICIENCY_DAYS
+): {
   deficientDates: string[];
   streaks: { start: string; length: number }[];
-  boardReportTriggered: boolean;
+  sustainedDeficiency: boolean;
 } {
   const deficientDates = [
     ...new Set(
@@ -105,7 +128,7 @@ export function deficiencyStreaks(rows: ComplianceRecordRow[]): {
   return {
     deficientDates,
     streaks,
-    boardReportTriggered: streaks.some((s) => s.length >= 3),
+    sustainedDeficiency: streaks.some((s) => s.length >= thresholdDays),
   };
 }
 

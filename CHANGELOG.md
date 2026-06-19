@@ -7,6 +7,60 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-19 — Nevada R072-25 engine + schema, Tennessee, sustained-deficiency reframe, Nevada rewrite
+
+We learned the rule we'd been referencing changed: Nevada's proposed **R072-25** (LCB File No. R072-25;
+public hearing June 4, 2026; **not adopted**) supersedes R113-24. Implemented it behind a tenant toggle,
+added Tennessee, removed every R113-24 reference, and rewrote the Nevada marketing to lead with current law.
+Full build notes: `docs/rxshift-r072-25-build.md`.
+
+### Shipped
+- **Engine (`lib/engine/`):** new pure mapper `rule.ts` `buildEngineRule(rule, ctx)` applies the overlays:
+  - **Ceiling** — NV retail + toggle → **4 techs** (or 2 techs + 2 trainees); telepharmacy/institutional →
+    base cap. **Tennessee** (`state === 'TN'`) → 6-tech cap with **certified (CPhT) techs uncapped**.
+  - **Floor (new)** — NV retail + toggle → a solo pharmacist needs **≥1** support (**≥2** with a
+    drive-through). `evaluateZone` now emits `flag_type` (`ceiling` | `floor` | `both`); rolled up per hour
+    by `generateComplianceRecord`; persisted on `compliance_record.flag_type`.
+  - Toggle off / retail / non-TN = **identical to before** (the 55 existing tests stay green). 19 new tests in
+    `lib/engine/__tests__/floor-and-r072.test.ts`. All `evaluateZone` callers pass per-location context via
+    `engineRuleForLocation`.
+- **Schema (migration 0032, applied):** `location.location_type` (retail/telepharmacy/institutional),
+  `location.has_drive_through`, `location.expected_rx_mon..sun` (informational); `staff.staff_type`
+  (pharmacist/tech/tech_in_training, backfilled); `tenant.nevada_r072_25` (default false);
+  `compliance_record.flag_type`.
+- **Settings + UI:** R072-25 toggle (Organization); TN note (Ratio); location_type / drive-through /
+  expected-Rx fields (Locations); staff_type select + "In training" badge (Staff); informational "Rx N"
+  per-day label on the schedule grid; ceiling-vs-floor labels on the Compliance Record + Coverage Forecast.
+- **Sustained-deficiency reframe:** `deficiencyStreaks` exposes `sustainedDeficiency`
+  (`SUSTAINED_DEFICIENCY_DAYS = 3`, parameterized) instead of `boardReportTriggered`. Publish alert + forecast
+  banner reworded to an internal manager heads-up — no "board report" language anywhere.
+- **Nevada marketing rewrite:** `/nevada` now leads with **NAC 639.250** (current, enforced) + the inspection
+  record; R072-25 is forward context only ("hearing June 2026; not adopted; updates automatically when
+  passed"). `nevada-callout`, `vs/when-i-work`, layout meta, `features` all reframed. **Zero "R113-24"** in
+  `app/ components/ lib/ supabase/` or the live help corpus. No hourly-doc mandate, no volume-enforcement
+  claim.
+- **Help (migration 0033, applied):** rewrote the legacy `compliance-record` help article (per-location,
+  as-worked, ceiling/floor, sustained-deficiency) and fixed stale "ratio zone" wording in three other articles
+  (zones were removed in 0018).
+- **Demo (Mesa Vista):** R072-25 on; all retail; Spring Valley drive-through (compliant under the floor of 2);
+  Tyler Brooks + Miguel Santos `tech_in_training`; expected Rx seeded. Two distinct, annotated current-week
+  deficiencies: **ceiling** (Henderson Thu 2–4 PM, no pharmacist) + **floor** (North Las Vegas Tue 9–10 AM,
+  solo pharmacist, no tech). Survives `--reset`.
+
+### Schema
+- Migration **0032** (R072-25 columns + enums) — applied. Migration **0033** (help refresh) — applied.
+
+### Verification
+- `tsc` clean · `vitest` 74/74 · `next build` clean · `--reset` → 3 deficient hours confirmed via
+  `compliance_record.flag_type` SQL (1 floor, 2 ceiling).
+
+### Open / review
+- **R072-25 is proposed, not adopted** — only NAC 639.250 / CA BPC 4115 / TN 1140-02-.02 are claimed as
+  current law. Nevada positioning + Terms/Privacy retention wording should get Susie/attorney review.
+- Volume thresholds (Sec 2.2) are collect-only; never enforced.
+
+---
+
 ## 2026-06-18 — The Compliance Record (as-worked) + compliance nomenclature across the product
 
 The foundational fix: RxShift now produces a real **as-worked** Compliance Record — the immutable,

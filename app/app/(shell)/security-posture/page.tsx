@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-18";
+const LAST_REVIEWED = "2026-06-19";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -11,7 +11,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
       "Sales lead records (prospect pharmacy and contact details from website demo requests) are stored for internal follow-up and visible only to platform administrators — never to pharmacy tenants.",
       "An email log records every message the app sends (recipient, subject, and the rendered body) for delivery auditing; it is visible only to platform administrators. In-app feedback/bug reports may include a user-attached screenshot, stored in a private bucket reachable only by platform administrators.",
       "Not stored by design: PHI or any patient data, prescription data, compensation or payroll data, credential documents (license numbers, certificates).",
-      "Script-volume counts (numbers only, per hour) may be captured for future forecasting — they contain no patient information.",
+      "Expected prescription-volume figures (whole numbers, per location per day) may be recorded for planning and shown on the schedule — they are never enforced and contain no patient information.",
     ],
   },
   {

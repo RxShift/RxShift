@@ -5,9 +5,19 @@ import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/page-header";
-import { complianceRecordToCsv } from "@/lib/engine/compliance";
+import {
+  complianceRecordToCsv,
+  SUSTAINED_DEFICIENCY_DAYS,
+} from "@/lib/engine/compliance";
 import type { ComplianceRecordRow } from "@/lib/types";
 import type { ConstraintFlag } from "@/lib/engine/types";
+
+/** Distinguish the two kinds of ratio deficiency for the reader. */
+const FLAG_LABEL: Record<string, string> = {
+  ceiling: "Over ceiling (too many techs)",
+  floor: "Under floor (understaffed)",
+  both: "Over ceiling + under floor",
+};
 
 export default function ComplianceView({
   periods,
@@ -26,7 +36,7 @@ export default function ComplianceView({
   streaks: {
     deficientDates: string[];
     streaks: { start: string; length: number }[];
-    boardReportTriggered: boolean;
+    sustainedDeficiency: boolean;
   };
   constraintFlags: ConstraintFlag[];
   hasRatio: boolean;
@@ -101,21 +111,20 @@ export default function ComplianceView({
         </div>
       </div>
 
-      {streaks.boardReportTriggered && (
+      {streaks.sustainedDeficiency && (
         <div className="rounded-lg border-l-[3px] border-l-deficiency bg-deficiency-bg p-4">
           <p className="font-brand text-sm font-bold text-deficiency">
-            3+ consecutive deficient days — a board report may be required
+            Sustained deficiency — several consecutive deficient days
           </p>
           <p className="mt-1 font-body text-[13px] text-navy">
             {streaks.streaks
-              .filter((s) => s.length >= 3)
+              .filter((s) => s.length >= SUSTAINED_DEFICIENCY_DAYS)
               .map((s) => `${s.length} consecutive deficient days starting ${s.start}`)
               .join("; ")}
-            . Under proposed R113-24 this is the threshold at which the
-            managing pharmacist must notify the Board. Whether and how to
-            report is your pharmacy&rsquo;s decision — RxShift flags it and
-            never contacts the board. Review the deficient hours below and
-            the override log.
+            . This is a heads-up for your own managers. Whether and how to act
+            on it is your pharmacy&rsquo;s decision — RxShift flags it and never
+            contacts any board. Review the deficient hours below and the
+            override log.
           </p>
         </div>
       )}
@@ -258,6 +267,11 @@ export default function ComplianceView({
                         >
                           {r.ratio_status}
                         </Badge>
+                        {r.flag_type && FLAG_LABEL[r.flag_type] && (
+                          <span className="ml-1.5 font-brand text-[10px] font-bold uppercase tracking-[0.5px] text-deficiency">
+                            {FLAG_LABEL[r.flag_type]}
+                          </span>
+                        )}
                         {r.deficiency_reason && (
                           <p className="mt-1 font-body text-[11px] text-deficiency">
                             {r.deficiency_reason}

@@ -174,6 +174,11 @@ export function evaluateZone(
       const pharmacists = new Set<string>();
       const techsCounting = new Set<string>();
       const techsNonCounting = new Map<string, string>(); // name → function
+      // Attributes of each counting tech, for the TN cert rule + trainee sublimit.
+      const techAttr = new Map<string, { trainee: boolean; certified: boolean }>();
+      // Support staff PRESENT (techs/trainees on shift, counting or not) — drives
+      // the R072-25 solo-pharmacist floor (it's about bodies on the floor).
+      const supportPresent = new Set<string>();
 
       for (const iv of present) {
         const { seg } = iv;
@@ -181,8 +186,13 @@ export function evaluateZone(
         if (seg.staff.ratio_type === "pharmacist") {
           if (counts) pharmacists.add(seg.staff.full_name);
         } else if (seg.staff.ratio_type === "technician") {
+          supportPresent.add(seg.staff.full_name);
           if (counts) {
             techsCounting.add(seg.staff.full_name);
+            techAttr.set(seg.staff.full_name, {
+              trainee: !!seg.staff.is_trainee,
+              certified: !!seg.staff.certified,
+            });
           } else if (!techsCounting.has(seg.staff.full_name)) {
             techsNonCounting.set(
               seg.staff.full_name,
@@ -198,21 +208,70 @@ export function evaluateZone(
 
       const pCount = pharmacists.size;
       const tCount = techsCounting.size;
+      // Techs that count against the ceiling. Under TN's certified-uncapped rule,
+      // certified (CPhT) techs are excluded from the cap entirely.
+      const cappedTechs = rule.certified_uncapped
+        ? [...techsCounting].filter((n) => !techAttr.get(n)?.certified).length
+        : tCount;
+      const traineeCount = [...techsCounting].filter(
+        (n) => techAttr.get(n)?.trainee
+      ).length;
 
-      let status: SlotEval["status"] = "compliant";
-      let reason: string | null = null;
+      const reasons: string[] = [];
+      let ceilingHit = false;
+      let floorHit = false;
 
+      // ── Ceiling (too many techs for the pharmacists on duty) ──
       const limit = maxTechsAllowed(pCount, rule);
       if (tCount > 0 && pCount === 0) {
-        status = "deficient";
-        reason = `${tCount} technician${tCount === 1 ? "" : "s"} counting with no pharmacist on duty`;
-      } else if (pCount > 0 && tCount > limit) {
-        status = "deficient";
-        reason =
-          rule.formula === "additive"
-            ? `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — additive limit is ${limit} (first pharmacist ${rule.additive_first_techs ?? 1}, each additional +${rule.additive_additional_techs ?? 2})`
-            : `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_techs_per_pharmacist} per pharmacist (${limit} total)`;
+        ceilingHit = true;
+        reasons.push(
+          `${tCount} technician${tCount === 1 ? "" : "s"} counting with no pharmacist on duty`
+        );
+      } else if (pCount > 0 && cappedTechs > limit) {
+        ceilingHit = true;
+        reasons.push(
+          rule.certified_uncapped
+            ? `${cappedTechs} non-certified technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_techs_per_pharmacist} per pharmacist (${limit} total; certified techs are uncapped)`
+            : rule.formula === "additive"
+              ? `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — additive limit is ${limit} (first pharmacist ${rule.additive_first_techs ?? 1}, each additional +${rule.additive_additional_techs ?? 2})`
+              : `${tCount} technicians counting against ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_techs_per_pharmacist} per pharmacist (${limit} total)`
+        );
       }
+      // R072-25 trainee sublimit (only when the rule sets it).
+      if (
+        rule.max_trainees_per_pharmacist != null &&
+        pCount > 0 &&
+        traineeCount > rule.max_trainees_per_pharmacist * pCount
+      ) {
+        ceilingHit = true;
+        reasons.push(
+          `${traineeCount} technicians-in-training with ${pCount} pharmacist${pCount === 1 ? "" : "s"} — limit is ${rule.max_trainees_per_pharmacist} per pharmacist`
+        );
+      }
+
+      // ── Floor (too few support staff for a solo pharmacist; R072-25 Sec 2.3) ──
+      if (
+        rule.floor_min_support != null &&
+        pCount === 1 &&
+        supportPresent.size < rule.floor_min_support
+      ) {
+        floorHit = true;
+        reasons.push(
+          `Only ${supportPresent.size} technician${supportPresent.size === 1 ? "" : "s"} on duty with a solo pharmacist — minimum ${rule.floor_min_support} required`
+        );
+      }
+
+      const status: SlotEval["status"] =
+        ceilingHit || floorHit ? "deficient" : "compliant";
+      const flag_type: SlotEval["flag_type"] =
+        ceilingHit && floorHit
+          ? "both"
+          : ceilingHit
+            ? "ceiling"
+            : floorHit
+              ? "floor"
+              : null;
 
       slots.push({
         slot_start: slotStart,
@@ -223,7 +282,8 @@ export function evaluateZone(
           .map(([name, fn]) => ({ name, function: fn }))
           .sort((a, b) => a.name.localeCompare(b.name)),
         status,
-        deficiency_reason: reason,
+        deficiency_reason: reasons.length ? reasons.join("; ") : null,
+        flag_type,
       });
     }
     if (slots.length > 0) result.set(date, slots);

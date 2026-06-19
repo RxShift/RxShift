@@ -43,6 +43,7 @@ export default function ScheduleGrid({
   workTypeById,
   dateStatus,
   locationNameById,
+  expectedRxByDate,
   avatarUrlById,
   onCellClick,
 }: {
@@ -58,6 +59,8 @@ export default function ScheduleGrid({
   dateStatus?: Map<string, DateStatus>;
   /** When set (all-locations view), each shift shows a location tag. */
   locationNameById?: Map<string, string>;
+  /** Informational expected Rx volume per date (Decision 4 — display only). */
+  expectedRxByDate?: Map<string, number>;
   /** When set, an avatar (photo or initials) shows before each staff name. */
   avatarUrlById?: Record<string, string>;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
@@ -129,6 +132,14 @@ export default function ScheduleGrid({
                   {status === "none" && (
                     <span className="mt-0.5 block font-body text-[8px] font-medium normal-case tracking-normal text-steel/60">
                       No period
+                    </span>
+                  )}
+                  {expectedRxByDate?.get(d) != null && (
+                    <span
+                      className="mt-0.5 block font-body text-[8px] font-medium normal-case tracking-normal text-steel/70"
+                      title="Expected prescription volume (informational — not enforced)"
+                    >
+                      Rx {expectedRxByDate.get(d)}
                     </span>
                   )}
                 </th>

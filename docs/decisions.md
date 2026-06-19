@@ -3,6 +3,35 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 19, 2026 — R072-25 supersedes R113-24; toggle-gated, floor enforced, volume NOT
+
+**Finding:** the Nevada rule we'd been referencing changed. The current proposal is **R072-25** (LCB File No.
+R072-25; public hearing June 4, 2026; **not adopted**), which supersedes R113-24. We read the regulation
+(`docs/PublicHearingNotice.R072-25.pdf`), not a summary.
+
+**Decisions:**
+- **Gate it.** R072-25 is *proposed*, so all of it sits behind `tenant.nevada_r072_25` (default off). Current
+  law (NAC 639.250) is always enforced; the toggle previews the proposed rules and flips on automatically once
+  adopted. Applied per location via `location.location_type` (retail only).
+- **Enforce the ceiling and the floor; do NOT enforce volume.** The 4-tech retail ceiling (or 2 techs + 2
+  trainees) and the new solo-pharmacist *floor* (≥1 support, ≥2 with a drive-through) are real engine checks
+  with a `flag_type` (`ceiling`/`floor`/`both`). The Sec 2.2 volume thresholds are **collect-only** — we store
+  expected Rx per location/day and show it on the schedule, but never compute a violation. Enforcing
+  unadopted, contradictory volume math would be wrong and over-claiming.
+- **One mapper, no drift.** `buildEngineRule` (`lib/engine/rule.ts`) is the single place the state/location
+  overlays live, shared by the server path and the tsx-safe finalizer. Default (off/retail/non-TN) is
+  byte-identical to the prior rule, so existing tests stand.
+- **Tennessee now.** Verified TN 1140-02-.02: 6 non-certified per pharmacist, certified (CPhT) uncapped.
+  Implemented via `staff.certified` + `certified_uncapped` on the engine rule. **Rejected:** waiting (the rule
+  is unambiguous, unlike the earlier contradictory research that blocked it).
+- **Reframe the streak, drop "board."** R072-25 has no 3-day board-notification trigger (that was R113-24).
+  The consecutive-deficient-day signal is now a generic, parameterized **sustained-deficiency** heads-up to
+  the pharmacy's own managers. RxShift never contacts a board.
+- **Marketing leads with current law.** `/nevada` leads with NAC 639.250 (enforced today); R072-25 is forward
+  context only. No hourly-documentation mandate claim, no volume-enforcement claim, no scripts/hr. **Ships on
+  push but flagged for Susie/attorney review** — only NAC 639.250 / CA BPC 4115 / TN 1140-02-.02 are claimed
+  as current law.
+
 ## June 18, 2026 — Compliance Record (as-worked) BUILT + naming locked
 
 Implements the decision below (the sequencing changed: Jamison chose to build now, including public copy,
@@ -20,10 +49,10 @@ never edits — the same model as the audit log. **Rejected:** explicit clock-in
 from schedule + live status is the lighter path; annotations + a future clock-in feature cover the gap);
 hourly cron now (Hobby caps at daily; retrospective record makes daily defensible). **v1 limitations
 (documented):** inferred (not punched) presence; 30-min slot granularity on sub-slot status changes; overnight
-live-overlay. **Regulatory:** 2-year retention is grounded (NAC 639.744; R113-24 hourly-staffing
-documentation) — but R113-24 is *proposed* and the exact required fields/retention should be confirmed by
-Susie/counsel; Terms/Privacy copy is accurate to the build but warrants attorney review before the push
-publishes.
+live-overlay. **Regulatory:** 2-year retention is grounded in NAC 639.744 (current law); the exact
+required fields/retention should still be confirmed by Susie/counsel, and Terms/Privacy copy warrants
+attorney review before the push publishes. (Superseded note: this entry originally cited proposed R113-24 —
+see the June 19, 2026 decision; R072-25 is now the live proposal and it has no hourly-documentation mandate.)
 
 ## June 18, 2026 — Compliance must become "as-worked"; today it's "as-scheduled" (design only, build deferred)
 
@@ -394,29 +423,33 @@ layout, making navy text invisible on white cards.
 
 ## June 12, 2026
 
-**Scope boundary (from the Phase 2 amendment, confirmed by Jamison):**
+**Scope boundary (from the Phase 2 amendment; updated June 19, 2026 for R072-25):**
 RxShift is a scheduling and ratio-enforcement tool with compliance
-logging. It is not a full R113-24 compliance engine. Volume-based
-staffing minimums are deferred to a future release. R113-24 is urgency
-context in marketing, not a feature checklist. Hourly log + deficiency
-flagging + state ratio enforcement + manager streak alerts = the product
-today.
+logging. Volume-based staffing minimums remain **collect-only** (Sec 2.2 of
+R072-25) — never enforced. The proposed rule (now R072-25, was R113-24) is
+forward context in marketing, not a current-law claim. Hourly Compliance
+Record + ceiling/floor deficiency flagging + state ratio enforcement
+(NAC 639.250 today, R072-25 behind a toggle, CA BPC 4115, TN cert-uncapped)
++ manager sustained-deficiency alerts = the product today.
 
 **Board containment (Jamison, after Susie's reaction to "we notify the
 board" in an early pitch deck):** RxShift NEVER contacts any board of
-pharmacy or regulator. The product flags when a board report may be
-required and alerts the pharmacy's own managers (in-app + email on a
-3-consecutive-deficient-day streak at publish). Whether and how to
-report is always the pharmacy's decision. This is contractual (Terms §6)
-and enforced in copy across the site and app.
+pharmacy or regulator. When deficient days run several in a row
+(a "sustained deficiency"), it alerts the pharmacy's own managers
+(in-app + email at publish) — nothing more. Whether and how to
+report anything is always the pharmacy's decision. This is contractual
+(Terms §6) and enforced in copy across the site and app. (Reframed
+June 19, 2026 off the old R113-24 "board report may be required"
+language; R072-25 has no board-notification trigger.)
 
-**Tennessee enforcement deferred — contradictory research:** The Phase 2
-amendment says TN ratios are 6:1 for non-certified techs with certified
-techs uncapped; the original Phase 2 spec (and the live TN page) says
-1:2 base expandable to 1:4 with certified techs. Until the actual rule
-is verified against the TN board's current language, RxShift ships CPhT
-*tracking* (staff.certified, rosters, exports) but NOT cert-dependent
-ratio enforcement. The TN page stays "in development."
+**Tennessee enforcement — RESOLVED June 19, 2026 (was deferred for contradictory research):**
+Implemented per Tenn. Comp. R. & Regs. **1140-02-.02**: a pharmacist may supervise up to
+**6 non-certified** technicians; **certified (CPhT) technicians are uncapped**. The engine
+applies this via `certified_uncapped` when `ratio_rule.state === 'TN'` (only non-certified
+techs count against the cap), reusing the existing `staff.certified` field. Jamison chose to
+ship it now (the earlier blocker was contradictory secondary research; 1140-02-.02 is the
+primary source). Per the standing "verify before relying" rule, a TN customer should still
+confirm current board language before depending on it.
 
 **California shipped as additive formula:** BPC 4115 (max techs =
 2 × pharmacists − 1) is enforced by the engine (`formula='additive'`,

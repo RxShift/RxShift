@@ -1,5 +1,5 @@
 # RxShift — Project Status
-**Last updated:** June 16, 2026
+**Last updated:** June 19, 2026
 **Entity:** JWC LLC (Jamison West Consulting)
 **Managed in:** Cowork (codebase) + Claude.ai RxShift project (strategy/chat)
 
@@ -14,7 +14,7 @@ B2B SaaS scheduling platform for retail pharmacies (1–25 locations). Embeds st
 
 **Tagline:** Compliance-ready pharmacy scheduling
 **Target:** Independent pharmacy owners and managing pharmacists, 1–25 locations
-**GTM:** Nevada first (NV R113-24 regulatory driver), California second
+**GTM:** Nevada first (current law NAC 639.250; proposed R072-25 is forward context), California second, Tennessee supported
 **Customer #1:** Southwest Medical (Optum-owned, Las Vegas) — Susie is the champion and design partner
 
 ---
@@ -199,9 +199,9 @@ npx tsx scripts/provision-user.ts --help     # provision/alias/cleanup users
 ### Product roadmap
 - [ ] Website interactive demo / screenshots — format decision pending (Mesa Vista is ready to demo)
 - [ ] Stripe billing integration (enforcement point exists, permissive until wired)
-- [ ] Tennessee cert-dependent ratio enforcement — BLOCKED (contradictory rule research; CPhT tracking already shipped)
+- [x] Tennessee cert-dependent ratio enforcement — SHIPPED June 19, 2026 (6 non-certified per RPh, CPhT uncapped)
 - [ ] CRM v2: pagination, stage analytics, export — after Susie uses v1
-- [ ] Compliance engine roadmap: volume minimums (R113-24), certified vs non-certified tech logic, trainee sub-limits
+- [x] Compliance engine roadmap — SHIPPED June 19, 2026 (R072-25): certified/non-certified logic, trainee sub-limit, solo-pharmacist floor. Volume thresholds stay collect-only (never enforced).
 
 ### Cleanup
 - [ ] Delete test CRM leads: "Verification Pharmacy" (crm-test@rxshift.io) and "Branded Email Test Pharmacy" (email-test@rxshift.io)
@@ -210,13 +210,15 @@ npx tsx scripts/provision-user.ts --help     # provision/alias/cleanup users
 
 ## Standing Decisions
 
-**Scope boundary:** RxShift is a scheduling + ratio-enforcement + compliance-logging tool. Not a full R113-24 compliance engine. Volume-based minimums are roadmap.
+**Scope boundary:** RxShift is a scheduling + ratio-enforcement + compliance-logging tool. Volume-based minimums (R072-25 Sec 2.2) are collect-only — expected Rx is shown, never enforced. The proposed rule (R072-25) is forward context, not a current-law claim.
 
-**Board containment:** RxShift never contacts any board of pharmacy or regulator. Product flags when a board report may be required; pharmacy decides whether and how to report. Contractual in Terms §6.
+**Nevada regulatory posture (June 19, 2026):** Current law (NAC 639.250) is enforced on every shift. Proposed **R072-25** (public hearing June 4, 2026; not adopted) is implemented behind the `nevada_r072_25` tenant toggle — 4-tech ceiling, 2-trainee sublimit, solo-pharmacist floor (±drive-through). Only current law is claimed in marketing.
+
+**Board containment:** RxShift never contacts any board of pharmacy or regulator. A sustained run of deficient days alerts the pharmacy's own managers; the pharmacy decides whether and how to report. Contractual in Terms §6.
 
 **Honest marketing:** Website claims only what the engine actually does. Everything else is explicitly "on the roadmap."
 
-**Tennessee enforcement deferred:** Two research sources contradict each other on the actual TN rule. CPhT tracking ships; cert-dependent ratio enforcement blocked until TN board language is verified.
+**Tennessee enforcement — SHIPPED June 19, 2026:** Per Tenn. Comp. R. & Regs. 1140-02-.02 — 6 non-certified techs per pharmacist, certified (CPhT) uncapped. Engine applies it when the ratio rule's state is TN. Verify current board language before a TN customer relies on it.
 
 **California shipped:** BPC 4115 (2P−1 additive formula) is enforced, tested, and marketed in present tense.
 

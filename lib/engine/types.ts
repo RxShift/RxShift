@@ -8,6 +8,10 @@ export interface EngineStaff {
   id: string;
   full_name: string;
   ratio_type: RatioType;
+  /** Technician in training — counts toward the R072-25 2-trainee sublimit. */
+  is_trainee?: boolean;
+  /** CPhT — under Tennessee rules, certified techs are uncapped. */
+  certified?: boolean;
 }
 
 export interface EngineWorkType {
@@ -43,6 +47,16 @@ export interface EngineRatioRule {
   formula?: "flat" | "additive";
   additive_first_techs?: number | null;
   additive_additional_techs?: number | null;
+  // ── R072-25 (set by toEngineRule when the toggle is on for a retail NV location) ──
+  /** Max technicians-in-training per pharmacist (the "2 techs + 2 trainees" sublimit). */
+  max_trainees_per_pharmacist?: number | null;
+  /** Minimum support staff required when exactly ONE pharmacist is on duty
+   *  (Sec 2.3): 1 (no drive-through) or 2 (drive-through). null = no floor. */
+  floor_min_support?: number | null;
+  // ── Tennessee ──
+  /** When true (TN), certified (CPhT) techs do NOT count toward the ceiling;
+   *  the cap applies only to non-certified techs. */
+  certified_uncapped?: boolean;
 }
 
 export interface SlotEval {
@@ -54,6 +68,8 @@ export interface SlotEval {
   techs_present_non_counting: { name: string; function: string }[];
   status: "compliant" | "deficient";
   deficiency_reason: string | null;
+  /** ceiling = too many techs; floor = too few for a solo pharmacist; both. */
+  flag_type?: "ceiling" | "floor" | "both" | null;
 }
 
 /** date → ordered slot evaluations (only slots with any presence) */

@@ -69,6 +69,7 @@ export default function StaffManager({
       work_email: (form.get("work_email") as string) || null,
       job_title: (form.get("job_title") as string) || null,
       ratio_type: form.get("ratio_type"),
+      staff_type: form.get("staff_type"),
       employment_type: form.get("employment_type"),
       home_location_id: (form.get("home_location_id") as string) || null,
       certified: form.get("certified") === "on",
@@ -181,6 +182,11 @@ export default function StaffManager({
                   >
                     {RATIO_LABELS[s.ratio_type]}
                   </Badge>
+                  {s.staff_type === "tech_in_training" && (
+                    <span className="ml-1.5 font-body text-[10px] font-bold text-steel">
+                      In training
+                    </span>
+                  )}
                   {s.certified && (
                     <span className="ml-1.5 font-body text-[10px] font-bold text-steel">
                       CPhT
@@ -367,6 +373,25 @@ export default function StaffManager({
                 defaultValue={initial?.job_title ?? ""}
               />
             </div>
+          </div>
+          <div>
+            <Label htmlFor="staff_type">Role type</Label>
+            <Select
+              id="staff_type"
+              name="staff_type"
+              defaultValue={initial?.staff_type ?? "tech"}
+            >
+              <option value="pharmacist">Pharmacist</option>
+              <option value="tech">Technician</option>
+              <option value="tech_in_training">Technician in training</option>
+            </Select>
+            <HelpText>
+              &ldquo;Counts as&rdquo; above decides whether this person counts
+              toward the ratio. This sets the specific role — mark technicians
+              in training here so Nevada R072-25&rsquo;s trainee sublimit (2
+              techs + 2 trainees per pharmacist) is applied when that toggle is
+              on.
+            </HelpText>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

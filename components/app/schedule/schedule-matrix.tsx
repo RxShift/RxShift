@@ -291,6 +291,39 @@ export default function ScheduleMatrix({
     [locations]
   );
 
+  // Informational expected daily Rx volume per column (Decision 4 — shown, never
+  // enforced). Scoped to the filtered location, or summed across all locations.
+  const expectedRxByDate = useMemo(() => {
+    const scoped = locationFilter
+      ? locations.filter((l) => l.id === locationFilter)
+      : locations;
+    const fieldByDow: Record<number, keyof Location> = {
+      0: "expected_rx_sun",
+      1: "expected_rx_mon",
+      2: "expected_rx_tue",
+      3: "expected_rx_wed",
+      4: "expected_rx_thu",
+      5: "expected_rx_fri",
+      6: "expected_rx_sat",
+    };
+    const map = new Map<string, number>();
+    for (const d of dates) {
+      const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
+      const field = fieldByDow[dow];
+      let sum = 0;
+      let any = false;
+      for (const loc of scoped) {
+        const v = loc[field] as number | null | undefined;
+        if (v != null) {
+          sum += v;
+          any = true;
+        }
+      }
+      if (any) map.set(d, sum);
+    }
+    return map;
+  }, [dates, locations, locationFilter]);
+
   const usedWorkTypeIds = useMemo(() => {
     const ids = new Set<string>();
     for (const s of visibleShifts)
@@ -428,6 +461,7 @@ export default function ScheduleMatrix({
           constraintShiftIds={constraintShiftIds}
           workTypeById={workTypeById}
           locationNameById={locationNameById}
+          expectedRxByDate={expectedRxByDate}
           avatarUrlById={avatarUrls}
           onCellClick={(person, date, shift) =>
             setEditing({ staff: person, date, shift })

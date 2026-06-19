@@ -12,7 +12,7 @@ const FEATURES = [
   {
     eyebrow: "Compliance",
     heading: "An automated hourly Compliance Record",
-    body: "RxShift builds a timestamped hourly Compliance Record of what actually happened — pharmacist and tech names per hour, deficiency flags, and an alert to your managers after 3 consecutive deficient days, when a board report may be required. It finalizes hour by hour from the published schedule and your team's live statuses, retained two years and exportable on demand. RxShift never contacts your board; that call stays yours.",
+    body: "RxShift builds a timestamped hourly Compliance Record of what actually happened — pharmacist and tech names per hour, deficiency flags, and an alert to your managers if deficient hours run several days in a row. It finalizes hour by hour from the published schedule and your team's live statuses, retained two years and exportable on demand. RxShift never contacts your board; that call stays yours.",
     image: "/images/screenshots/compliance-record.jpg",
     position: "object-top",
     alt: "The RxShift Compliance Record showing pharmacist and technician names per hour, all compliant",

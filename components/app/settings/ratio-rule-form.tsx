@@ -22,6 +22,7 @@ export default function RatioRuleForm({
   const [formula, setFormula] = useState<"flat" | "additive">(
     tenantRule?.formula ?? "flat"
   );
+  const [stateCode, setStateCode] = useState(tenantRule?.state ?? "NV");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,7 +58,12 @@ export default function RatioRuleForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="state">State</Label>
-            <Select id="state" name="state" defaultValue={rule?.state ?? "NV"}>
+            <Select
+              id="state"
+              name="state"
+              value={stateCode}
+              onChange={(e) => setStateCode(e.target.value)}
+            >
               {US_STATES.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -148,12 +154,20 @@ export default function RatioRuleForm({
             defaultValue={rule?.notes ?? ""}
             placeholder="Anything your team should know about this rule"
           />
-          {nvSeed && (
+          {stateCode === "TN" ? (
             <HelpText>
-              Nevada default: {nvSeed.max_techs_per_pharmacist} techs per
-              pharmacist ({nvSeed.source_citation}). One technician plus two
-              trainees is the alternative composition.
+              Tennessee: certified (CPhT) technicians are <strong>uncapped</strong>
+              {" "}— the limit above applies to non-certified technicians only.
+              Mark certified staff with the CPhT checkbox in the staff directory.
             </HelpText>
+          ) : (
+            nvSeed && (
+              <HelpText>
+                Nevada default: {nvSeed.max_techs_per_pharmacist} techs per
+                pharmacist ({nvSeed.source_citation}). One technician plus two
+                trainees is the alternative composition.
+              </HelpText>
+            )
           )}
         </div>
         <div className="flex items-center gap-3 border-t border-line pt-4">

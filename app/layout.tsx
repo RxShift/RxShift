@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://rxshift.io"),
   title: "RxShift — Compliance-ready pharmacy scheduling",
   description:
-    "RxShift generates compliant pharmacy schedules automatically — tracking pharmacist-to-tech ratios and producing the hourly documentation regulators require.",
+    "RxShift generates compliant pharmacy schedules automatically — enforcing pharmacist-to-tech ratios and producing an inspection-ready hourly compliance record.",
   openGraph: {
     title: "RxShift — Compliance-ready pharmacy scheduling",
     description:

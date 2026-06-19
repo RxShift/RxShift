@@ -20,6 +20,9 @@ const staffSchema = z.object({
   work_email: z.string().email().nullish().or(z.literal("").transform(() => null)),
   job_title: z.string().max(120).nullish(),
   ratio_type: z.enum(["pharmacist", "technician", "non_counting"]),
+  // The role for ratio math. ratio_type decides whether they COUNT;
+  // staff_type adds the technician-in-training distinction R072-25 needs.
+  staff_type: z.enum(["pharmacist", "tech", "tech_in_training"]).default("tech"),
   employment_type: z.enum(["full_time", "part_time", "per_diem", "contractor_1099"]),
   home_location_id: z.string().uuid().nullish(),
   certified: z.coerce.boolean().default(false),

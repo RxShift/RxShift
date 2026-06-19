@@ -24,6 +24,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
       ratio_slot_minutes: data.get("ratio_slot_minutes"),
       has_ratio: data.get("has_ratio") === "on",
       default_break_minutes: data.get("default_break_minutes"),
+      nevada_r072_25: data.get("nevada_r072_25") === "on",
     });
     setMessage(result.ok ? "Saved." : result.error);
     setSaving(false);
@@ -108,6 +109,30 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
           <label htmlFor="has_ratio" className="font-body text-sm text-navy">
             We have a pharmacist-to-technician ratio requirement
           </label>
+        </div>
+        <div className="rounded-lg border border-line bg-cloud/40 p-4">
+          <div className="flex items-center gap-2.5">
+            <input
+              type="checkbox"
+              id="nevada_r072_25"
+              name="nevada_r072_25"
+              defaultChecked={tenant.nevada_r072_25}
+              className="h-4 w-4 accent-amber"
+            />
+            <label
+              htmlFor="nevada_r072_25"
+              className="font-body text-sm font-medium text-navy"
+            >
+              Apply Nevada R072-25 rules (proposed — not yet adopted)
+            </label>
+          </div>
+          <HelpText>
+            Current Nevada law (NAC 639.250) is always enforced. Turn this on to
+            preview the proposed R072-25 rules at your retail locations: a 4-tech
+            ceiling (or 2 techs + 2 trainees) and a minimum-staffing floor when a
+            single pharmacist is on duty. R072-25 had its public hearing in June
+            2026 and is not yet law — leave this off until it&rsquo;s adopted.
+          </HelpText>
         </div>
         <div className="flex items-center gap-3 border-t border-line pt-5">
           <Button type="submit" disabled={saving}>

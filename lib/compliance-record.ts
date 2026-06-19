@@ -14,8 +14,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluateZone, timeToMinutes, minutesToTime } from "./engine/ratio";
+import { buildEngineRule } from "./engine/rule";
 import { generateComplianceRecord } from "./engine/compliance";
-import type { EngineRatioRule, EngineSegment } from "./engine/types";
+import type { EngineSegment } from "./engine/types";
 import { countsByStatus } from "./live-status-config";
 import {
   addDaysStr,
@@ -59,17 +60,6 @@ interface ShiftRow {
 }
 
 type NonCountingWindow = { start: number; end: number };
-
-/** ratio_rule row → engine rule (inlined to avoid importing the server-only
- *  schedule-data module into the tsx seed path). */
-function toEngineRule(rule: RatioRule): EngineRatioRule {
-  return {
-    max_techs_per_pharmacist: rule.max_techs_per_pharmacist,
-    formula: rule.formula ?? undefined,
-    additive_first_techs: rule.additive_first_techs,
-    additive_additional_techs: rule.additive_additional_techs,
-  };
-}
 
 /** Non-counting windows (local minutes on `date`) for one staff member's
  *  live-status history. A counting status leaves presence as scheduled.
@@ -181,9 +171,9 @@ export async function finalizeComplianceForTenant(
     { data: liveRows },
   ] = await Promise.all([
     service.from("ratio_rule").select("*").eq("tenant_id", tenant.id),
-    service.from("staff").select("id, full_name, ratio_type").eq("tenant_id", tenant.id),
+    service.from("staff").select("id, full_name, ratio_type, staff_type, certified").eq("tenant_id", tenant.id),
     service.from("work_type").select("id, name, counts_as, counting_default").eq("tenant_id", tenant.id),
-    service.from("location").select("id, name").eq("tenant_id", tenant.id),
+    service.from("location").select("id, name, location_type, has_drive_through").eq("tenant_id", tenant.id),
     service.from("live_status_config").select("*").eq("tenant_id", tenant.id),
     service
       .from("shift")
@@ -203,9 +193,13 @@ export async function finalizeComplianceForTenant(
   if (!rule) return { tenantId: tenant.id, recorded: 0, hoursConsidered: 0 };
 
   const staffById = new Map(
-    ((staffRows ?? []) as { id: string; full_name: string; ratio_type: string }[]).map(
-      (s) => [s.id, s]
-    )
+    ((staffRows ?? []) as {
+      id: string;
+      full_name: string;
+      ratio_type: string;
+      staff_type: string;
+      certified: boolean;
+    }[]).map((s) => [s.id, s])
   );
   const wtById = new Map(
     ((workTypeRows ?? []) as {
@@ -215,8 +209,17 @@ export async function finalizeComplianceForTenant(
       counting_default: boolean;
     }[]).map((w) => [w.id, w])
   );
+  type LocRow = {
+    id: string;
+    name: string;
+    location_type: "retail" | "telepharmacy" | "institutional";
+    has_drive_through: boolean;
+  };
+  const locById = new Map(
+    ((locationRows ?? []) as LocRow[]).map((l) => [l.id, l])
+  );
   const locName = new Map(
-    ((locationRows ?? []) as { id: string; name: string }[]).map((l) => [l.id, l.name])
+    ((locationRows ?? []) as LocRow[]).map((l) => [l.id, l.name])
   );
   const countsCfg = countsByStatus((cfgRows ?? []) as LiveStatusConfig[]);
   const liveByStaff = new Map<string, LiveStatus[]>();
@@ -252,6 +255,8 @@ export async function finalizeComplianceForTenant(
           id: person.id,
           full_name: person.full_name,
           ratio_type: person.ratio_type as RatioType,
+          is_trainee: person.staff_type === "tech_in_training",
+          certified: person.certified,
         },
         work_type: wt
           ? {
@@ -271,7 +276,13 @@ export async function finalizeComplianceForTenant(
   // Evaluate each location and collect the completed, not-yet-recorded hours.
   const candidate: ComplianceRecordRow[] = [];
   for (const [locationId, segs] of byLocation) {
-    const evals = evaluateZone(segs, toEngineRule(rule), tenant.ratio_slot_minutes);
+    const loc = locById.get(locationId);
+    const engineRule = buildEngineRule(rule, {
+      locationType: loc?.location_type,
+      hasDriveThrough: loc?.has_drive_through,
+      r072Enabled: tenant.nevada_r072_25,
+    });
+    const evals = evaluateZone(segs, engineRule, tenant.ratio_slot_minutes);
     const rows = generateComplianceRecord(
       evals,
       locationId,
@@ -308,6 +319,7 @@ export async function finalizeComplianceForTenant(
       hour: r.hour,
       ratio_status: r.ratio_status,
       deficiency_reason: r.deficiency_reason,
+      flag_type: r.flag_type ?? null,
       required_max_techs: rule.max_techs_per_pharmacist,
       detail: r,
     }));

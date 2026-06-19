@@ -14,7 +14,7 @@
 -- ONLY by the finalize-compliance job (service role; RLS has no insert/update/
 -- delete policy, so users cannot mutate it). A manager who needs to explain a
 -- past hour ADDS a note (compliance_record_note) — the determination stands, the
--- note adds context. Retained ≥2 years (NAC 639.744 / proposed R113-24).
+-- note adds context. Retained ≥2 years (NAC 639.744).
 
 create table compliance_record (
   id uuid primary key default gen_random_uuid(),

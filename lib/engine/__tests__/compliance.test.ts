@@ -93,7 +93,7 @@ describe("deficiencyStreaks", () => {
     deficiency_reason: deficient ? "test" : null,
   });
 
-  it("triggers the board report after three consecutive deficient days", () => {
+  it("flags a sustained deficiency after three consecutive deficient days", () => {
     const rows = [
       row("2026-06-15", true),
       row("2026-06-16", true),
@@ -102,17 +102,17 @@ describe("deficiencyStreaks", () => {
     ];
     const result = deficiencyStreaks(rows);
     expect(result.streaks).toEqual([{ start: "2026-06-15", length: 3 }]);
-    expect(result.boardReportTriggered).toBe(true);
+    expect(result.sustainedDeficiency).toBe(true);
   });
 
-  it("non-consecutive deficient days do not trigger", () => {
+  it("non-consecutive deficient days are not a sustained deficiency", () => {
     const rows = [
       row("2026-06-15", true),
       row("2026-06-17", true),
       row("2026-06-19", true),
     ];
     const result = deficiencyStreaks(rows);
-    expect(result.boardReportTriggered).toBe(false);
+    expect(result.sustainedDeficiency).toBe(false);
     expect(result.streaks).toHaveLength(3);
   });
 });

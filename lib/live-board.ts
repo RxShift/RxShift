@@ -7,7 +7,7 @@ import "server-only";
 // affects the board and the alerts identically.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadPeriodBundle, toEngineRule, toEngineSegments } from "@/lib/schedule-data";
+import { loadPeriodBundle, engineRuleForLocation, toEngineSegments } from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
 import { nowInTimeZone, dateInTimeZone, demoClockMinutes } from "@/lib/dates";
 import { countsByStatus } from "@/lib/live-status-config";
@@ -121,9 +121,10 @@ export async function evaluateLiveLocations(
     );
     if (segments.length === 0) continue;
     const adjusted = adjustSegmentsForLive(segments, liveByStaff, countsCfg);
+    const location = bundle.locations.find((l) => l.id === period.location_id);
     const evals = evaluateZone(
       adjusted,
-      toEngineRule(bundle.ratioRule),
+      engineRuleForLocation(bundle.ratioRule, location, tenant),
       tenant.ratio_slot_minutes
     );
     const slot = currentSlotOf(evals.get(today) ?? [], nowMinutes);

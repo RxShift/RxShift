@@ -6,53 +6,47 @@ import ContactForm from "@/components/contact-form";
 export const metadata: Metadata = {
   title: "Nevada Pharmacy Compliance Scheduling | RxShift",
   description:
-    "RxShift automates the hourly compliance documentation Nevada's proposed R113-24 requires. Built for Nevada pharmacies. Currently piloting in Las Vegas.",
+    "RxShift enforces Nevada's pharmacist-to-tech ratio caps (NAC 639.250) on every shift and auto-generates a timestamped compliance record for Board inspections. Built for Nevada pharmacies. Currently piloting in Las Vegas.",
 };
 
-const REQUIREMENTS = [
-  {
-    bold: "Maintain hourly documentation",
-    rest: "naming each pharmacist and technician on duty",
-  },
-  {
-    bold: "Log every deficient hour",
-    rest: "when staffing falls below required minimums",
-  },
-  { bold: "Retain those records for two years", rest: "" },
-  {
-    bold: "Notify the Board",
-    rest: "after three consecutive days of deficient staffing",
-  },
-];
-
+// Current law (NAC 639.250) vs the PROPOSED rule R072-25 (public hearing June
+// 2026, not adopted). Only the current column is enforced today; R072-25 is
+// forward context, applied automatically if/when it's adopted.
 const RULES_TABLE: [string, string, string][] = [
-  ["Base ratio (non-hospital)", "1 RPh : 3 techs max", "Retained"],
-  ["With trainees", "1 tech + 2 trainees max", "1 tech + 2 trainees max"],
   [
-    "Volume minimum — pharmacists",
-    "None",
-    "2 RPhs at 20+ scripts/hr; +1 per additional 20/hr",
+    "Retail ratio cap",
+    "1 pharmacist : 3 technicians",
+    "1 pharmacist : 4 technicians (or 2 techs + 2 trainees)",
+  ],
+  ["Telepharmacy / remote / satellite", "1 : 3", "1 : 3 (unchanged)"],
+  [
+    "Solo-pharmacist staffing floor",
+    "Not specified",
+    "≥1 support staff on duty (≥2 with a drive-through)",
   ],
   [
-    "Volume minimum — techs",
-    "None",
-    "1 tech at 5–9 scripts/hr; 2 at 10–19; 3 at 20+; +1 per additional 20/hr",
+    "Technicians in training",
+    "1 tech + 2 trainees",
+    "2 techs + 2 trainees per pharmacist",
   ],
-  ["Hourly documentation", "Not required", "Required — every shift"],
-  ["Record retention", "Not specified", "2 years"],
-  ["Board notification", "Not required", "After 3 consecutive deficient days"],
+  [
+    "Daily prescription volume",
+    "Not specified",
+    "Volume thresholds (RxShift records the figure; never enforces a minimum)",
+  ],
+  ["Record retention", "2 years (NAC 639.744)", "2 years"],
 ];
 
 const SOLUTION_CARDS = [
   {
     eyebrow: "Ratio engine",
     heading: "Every shift, every rule applied.",
-    body: "RxShift applies Nevada's pharmacist-to-tech ratio rules to every schedule you build — and flags any deficient half-hour before you publish, so the gap gets fixed on the screen instead of on the floor.",
+    body: "RxShift applies Nevada's pharmacist-to-tech ratio caps (NAC 639.250) to every schedule you build — and flags any deficient half-hour before you publish, so the gap gets fixed on the screen instead of on the floor.",
   },
   {
     eyebrow: "Compliance Record",
-    heading: "The R113-24 record, auto-generated.",
-    body: "RxShift builds a timestamped hourly Compliance Record of what actually happened: pharmacist and tech names per hour, deficiency flags when coverage falls short, and an alert to your managers after three consecutive deficient days — the moment a board report may be required. It finalizes hour by hour from the published schedule and your team's live statuses, retained for two years and exportable on demand. RxShift never contacts the board; that decision stays inside your pharmacy.",
+    heading: "A timestamped record, auto-generated.",
+    body: "Every published schedule produces a timestamped hourly Compliance Record: who staffed the pharmacy each hour, deficiency flags when coverage falls short, and an export-ready log for Board inspections. It finalizes hour by hour from the schedule and your team's live statuses, retained two years. If deficient hours run several days in a row, RxShift alerts your own managers — it never contacts the board; that call stays inside your pharmacy.",
   },
   {
     eyebrow: "Zero extra work",
@@ -73,13 +67,13 @@ export default function NevadaPage() {
               Nevada pharmacies
             </p>
             <h1 className="mt-4 font-brand text-3xl font-bold leading-tight tracking-[-0.3px] text-navy sm:text-4xl">
-              Nevada&rsquo;s proposed staffing rule requires daily
-              documentation. RxShift generates it automatically.
+              Nevada requires documented compliance. RxShift generates the
+              record automatically.
             </h1>
             <p className="mx-auto mt-5 max-w-[620px] font-body text-lg leading-[1.7] text-steel">
-              Proposed rule R113-24 creates a daily documentation burden that
-              spreadsheets and generic scheduling tools cannot meet. RxShift
-              was built for exactly this.
+              Nevada law (NAC 639.250) sets strict pharmacist-to-tech ratio
+              caps. RxShift enforces them on every shift you build — flagging
+              violations before you publish, not after an inspector arrives.
             </p>
             <a
               href="#demo-form"
@@ -90,40 +84,34 @@ export default function NevadaPage() {
           </div>
         </section>
 
-        {/* What R113-24 requires */}
+        {/* What RxShift does with current law */}
         <section className="bg-cloud px-6 py-16 sm:py-20">
           <div className="mx-auto max-w-[840px]">
             <p className="font-brand text-[11px] font-bold uppercase tracking-[1.8px] text-amber">
-              The rule
+              How it works
             </p>
             <h2 className="mt-3 font-brand text-[26px] font-bold text-navy sm:text-[30px]">
-              The documentation requirement is the issue.
+              Current law, enforced on every shift.
             </h2>
-            <p className="mt-4 font-body text-base leading-[1.7] text-steel">
-              Nevada&rsquo;s Board of Pharmacy has been advancing minimum
-              staffing rules that go beyond ratio compliance. Under proposed
-              R113-24, the managing pharmacist must:
-            </p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {REQUIREMENTS.map((r) => (
-                <div
-                  key={r.bold}
-                  className="rounded-[10px] border-l-[3px] border-l-amber bg-white p-5 shadow-[0_1px_3px_rgba(28,47,94,0.08)]"
-                >
-                  <p className="font-body text-sm leading-[1.6] text-navy">
-                    <strong>{r.bold}</strong>
-                    {r.rest ? ` ${r.rest}` : ""}
-                  </p>
-                </div>
-              ))}
+            <div className="mt-4 space-y-4 font-body text-base leading-[1.7] text-steel">
+              <p>
+                Nevada law (NAC 639.250) sets strict pharmacist-to-tech ratio
+                caps. RxShift enforces them on every shift you build — flagging
+                violations before you publish, not after an inspector arrives.
+              </p>
+              <p>
+                Every published schedule produces a timestamped compliance
+                record: who staffed the pharmacy each hour, deficiency flags,
+                and an export-ready log for Board inspections.
+              </p>
+              <p>
+                We&rsquo;re tracking proposed rule{" "}
+                <strong className="text-navy">R072-25</strong>, which had a
+                public hearing in June 2026. It is not yet adopted — when it
+                passes, RxShift will update automatically. You can preview it
+                today by turning it on in Settings.
+              </p>
             </div>
-            <p className="mt-6 font-body text-base leading-[1.7] text-steel">
-              This isn&rsquo;t a quarterly audit requirement. It&rsquo;s a
-              daily operational burden — one that creates new administrative
-              work on every shift, every day your pharmacy is open. A managing
-              pharmacist running two shifts a day at a busy retail location is
-              looking at 14 hourly log entries before the week is out.
-            </p>
           </div>
         </section>
 
@@ -134,18 +122,18 @@ export default function NevadaPage() {
               The rules
             </p>
             <h2 className="mt-3 font-brand text-[26px] font-bold text-navy sm:text-[30px]">
-              Nevada&rsquo;s staffing requirements, current and proposed.
+              Nevada&rsquo;s staffing rules, current and proposed.
             </h2>
             <div className="mt-8 overflow-x-auto rounded-[10px] border border-line shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-cloud">
                     <th className="px-4 py-3 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel"></th>
-                    <th className="px-4 py-3 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
-                      Current (NAC 639.250)
-                    </th>
                     <th className="px-4 py-3 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-navy">
-                      Proposed R113-24
+                      Current — NAC 639.250 (enforced)
+                    </th>
+                    <th className="px-4 py-3 font-brand text-[11px] font-bold uppercase tracking-[0.5px] text-steel">
+                      Proposed — R072-25 (not adopted)
                     </th>
                   </tr>
                 </thead>
@@ -155,10 +143,10 @@ export default function NevadaPage() {
                       <td className="px-4 py-3 font-body text-[13px] font-medium text-navy">
                         {label}
                       </td>
-                      <td className="px-4 py-3 font-body text-[13px] text-steel">
+                      <td className="px-4 py-3 font-body text-[13px] text-navy">
                         {current}
                       </td>
-                      <td className="px-4 py-3 font-body text-[13px] text-navy">
+                      <td className="px-4 py-3 font-body text-[13px] text-steel">
                         {proposed}
                       </td>
                     </tr>
@@ -167,14 +155,13 @@ export default function NevadaPage() {
               </table>
             </div>
             <p className="mt-4 font-body text-[13px] leading-[1.7] text-steel">
-              Source: NRS 639.1371, NAC 639.250, Proposed R113-24. R113-24 was
-              noticed for hearing in 2025 and remains in active rulemaking.
-              RxShift&rsquo;s documentation engine already produces the hourly
-              records, the two-year retention, and the three-consecutive-day
-              flag the rule&rsquo;s reporting requirement is built around —
-              alerting <em>your managers</em>, never the board; any report is
-              the pharmacy&rsquo;s decision to make. Volume-based staffing
-              minimums are in active development.
+              Source: NRS 639.1371 and NAC 639.250 (current, enforced), plus
+              proposed rule R072-25. R072-25 had its public hearing in June 2026
+              and is <em>not yet adopted</em>. RxShift enforces current law
+              today; the moment R072-25 is adopted, RxShift will apply it
+              automatically — or you can preview it now with a single toggle in
+              Settings. RxShift records expected prescription volume for
+              planning but never enforces a volume minimum.
             </p>
           </div>
         </section>
@@ -196,11 +183,10 @@ export default function NevadaPage() {
                 differ between hospital and non-hospital settings.
               </p>
               <p>
-                R113-24 doesn&rsquo;t ask for a schedule. It asks for a
-                Compliance Record — a timestamped hourly record that accounts for
-                every position, every hour, and every deficiency. Building
-                that manually adds meaningful administrative time to every
-                shift.
+                A Board inspection asks for more than a schedule — it asks for a
+                timestamped hourly record that accounts for every position,
+                every hour, and every deficiency. Building that by hand adds
+                meaningful administrative time to every shift.
               </p>
               <p>
                 When a board inspector requests documentation, &ldquo;we use{" "}

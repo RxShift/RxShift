@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { evaluateZone, minutesToTime, segmentCounts } from "@/lib/engine/ratio";
+import { buildEngineRule, type RuleContext } from "@/lib/engine/rule";
 import { evaluateConstraints, detectDoubleBookings } from "@/lib/engine/constraints";
 import {
   generateComplianceRecord,
@@ -354,14 +355,34 @@ export function validateRangeBundle(
   return validateBundle(pseudo, tenant);
 }
 
-/** Full rule subset for the engine — keeps additive-formula fields intact. */
-export function toEngineRule(rule: RatioRule) {
-  return {
-    max_techs_per_pharmacist: rule.max_techs_per_pharmacist,
-    formula: rule.formula,
-    additive_first_techs: rule.additive_first_techs,
-    additive_additional_techs: rule.additive_additional_techs,
-  };
+/**
+ * Full rule subset for the engine — keeps additive-formula fields intact, and
+ * applies the state/location-aware overlays:
+ *  • Tennessee (rule.state === 'TN'): certified techs are uncapped.
+ *  • Nevada R072-25 (toggle on + retail location): 4-tech ceiling + 2-trainee
+ *    sublimit + the solo-pharmacist floor (1, or 2 with a drive-through).
+ * With no ctx (or a non-retail location / toggle off), this returns exactly the
+ * pre-R072-25 behavior, so existing tenants are unchanged.
+ */
+export function toEngineRule(rule: RatioRule, ctx?: RuleContext) {
+  return buildEngineRule(rule, ctx);
+}
+
+/** Build the engine rule for a specific location, applying the tenant's R072-25
+ *  toggle + the location's type/drive-through. Use this everywhere ratio is
+ *  evaluated per location so the floor/ceiling overlays are consistent. */
+export function engineRuleForLocation(
+  rule: RatioRule,
+  location:
+    | Pick<Location, "location_type" | "has_drive_through">
+    | undefined,
+  tenant: Tenant
+) {
+  return toEngineRule(rule, {
+    locationType: location?.location_type,
+    hasDriveThrough: location?.has_drive_through,
+    r072Enabled: tenant.nevada_r072_25,
+  });
 }
 
 export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
@@ -385,6 +406,8 @@ export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
           id: person.id,
           full_name: person.full_name,
           ratio_type: person.ratio_type,
+          is_trainee: person.staff_type === "tech_in_training",
+          certified: person.certified,
         },
         work_type: wt
           ? {
@@ -409,6 +432,7 @@ export function validateBundle(
   const ratioFlags: RatioFlagOut[] = [];
   const deficientCells: { [locationId: string]: string[] } = {};
   const locationName = new Map(bundle.locations.map((l) => [l.id, l.name]));
+  const locationById = new Map(bundle.locations.map((l) => [l.id, l]));
 
   if (tenant.has_ratio && bundle.ratioRule) {
     // Ratio is per LOCATION: all counting staff at a location count together.
@@ -421,7 +445,7 @@ export function validateBundle(
     for (const [locationId, locSegs] of byLocation) {
       const evals = evaluateZone(
         locSegs,
-        toEngineRule(bundle.ratioRule),
+        engineRuleForLocation(bundle.ratioRule, locationById.get(locationId), tenant),
         tenant.ratio_slot_minutes
       );
       for (const [date, slots] of evals) {
@@ -471,7 +495,7 @@ export function buildComplianceRecords(
     if (locSegs.length === 0) continue;
     const evals = evaluateZone(
       locSegs,
-      toEngineRule(bundle.ratioRule),
+      engineRuleForLocation(bundle.ratioRule, location, tenant),
       tenant.ratio_slot_minutes
     );
     out.push({

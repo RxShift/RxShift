@@ -7,6 +7,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import {
   loadAllLocationsBundle,
   loadPeriodBundle,
+  engineRuleForLocation,
   toEngineSegments,
   validateRangeBundle,
   type RatioFlagOut,
@@ -111,9 +112,8 @@ async function calloutGap(
   const bundle = await loadPeriodBundle(shift.schedule_period_id);
   if (!bundle?.ratioRule) return null;
 
-  const rule = {
-    max_techs_per_pharmacist: bundle.ratioRule.max_techs_per_pharmacist,
-  };
+  const location = bundle.locations.find((l) => l.id === shift.location_id);
+  const rule = engineRuleForLocation(bundle.ratioRule, location, ctx.tenant);
   const all = toEngineSegments(bundle).filter(
     (s) => s.location_id === shift.location_id && s.date === shift.date
   );

@@ -14,7 +14,7 @@ import { evaluateConstraints } from "@/lib/engine/constraints";
 import {
   loadAllLocationsBundle,
   loadPeriodBundle,
-  toEngineRule,
+  engineRuleForLocation,
   toEngineSegments,
   validateBundle,
   type PeriodBundle,
@@ -432,10 +432,11 @@ export async function aiScheduleCommand(
         list.push(s);
         byLoc.set(s.location_id, list);
       }
-      for (const [, locSegs] of byLoc) {
+      for (const [locId, locSegs] of byLoc) {
+        const location = bundle.locations.find((l) => l.id === locId);
         const evals = evaluateZone(
           locSegs,
-          toEngineRule(bundle.ratioRule),
+          engineRuleForLocation(bundle.ratioRule, location, ctx.tenant),
           ctx.tenant.ratio_slot_minutes
         );
         for (const [, slots] of evals)

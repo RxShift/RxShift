@@ -23,6 +23,13 @@ export interface RecordHour {
   detail: ComplianceRecordRow;
   notes: { id: string; note: string; author: string; created_at: string }[];
 }
+
+/** Distinguish the two kinds of ratio deficiency for the reader. */
+const FLAG_LABEL: Record<string, string> = {
+  ceiling: "Over ceiling (too many techs)",
+  floor: "Under floor (understaffed)",
+  both: "Over ceiling + under floor",
+};
 export interface RecordLocation {
   locationId: string;
   locationName: string;
@@ -219,6 +226,11 @@ export default function ComplianceRecordView({
                         >
                           {h.ratio_status}
                         </Badge>
+                        {h.detail.flag_type && FLAG_LABEL[h.detail.flag_type] && (
+                          <span className="ml-1.5 font-brand text-[10px] font-bold uppercase tracking-[0.5px] text-deficiency">
+                            {FLAG_LABEL[h.detail.flag_type]}
+                          </span>
+                        )}
                         {h.deficiency_reason && (
                           <p className="mt-1 font-body text-[11px] text-deficiency">
                             {h.deficiency_reason}

@@ -22,6 +22,10 @@ const tenantSchema = z.object({
   ratio_slot_minutes: z.coerce.number().pipe(z.union([z.literal(15), z.literal(30), z.literal(60)])),
   has_ratio: z.coerce.boolean(),
   default_break_minutes: z.coerce.number().int().min(0).max(240).default(30),
+  // Nevada R072-25 (proposed; June 2026 hearing; not yet adopted). When on,
+  // retail NV locations use the 4-tech ceiling + 2-trainee sublimit + the
+  // solo-pharmacist floor. Off by default — only NAC 639.250 is current law.
+  nevada_r072_25: z.coerce.boolean().default(false),
 });
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {
@@ -253,6 +257,19 @@ const SCHEMAS: Record<EntityName, z.ZodType> = {
     name: z.string().min(1).max(120),
     address: z.string().max(300).nullish(),
     operating_hours: z.record(z.string(), z.union([z.object({ open: z.string(), close: z.string() }), z.null()])).nullish(),
+    // Drives the R072-25 overlay: only retail locations get the 4-tech ceiling
+    // + floor; telepharmacy/institutional keep the base cap.
+    location_type: z.enum(["retail", "telepharmacy", "institutional"]).default("retail"),
+    // A drive-through raises the solo-pharmacist floor to 2 support staff.
+    has_drive_through: z.coerce.boolean().default(false),
+    // Informational only — collected + displayed on the schedule, never enforced.
+    expected_rx_mon: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_tue: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_wed: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_thu: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_fri: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_sat: z.coerce.number().int().min(0).max(100000).nullish(),
+    expected_rx_sun: z.coerce.number().int().min(0).max(100000).nullish(),
   }),
   // Departments are tenant-level groupings (compounding, hospice, front counter).
   // They don't affect ratio and aren't tied to a location.

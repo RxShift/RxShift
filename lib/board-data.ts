@@ -14,7 +14,7 @@ import type {
 } from "@/lib/types";
 import {
   loadPeriodBundle,
-  toEngineRule,
+  engineRuleForLocation,
   toEngineSegments,
 } from "@/lib/schedule-data";
 import {
@@ -152,7 +152,7 @@ export async function buildBoardView(
 
       const evals = evaluateZone(
         adjusted,
-        toEngineRule(bundle.ratioRule),
+        engineRuleForLocation(bundle.ratioRule, location, tenant),
         tenant.ratio_slot_minutes
       );
       const currentSlot = currentSlotOf(evals.get(today) ?? [], nowMinutes);
@@ -232,7 +232,7 @@ export async function buildBoardView(
           workType: s.work_type?.name ?? null,
         }));
 
-      const engineRule = toEngineRule(bundle.ratioRule);
+      const engineRule = engineRuleForLocation(bundle.ratioRule, location, tenant);
       locationCards.push({
         locationId: location.id,
         locationName: location.name,

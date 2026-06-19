@@ -2,7 +2,7 @@
 
 > The single, accurate source for running a demo. Built because the old demo script drifted from reality
 > (it claimed live statuses live on the Dashboard — they don't; they're on the **Live Board** and
-> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 18, 2026.
+> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 19, 2026.
 
 ---
 
@@ -18,9 +18,10 @@ it is NOT a platform admin and has no Admin Console. Also: the whole **Platform 
    expand its controls.
 2. **Fresh data?** In that expanded row → **Restore demo data** (or `npx tsx scripts/seed-mesa-vista.ts
    --reset`). This wipes + re-seeds and **re-anchors every date to the current week**, so the demo always
-   looks current. Everything comes back: departments, the deficiency story, the overtime, Jerome's amber
-   ring — **and the as-worked Compliance Record is finalized for the elapsed week (~266 hours), with the
-   Henderson Thursday 2–4 PM gap recorded as an actual deficiency and Frank's annotation attached.**
+   looks current. Everything comes back: departments, the two deficiency stories, the overtime, Jerome's amber
+   ring — **and the as-worked Compliance Record is finalized for the elapsed week (~294 hours), with the
+   Henderson Thursday 2–4 PM ceiling gap AND the North Las Vegas Tuesday 9–10 AM floor gap recorded as actual
+   deficiencies, each with a manager annotation attached.**
 3. **Demoing outside 9–5 Pacific?** Same expanded row → **Demo clock (after-hours demos)** → type a time
    (e.g. `13:00`) → **Pin time**. The Live Board / My Schedule / live status then evaluate "now" at that
    time on today's real date, so staff show on shift. Click **Use real time** when done. (Real customers
@@ -115,29 +116,42 @@ after it passes — reconstructed from the published schedule adjusted by your t
 
 ---
 
-## 3. The built-in deficiency story (Mesa Vista, current week, Henderson, Thursday)
+## 3. The built-in deficiency stories (Mesa Vista, current week) — two distinct kinds
 
-Dr. Sunita Patel left at **2:00 PM** on a family emergency; the float pharmacist Dr. Owen Fitzgerald was
-held at Spring Valley until **4:00 PM** — so 2:00–4:00 the technicians kept the counter open with no
-pharmacist. The engine flags exactly those slots **deficient**. It's one isolated day (no 3-consecutive-day
-board-report trigger). See it on the **Compliance Record** (Henderson, Thursday) and, with the Demo clock
-pinned into that window, on the **Live Board**.
+R072-25 is **on** for the demo tenant, so the Compliance Record shows both kinds of deficiency, each labeled:
+
+**Over the ceiling (Henderson, Thursday 2–4 PM).** Dr. Sunita Patel left at **2:00 PM** on a family
+emergency; the float pharmacist Dr. Owen Fitzgerald was held at Spring Valley until **4:00 PM** — so 2:00–4:00
+the technicians kept the counter open with no pharmacist. Those hours flag **deficient → "Over ceiling"** with
+Frank's annotation attached. With the Demo clock pinned into that window, it also shows on the **Live Board**.
+
+**Under the floor (North Las Vegas, Tuesday 9–10 AM).** A tech called out, so Dr. Chang opened solo with no
+support staff. Under R072-25 a single pharmacist needs at least one technician on duty, so 9:00–10:00 flags
+**deficient → "Under floor (understaffed)"** — a different failure mode from Henderson, with its own note.
+
+Both are isolated incidents — **not** a sustained deficiency. RxShift never contacts a board. See them on the
+**Compliance Record** (Henderson Thursday; North Las Vegas Tuesday).
 
 ---
 
 ## 4. Mesa Vista demo data (what's seeded)
 
 - **Fictional only** — invented company + `@mesavistarx.com` people (never real customer names).
-- **3 Nevada locations:** Spring Valley (flagship — 3 pharmacists, so it carries real step-away headroom),
-  Henderson (the deficiency story), North Las Vegas.
-- **15 staff**, ~6 weeks of schedule anchored to the current week.
+- **3 Nevada locations (all retail):** Spring Valley (flagship — 3 pharmacists + a **drive-through**, so it
+  carries real step-away headroom and stays compliant under the R072-25 floor of 2), Henderson (the **ceiling**
+  deficiency story), North Las Vegas (the **floor** deficiency story).
+- **R072-25 is ON** (`nevada_r072_25 = true`): retail 4-tech ceiling, 2-trainee sublimit, solo-pharmacist floor.
+- **15 staff**, ~6 weeks of schedule anchored to the current week. Tyler Brooks + Miguel Santos are
+  **technicians in training** (`staff_type`); each location carries **expected Rx** volumes (shown on the
+  schedule header, informational only).
 - **4 work types:** Dispensing + Training (count), Inventory (doesn't count), Meeting (doesn't count).
 - **4 departments:** Retail Counter, Compounding, Specialty, Drive-Thru (area tags for the schedule filter;
   they don't affect the ratio).
 - **Requests seeded:** an approved PTO + a pending PTO; a logged callout + override tied to the Henderson story.
-- **Compliance Record (as-worked):** the seed finalizes the elapsed week (~266 immutable hourly rows across
+- **Compliance Record (as-worked):** the seed finalizes the elapsed week (~294 immutable hourly rows across
   the 3 locations); Henderson **Thursday 14:00 + 15:00 are recorded DEFICIENT** ("3 technicians counting with
-  no pharmacist on duty") with **Frank DiMaggio's annotation** (Patel family emergency) attached. A few demo
+  no pharmacist on duty", **flag_type = ceiling**) and North Las Vegas **Tuesday 09:00 DEFICIENT** ("solo
+  pharmacist, no technician", **flag_type = floor**) — each with a manager annotation attached. A few demo
   emails sit in the platform email log (schedule published, deficiency alert, PTO approved).
 - **Demo logins:** `demo@rxshift.io` (Frank, owner), `patricia@rxshift.io` (managing pharmacist),
   `jerome@rxshift.io` (technician).
@@ -158,8 +172,10 @@ config + the demo logins are preserved. Run it anytime the demo data looks stale
   page exports the same as-worked record as xlsx over a date range.
 - Ask AI works on **one location's current week** at a time (switch the location pill to re-scope).
 - Schedule builder + Settings are **desktop-only** (My Schedule + Requests are the mobile surfaces).
-- Multi-state / per-location ratio rules, scripts-per-hour volume minimums, trainee sub-limits, and
-  Tennessee cert-dependent enforcement are **roadmap**, not shipped.
+- **Shipped June 19, 2026:** Nevada R072-25 (4-tech ceiling, trainee sub-limit, solo-pharmacist floor) behind
+  the `nevada_r072_25` toggle, and Tennessee cert-dependent enforcement (CPhT uncapped). **Still roadmap:**
+  multi-state / per-location ratio rules in one tenant, and any *enforcement* of prescription-volume minimums
+  (R072-25 volume is collect-only — expected Rx is shown, never enforced).
 
 ---
 
@@ -188,5 +204,7 @@ extend/shorten with before→after; step-away line hides once non-counting; seed
   **as-worked Compliance Record** (with a deficient hour + an attached note), not the old schedule-derived
   view. The schedule/board/dashboard screenshots are still accurate. Regenerate via
   `scripts/capture-screenshots.ts` after a reset. The marketing pages still reference that filename.
-- **Legal:** Terms/Privacy 2-year-retention + R113-24 wording is now *accurate to the real record* — have
-  Susie / the attorney confirm it before it goes live.
+- **Legal / regulatory:** Terms/Privacy 2-year-retention wording, and the Nevada page's framing of current
+  law (NAC 639.250) vs proposed **R072-25** (hearing June 2026, not adopted), are *accurate to the real
+  record* — have Susie / the attorney confirm before it goes live. Only current law is claimed; R072-25 is
+  forward context.

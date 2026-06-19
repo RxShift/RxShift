@@ -14,7 +14,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScheduleCycle, Shift, ShiftSegment } from "@/lib/types";
 import { buildComplianceRecords, loadPeriodBundle } from "@/lib/schedule-data";
-import { deficiencyStreaks } from "@/lib/engine/compliance";
+import { deficiencyStreaks, SUSTAINED_DEFICIENCY_DAYS } from "@/lib/engine/compliance";
 import { sendNotificationEmail } from "@/lib/email";
 import {
   ActionError,
@@ -352,12 +352,13 @@ export async function publishPeriod(
         location_id: location.id,
         rows,
       });
-      // 3+ consecutive deficient days: alert the pharmacy's OWN managers.
-      // RxShift never contacts any board — whether to report is the
-      // pharmacy's decision; this makes sure they know the moment the
-      // threshold is crossed.
+      // A sustained run of deficient days: alert the pharmacy's OWN managers.
+      // RxShift never contacts any board — whether to report anything is the
+      // pharmacy's decision; this just makes sure managers see it early.
       const streaks = deficiencyStreaks(rows);
-      for (const s of streaks.streaks.filter((x) => x.length >= 3)) {
+      for (const s of streaks.streaks.filter(
+        (x) => x.length >= SUSTAINED_DEFICIENCY_DAYS
+      )) {
         streakAlerts.push(
           `${location.name}: ${s.length} consecutive deficient days starting ${s.start}`
         );
@@ -371,9 +372,9 @@ export async function publishPeriod(
         .eq("tenant_id", ctx.tenantId)
         .in("role", ["owner_admin", "scheduler", "supervisor"]);
       const lines = [
-        "This published schedule contains 3 or more consecutive deficient days — the threshold at which a board report may be required:",
+        `This published schedule contains ${SUSTAINED_DEFICIENCY_DAYS} or more consecutive deficient days — a sustained deficiency your managers should review:`,
         ...streakAlerts,
-        "Review the compliance record in RxShift. Whether and how to report is your pharmacy's decision — RxShift never contacts the board.",
+        "Review the Compliance Record in RxShift. Whether and how to act on this is your pharmacy's decision — RxShift never contacts any board.",
       ];
       for (const m of managers ?? []) {
         await supabase.from("notification").insert({
@@ -391,7 +392,7 @@ export async function publishPeriod(
           await sendNotificationEmail(
             ctx.tenant,
             addr,
-            "Deficiency streak alert — a board report may be required",
+            "Sustained deficiency alert — please review the Compliance Record",
             lines
           );
         }

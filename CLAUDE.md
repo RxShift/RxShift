@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 18, 2026
+# Last updated: June 19, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -186,7 +186,7 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 - **Login aliases:** one account, multiple sign-in emails (`login_alias` table, `/api/auth/login-link`, `/app/auth/confirm` token-hash flow — survives Outlook link scanners). Manage via `scripts/provision-user.ts --add-alias`.
 - **Unpaid breaks:** `shift.break_minutes` + `tenant.default_break_minutes`; paid-hours math subtracts per shift; ratio coverage untouched.
 - **Internal CRM:** `/app/admin/leads` (platform admins only; service-role tables `leads`/`lead_notes`). Website forms auto-capture leads with source page; duplicates merge via notes.
-- **Website:** interactive `/pricing` calculator, `/nevada` R113-24 deep-dive, `/states/california` + `/states/tennessee` stubs (Coming Soon), `/vs/when-i-work` battle card, States nav dropdown, columned footer. Marketing copy is HONEST about engine scope: volume minimums, certified/non-certified, trainee limits are ROADMAP, not shipped.
+- **Website:** interactive `/pricing` calculator, `/nevada` regulatory deep-dive, `/states/california` + `/states/tennessee` stubs (Coming Soon), `/vs/when-i-work` battle card, States nav dropdown, columned footer. (Marketing scope was later updated — see the June 19, 2026 R072-25 section: certified/non-certified, trainee limits, and the floor are now shipped behind the toggle; volume remains collect-only.)
 - **Mesa Vista Pharmacy demo tenant:** fully fictional, 3 NV locations, 15 staff (Spring Valley has 3 pharmacists so it carries real ratio headroom — for the "who can step away?" demo), 7 date-anchored weeks, engine-real Henderson Thursday 2–4 PM deficiency. Login: `demo@rxshift.io` (alias → Frank DiMaggio, catch-all delivers to Jamison). Reset: admin console "Restore demo data" or `npx tsx scripts/seed-mesa-vista.ts --reset` (core in `lib/demo/mesa-vista.ts`).
 
 **Spec workflow:** feature specs land in `docs/specs/`; once implemented they move to `docs/specs/_archive/` (see `docs/specs/README.md`). Archived specs are history — code + this file are the source of truth. Durable scope decisions live in `docs/decisions.md`.
@@ -225,7 +225,7 @@ Almost everything qualifies. When in doubt, update. Skip only for:
   block renderer) — editing stays per-location (periods/zones/compliance are per-location).
 - **Live board + My Schedule:** per-person work-type color dots (+ "Other" group on the
   board); colored shift cells on `/app/me`.
-- Marketing pricing page: removed the R113-24 roadmap paragraph.
+- Marketing pricing page: removed the proposed-rule roadmap paragraph.
 
 ## Schedule UX + live board + branding + help pass (built June 13, 2026)
 
@@ -498,25 +498,54 @@ The compliance audit is now real. Three distinct artifacts, named consistently a
   **Idempotent.** Cron `/api/cron/finalize-compliance` runs **daily** (`vercel.json`); switch to hourly
   (`5 * * * *`) on Vercel Pro — same code. Managers add after-the-fact notes via `appendComplianceNote`
   (`compliance_record_note`, mirrors `activity_log_note`); the determination is never edited.
-- **Demo:** the Mesa Vista seed finalizes the elapsed week (≈266 hours) and annotates the actual Henderson
-  Thursday 2–4 PM gap (Patel family-emergency). `compliance_record` + `_note` are in the reset clear list.
+- **Demo:** the Mesa Vista seed finalizes the elapsed week (~290 hours; varies by which weekday the reset
+  runs) and annotates the deficiency stories. `compliance_record` + `_note` are in the reset clear list. (As of
+  the June 19 R072-25 build there are two deficiencies — Henderson ceiling + North Las Vegas floor; see that
+  section below.)
 - **Don't regress:** `/app/log` is the as-worked audit; the schedule projection is the **Coverage Forecast**,
   not "the compliance record." The engine stays the single source of compliance truth.
 - **Open:** hourly cadence needs Pro; "actual" is inferred from schedule + live status (no clock-in/out —
   annotations correct edge cases; 30-min slot granularity; overnight live-overlay is a v1 limitation). Legal
-  copy (Terms/Privacy retention, R113-24) is accurate but should get Susie/attorney review before publish.
+  copy (Terms/Privacy retention) is accurate but should get Susie/attorney review before publish.
   Implemented spec archived at `docs/specs/_archive/as-worked-compliance.md`; rationale in `docs/decisions.md`.
+
+## Nevada R072-25 + Tennessee — BUILT June 19, 2026
+
+Nevada's proposed **R072-25** (public hearing June 4, 2026; **not adopted**) supersedes R113-24. Implemented
+behind a tenant toggle, plus Tennessee, the sustained-deficiency reframe, and a full Nevada marketing rewrite.
+**Full build notes: `docs/rxshift-r072-25-build.md`.**
+
+- **Engine:** pure `lib/engine/rule.ts` `buildEngineRule(rule, ctx)` is the ONE place the state/location
+  overlays live (server + tsx-safe finalizer both use it). NV retail + `tenant.nevada_r072_25` → **4-tech
+  ceiling** (or 2 techs + 2 trainees) + a **solo-pharmacist floor** (≥1 support, ≥2 with a drive-through).
+  **TN** (`ratio_rule.state === 'TN'`) → 6-tech cap with **certified (CPhT) techs uncapped**. `evaluateZone`
+  emits `flag_type` (`ceiling` | `floor` | `both`), rolled up to `compliance_record.flag_type`. Toggle off /
+  retail / non-TN reproduces the prior behavior exactly. New tests:
+  `lib/engine/__tests__/floor-and-r072.test.ts`. Pass per-location context to the engine via
+  `engineRuleForLocation(rule, location, tenant)` — don't call the engine with a bare cap.
+- **Schema (migration 0032):** `location.location_type` (retail/telepharmacy/institutional),
+  `location.has_drive_through`, `location.expected_rx_mon..sun` (informational — Decision 4, never enforced);
+  `staff.staff_type` (pharmacist/tech/tech_in_training); `tenant.nevada_r072_25`; `compliance_record.flag_type`.
+  Migration **0033** refreshed the `compliance-record` help article + fixed stale "ratio zone" wording.
+- **Sustained deficiency:** `deficiencyStreaks` → `sustainedDeficiency` (threshold `SUSTAINED_DEFICIENCY_DAYS`,
+  default 3). No "board report" language — it's an internal heads-up; RxShift never contacts a board.
+- **Marketing:** `/nevada` leads with **NAC 639.250** (current law, enforced); R072-25 is forward context
+  only. **Zero "R113-24"** in code or the live help corpus. No hourly-doc mandate, no volume enforcement.
+- **Demo:** Mesa Vista has R072-25 on, Spring Valley drive-through, two `tech_in_training`, and two distinct
+  current-week deficiencies — **ceiling** (Henderson Thu 2–4 PM) + **floor** (North Las Vegas Tue 9–10 AM).
+- **Review flag:** R072-25 is *proposed, not adopted* — only NAC 639.250 / CA BPC 4115 / TN 1140-02-.02 are
+  claimed as current law. Nevada positioning + Terms/Privacy wording want Susie/attorney sign-off.
 
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
 - [ ] **Website interactive demo / screenshots** — UNBLOCKED by Mesa Vista demo tenant. Format decision pending (screenshots, video, or interactive embed). Homepage/pricing have no product visuals yet.
-- [ ] **Compliance engine roadmap** (marketing frames these as roadmap): scripts-per-hour volume minimums (R113-24), certified vs non-certified tech fields + ratio logic, trainee supervision sub-limits (`ratio_rule.trainee_sublimits` JSONB exists but is unread).
+- [x] **Compliance engine roadmap** — SHIPPED June 19, 2026 (R072-25 build): certified vs non-certified tech logic (Tennessee), trainee supervision sub-limits (R072-25), and the solo-pharmacist floor are all in the engine behind the `nevada_r072_25` toggle / TN state. Volume thresholds (Sec 2.2) remain **collect-only** by design (Decision 4) — expected Rx is shown, never enforced.
 - [ ] Owner-facing alias management UI + shared rate limiting on `/api/auth/login-link` and `/api/contact` — before public launch.
 - [ ] CRM v2 polish after Susie uses it (no pagination, no stage analytics, client-side filter only — deliberately basic for now).
 - [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account. The Vercel paid plan also **unlocks sub-daily cron cadence** — only then change `/api/cron/live-ratio-check` in `vercel.json` to `* * * * *` for near-real-time live out-of-ratio email alerts (Hobby caps crons at daily and rejects the deploy otherwise).
 - [ ] **Browser/visual walkthrough of the June 13 surfaces before the next demo** — create-next-period, sticky headers, view selector + published/draft cutoff, Settings → Statuses, live alert path, branding (color + logo, both modes), help (tenant vs platform-admin). Build + tests are green; this is the visual pass.
-- [ ] Tennessee cert-dependent ratio enforcement — BLOCKED on TN's actual rule (two research sources contradict; see docs/decisions.md). CPhT tracking already shipped.
+- [x] Tennessee cert-dependent ratio enforcement — SHIPPED June 19, 2026 (per Tenn. Comp. R. & Regs. 1140-02-.02: 6 non-certified techs per pharmacist, certified/CPhT uncapped). Verify the exact board language before a TN customer relies on it.
 - [ ] Fill in legal entity name, address, governing law/venue in `/terms` + `/privacy` before first customer.
 - [ ] Delete test CRM leads: "Verification Pharmacy" (crm-test@rxshift.io) and "Branded Email Test Pharmacy" (email-test@rxshift.io).
 - [x] README.md rewritten — done June 13, 2026.
