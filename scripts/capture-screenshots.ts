@@ -148,10 +148,31 @@ async function loginAsFrank(page: Page) {
   await page.waitForURL(/\/app\//, { timeout: 20000 });
 }
 
-async function shot(page: Page, path: string, file: string, fullPage = false) {
+async function shot(
+  page: Page,
+  path: string,
+  file: string,
+  opts: { fullPage?: boolean; scrollToText?: string; offsetTop?: number } = {}
+) {
   await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
-  await page.screenshot({ path: join(OUT, file), type: "jpeg", quality: 92, fullPage });
+  // Optionally frame a specific row instead of the top of the page — e.g. land
+  // the Compliance Record shot on the deficient hour + its annotation, which
+  // otherwise sit below the fold.
+  if (opts.scrollToText) {
+    try {
+      const target = page.getByText(opts.scrollToText, { exact: false }).first();
+      await target.scrollIntoViewIfNeeded({ timeout: 3000 });
+      const box = await target.boundingBox();
+      if (box) {
+        await page.evaluate((dy) => window.scrollBy(0, dy), box.y - (opts.offsetTop ?? 200));
+        await page.waitForTimeout(300);
+      }
+    } catch {
+      // anchor not found — fall back to the default top-of-page shot
+    }
+  }
+  await page.screenshot({ path: join(OUT, file), type: "jpeg", quality: 92, fullPage: !!opts.fullPage });
   console.log("captured", file);
 }
 
@@ -238,9 +259,12 @@ async function main() {
     await shot(
       page,
       `/app/log?${recordDate ? `date=${recordDate}&` : ""}screenshot=true`,
-      "compliance-record.jpg"
+      "compliance-record.jpg",
+      // Frame the deficient hour + its inline annotation (the feature's point),
+      // not the all-compliant rows at the top of the day.
+      { scrollToText: "Over ceiling", offsetTop: 230 }
     );
-    await shot(page, "/app/dashboard?screenshot=true", "dashboard.jpg", true);
+    await shot(page, "/app/dashboard?screenshot=true", "dashboard.jpg", { fullPage: true });
     await shot(page, "/app/board?screenshot=true", "live-board.jpg");
 
     await captureHeadroomGif(page);
