@@ -7,6 +7,55 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-19 — Pre-QA cleanup: QA-found bugs, copy, attribution, screenshots
+
+Applied the fixes from the CoWork full product + demo + website QA pass (report archived at
+`docs/qa/2026-06-19-full-product-demo-qa.md`) ahead of the next QA run. All verified live on localhost:3200.
+
+### Shipped
+- **Coverage Forecast dropdown routing (bug):** the period selector in `components/app/log/compliance-view.tsx`
+  pushed to `/app/log` (the Compliance Record), so changing period/location on `/app/coverage-forecast`
+  bounced you off the forecast. Now navigates to `/app/coverage-forecast?period=…`. Verified live.
+- **Live Board / kiosk ratio label (bug):** `lib/board-data.ts` printed the stored base rule in
+  "(N/pharmacist)" while the limit number used the effective R072-25 ceiling. Now uses
+  `engineRule.max_techs_per_pharmacist`, so the label matches the limit (verified: 8/4/12 → "4/pharmacist"
+  with R072-25 on; 6/3/9 → "3/pharmacist" off). Fixes both `/app/board` and `/app/display`.
+- **Attribution under emulation (bug):** notes, audit entries, and overrides were attributed to `ctx.userId`
+  (the real platform admin), so actions taken while emulating resolved to a bare role ("owner_admin") instead
+  of the tenant person. Added `ctx.actingUserId` in `lib/actions/helpers.ts` (the emulated user's supabase id)
+  and used it for every persisted `actor_user_id`/`author_user_id` (helpers/logActivity, compliance-notes,
+  audit, requests×2, schedule); added `display_name` resolution to the Audit Log page. Verified live: a note
+  added while emulating Frank, and its audit entry, both show **Frank DiMaggio**.
+- **Email Log detail crash (bug #3):** could **not reproduce** on a freshly started dev server — the route
+  (`/app/admin/emails/[id]`) renders cleanly across all email kinds (notification, sign-in, schedule, PTO).
+  The "Jest worker… child process exceptions" message was a transient dev-server worker crash during the
+  heavy QA session, not a code defect. No code change; the production-build-for-demos guidance covers that
+  dev-overlay/worker-instability class.
+- **Marketing copy:** dropped the "hourly documentation regulators require" mandate claim (hero) — current law
+  has no such mandate — and the "the math changes when volumes shift" volume-enforcement implication (problem
+  section; volume is collect-only). Reworded to accurate value framing.
+- **Cosmetics:** `suppressHydrationWarning` on `<html>` (removes the dev "1 Issue" overlay badge from every
+  screen incl. the kiosk wall display); "Restore demo data" now confirms inline with re-seeded counts; the
+  Admin Console emulate dropdown shows the owner's `display_name` ("Frank DiMaggio") instead of his email.
+- **Marketing screenshots (all 5 regenerated, current-law):** recaptured with R072-25 toggled off so the
+  imagery shows 3/pharmacist (matching the site), the current sidebar, and the as-worked Compliance Record on
+  the deficiency day. Fixed `scripts/capture-screenshots.ts` to target `/app/log?date=…` (the deficient day,
+  queried) instead of the stale `?period=`. Demo tenant restored to R072-25 on afterward.
+
+### Schema
+- None.
+
+### Infrastructure
+- None. (Demo tenant `nevada_r072_25` was temporarily toggled off for the screenshot capture, then restored to
+  on; `demo_clock` left pinned at 14:30, branding restored.)
+
+### Open
+- Email Log detail "Jest worker" crash is non-reproducible; revisit only if it recurs deterministically.
+- `compliance-record.jpg` shows the deficient hour; its inline annotation sits just below the viewport fold —
+  acceptable for the feature card, could be reframed (fuller capture) later if desired.
+
+---
+
 ## 2026-06-19 — Nevada R072-25 engine + schema, Tennessee, sustained-deficiency reframe, Nevada rewrite
 
 We learned the rule we'd been referencing changed: Nevada's proposed **R072-25** (LCB File No. R072-25;

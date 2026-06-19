@@ -14,18 +14,21 @@ platform-admin login). `demo@rxshift.io` is the in-tenant **owner** (Frank DiMag
 it is NOT a platform admin and has no Admin Console. Also: the whole **Platform nav disappears while you're
 "viewing as"/emulating** a tenant, so **do the reset + clock first, then emulate.**
 
-1. **Sign in as a platform admin** and open **Platform → Admin Console**. Click the **Mesa Vista** row to
-   expand its controls.
+1. **Sign in as a platform admin** and open **Platform → Admin Console**. On the **Mesa Vista** row, click
+   **Edit** (it toggles to **Close**) to expand its controls — the row *name* itself isn't clickable.
 2. **Fresh data?** In that expanded row → **Restore demo data** (or `npx tsx scripts/seed-mesa-vista.ts
    --reset`). This wipes + re-seeds and **re-anchors every date to the current week**, so the demo always
    looks current. Everything comes back: departments, the two deficiency stories, the overtime, Jerome's amber
    ring — **and the as-worked Compliance Record is finalized for the elapsed week (~294 hours), with the
    Henderson Thursday 2–4 PM ceiling gap AND the North Las Vegas Tuesday 9–10 AM floor gap recorded as actual
-   deficiencies, each with a manager annotation attached.**
+   deficiencies, each with a manager annotation attached.** The reset now confirms inline with the re-seeded
+   counts (shifts / deficient hours) instead of silently reverting.
 3. **Demoing outside 9–5 Pacific?** Same expanded row → **Demo clock (after-hours demos)** → type a time
    (e.g. `13:00`) → **Pin time**. The Live Board / My Schedule / live status then evaluate "now" at that
    time on today's real date, so staff show on shift. Click **Use real time** when done. (Real customers
-   never use this; it only shows for demo tenants.)
+   never use this; it only shows for demo tenants.) **The pinned clock persists through Restore demo data**
+   (it's tenant config), so you only set it once. **Note:** the clock changes the time of day, *not the date* —
+   see the Thursday caveat in §2/§3.
 4. **Then present.** Sign in / emulate the person you want to demo as: `demo@rxshift.io` (Frank, owner) for
    the manager view, or the staff aliases `jerome@rxshift.io` (technician) / `patricia@rxshift.io`
    (managing pharmacist) for the staff/pharmacist view. Emulating now shows the person's real name in the
@@ -58,7 +61,12 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
 **Start on the Live Board (`/app/board`)** — the most visual, "live right now" screen.
 - Per-location cards show who's on **right now**, grouped by Pharmacists / Technicians (counting vs not).
 - Each compliant location shows **"✓ N pharmacists can step away"** (the headroom feature) — or "at the
-  limit." Henderson shows **Deficient** during the Thursday 2–4pm gap (see §3) if "now" lands there.
+  limit."
+- **Live-board deficiency only reproduces on a Thursday.** The Henderson 2–4 PM gap is anchored to the
+  current-week **Thursday**, and the Demo clock only moves the *time of day* on **today's** date — it can't
+  change the date. So the gap shows live on the Live Board only when you demo *on a Thursday*. On any other
+  day Henderson reads **Compliant now** at 14:30; show the gap on the **Compliance Record** (§3), which is
+  date-specific and always has it.
 - Managers change anyone's live status here. Click **Open display** for the chrome-free wall monitor view.
 - *(If it's blank, you're outside business hours — set the Demo clock, §0.3.)*
 
@@ -95,6 +103,10 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
 **Requests (`/app/requests`)** — time off, callouts, swaps.
 - Submitting PTO shows "approving this would create N deficient slots" up front. Logging a callout shows the
   resulting gap. A manager approving a deficiency-causing PTO/swap **must enter a reason** (logged).
+- **Both seeded pending PTOs trigger the reason-required gate** — there is no "clean, no-reason approve" in
+  the seed. Approving Jerome's PTO (he's Henderson's lone tech) leaves a solo pharmacist with no support →
+  R072-25 floor deficiency → reason required; Patricia's flags ratio slots too. Demo the **reason-required
+  gate** itself (the point), not a frictionless approval.
 
 **Compliance Record (`/app/log`)** — the **as-worked** audit: the immutable, hour-by-hour record of what
 **actually happened** at each location (who was on + counting, ratio met/not). RxShift finalizes each hour
@@ -123,7 +135,8 @@ R072-25 is **on** for the demo tenant, so the Compliance Record shows both kinds
 **Over the ceiling (Henderson, Thursday 2–4 PM).** Dr. Sunita Patel left at **2:00 PM** on a family
 emergency; the float pharmacist Dr. Owen Fitzgerald was held at Spring Valley until **4:00 PM** — so 2:00–4:00
 the technicians kept the counter open with no pharmacist. Those hours flag **deficient → "Over ceiling"** with
-Frank's annotation attached. With the Demo clock pinned into that window, it also shows on the **Live Board**.
+Frank's annotation attached. It shows on the **Live Board** *only if you demo on a Thursday* (the Demo clock
+moves the time of day, not the date — see §2); otherwise show it on the date-specific Compliance Record.
 
 **Under the floor (North Las Vegas, Tuesday 9–10 AM).** A tech called out, so Dr. Chang opened solo with no
 support staff. Under R072-25 a single pharmacist needs at least one technician on duty, so 9:00–10:00 flags
@@ -200,10 +213,20 @@ extend/shorten with before→after; step-away line hides once non-counting; seed
 - Copy across hero, features, `/nevada`, `/vs/when-i-work`, pricing, security, terms, privacy now says
   **"Compliance Record"** (the as-worked artifact) and frames it as *what actually happened, finalized hour by
   hour* — the old "publish the schedule and the record exists" instant-record overclaims are gone.
-- **Imagery to recapture (stale):** `public/images/screenshots/compliance-record.jpg` should now show the
-  **as-worked Compliance Record** (with a deficient hour + an attached note), not the old schedule-derived
-  view. The schedule/board/dashboard screenshots are still accurate. Regenerate via
-  `scripts/capture-screenshots.ts` after a reset. The marketing pages still reference that filename.
+- **Imagery (regenerated June 19, 2026 — current-law):** all five files in
+  `public/images/screenshots/` (`compliance-record.jpg`, `schedule-all-locations.jpg`, `dashboard.jpg`,
+  `live-board.jpg`, `live-board.gif`) were recaptured. `compliance-record.jpg` now shows the **as-worked
+  Compliance Record** for the deficiency day (Henderson gap + attached note), not the old schedule-derived
+  view. The shots reflect the **current sidebar** (Coverage Forecast + Audit Log) and the Rx expected-volume
+  day-header labels.
+  - **They show current Nevada law (NAC 639.250 = 3 techs/pharmacist), to match the marketing site.** The
+    demo tenant runs R072-25 **on** (4-tech ceiling), so to recapture current-law imagery you must seed with
+    R072-25 **off** first: temporarily set the seed's `nevada_r072_25` to `false` (in `lib/demo/mesa-vista.ts`),
+    `npx tsx scripts/seed-mesa-vista.ts --reset`, `npx tsx scripts/capture-screenshots.ts`, then revert the
+    seed and reset again to restore R072-25 **on**. (Capturing with the toggle on would print 4/pharmacist
+    numbers into a site that claims only current law — an overclaim.)
+  - The capture script targets the Compliance Record by **`?date=`** (the deficient day, queried
+    automatically), not the old `?period=`.
 - **Legal / regulatory:** Terms/Privacy 2-year-retention wording, and the Nevada page's framing of current
   law (NAC 639.250) vs proposed **R072-25** (hearing June 2026, not adopted), are *accurate to the real
   record* — have Susie / the attorney confirm before it goes live. Only current law is claimed; R072-25 is

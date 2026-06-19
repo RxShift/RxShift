@@ -536,6 +536,20 @@ behind a tenant toggle, plus Tennessee, the sustained-deficiency reframe, and a 
 - **Review flag:** R072-25 is *proposed, not adopted* — only NAC 639.250 / CA BPC 4115 / TN 1140-02-.02 are
   claimed as current law. Nevada positioning + Terms/Privacy wording want Susie/attorney sign-off.
 
+## Pre-QA cleanup (June 19, 2026)
+
+Fixes from the CoWork QA pass (report archived at `docs/qa/2026-06-19-full-product-demo-qa.md`; details in
+`CHANGELOG.md`). Two conventions worth keeping in mind:
+
+- **Attribution under emulation:** persisted `actor_user_id` / `author_user_id` use **`ctx.actingUserId`**
+  (= the emulated user's `supabase_user_id`), NOT `ctx.userId`. While a platform admin emulates a tenant
+  person, actions are recorded as that person (e.g. "Frank DiMaggio") so notes / audit / overrides agree with
+  seeded data. Use `ctx.actingUserId` for any new attribution write. (Decision + trade-off in `docs/decisions.md`.)
+- **The "(N/pharmacist)" board label uses the *effective* engine rule** (`engineRule.max_techs_per_pharmacist`),
+  not the stored base rule — so it matches the limit under the R072-25 overlay.
+- **Marketing screenshots are current-law:** recapture with the demo tenant's `nevada_r072_25` toggled **off**
+  (see DEMO-GUIDE §6); the capture script targets the Compliance Record by `?date=`.
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.

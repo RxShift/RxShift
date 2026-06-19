@@ -477,3 +477,17 @@ payment provider is live.
 
 **Demo tenants:** fictional data only, `is_demo` email gate (redirect to
 one inbox or silence), never go live, resettable with date re-anchoring.
+
+**Emulated actions are attributed to the emulated user (June 19, 2026):**
+when a platform admin "Views as" a tenant person, persisted attribution
+(`actor_user_id`/`author_user_id` on compliance notes, audit log,
+override log) now records the **emulated tenant user** (via
+`ctx.actingUserId = appUser.supabase_user_id`), not the operator's real
+auth id. Chosen so the demo (and any single-operator workspace) reads
+coherently — a note added "as Frank DiMaggio" shows Frank, matching the
+seeded data — and the Override Log / Compliance Record / Audit Log agree.
+Trade-off: in real customer *support* via emulation this hides that an
+RxShift operator (not the customer) took the action. Acceptable
+pre-first-customer; revisit if support-via-emulation becomes a real
+workflow (e.g. tag emulated actions distinctly). `ctx.userId` is
+unchanged (still the real auth user) — only the attribution field moved.
