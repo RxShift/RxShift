@@ -39,21 +39,19 @@ const MESA = "Mesa Vista Pharmacy";
 const FRANK = "frank@mesavistarx.com";
 const VIEWPORT = { width: 1440, height: 900 };
 
-async function springValleyPeriodId(today: string): Promise<string | null> {
-  const { data: loc } = await service
-    .from("location")
-    .select("id")
-    .eq("name", "Mesa Vista — Spring Valley")
+// The Compliance Record (/app/log) is the as-worked record, addressed by ?date=
+// (NOT ?period= — that was the old as-scheduled view, now the Coverage Forecast).
+// Land the marketing shot on the most recent day that actually has a deficient
+// hour (the seeded Henderson gap) + its annotation, not a quiet all-compliant day.
+async function deficiencyDate(): Promise<string | null> {
+  const { data } = await service
+    .from("compliance_record")
+    .select("date")
+    .eq("ratio_status", "deficient")
+    .order("date", { ascending: false })
+    .limit(1)
     .maybeSingle();
-  if (!loc) return null;
-  const { data: period } = await service
-    .from("schedule_period")
-    .select("id")
-    .eq("location_id", loc.id)
-    .lte("start_date", today)
-    .gte("end_date", today)
-    .maybeSingle();
-  return (period?.id as string) ?? null;
+  return (data?.date as string) ?? null;
 }
 
 function ptNow(): { date: string; minutes: number } {
@@ -214,7 +212,6 @@ async function captureHeadroomGif(page: Page) {
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const today = new Date().toISOString().slice(0, 10);
 
   // Save + clear Mesa Vista branding so the shots use RxShift's own brand.
   const { data: tenant } = await service
@@ -227,9 +224,9 @@ async function main() {
 
   const browser = await chromium.launch();
   try {
-    const compliancePeriod = await springValleyPeriodId(today);
-    if (!compliancePeriod) {
-      console.warn("[capture] No current Spring Valley period found; /app/log will show the default (all locations).");
+    const recordDate = await deficiencyDate();
+    if (!recordDate) {
+      console.warn("[capture] No deficient compliance-record day found; /app/log will show the most recent day (likely all-compliant).");
     }
 
     const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
@@ -240,7 +237,7 @@ async function main() {
     await shot(page, "/app/schedule?screenshot=true", "schedule-all-locations.jpg");
     await shot(
       page,
-      `/app/log?${compliancePeriod ? `period=${compliancePeriod}&` : ""}screenshot=true`,
+      `/app/log?${recordDate ? `date=${recordDate}&` : ""}screenshot=true`,
       "compliance-record.jpg"
     );
     await shot(page, "/app/dashboard?screenshot=true", "dashboard.jpg", true);
