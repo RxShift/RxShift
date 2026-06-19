@@ -247,7 +247,11 @@ export async function buildBoardView(
         limitLabel:
           engineRule.formula === "additive"
             ? `additive: first +${engineRule.additive_first_techs ?? 1}, each addl +${engineRule.additive_additional_techs ?? 2}`
-            : `${bundle.ratioRule.max_techs_per_pharmacist}/pharmacist`,
+            : // Use the EFFECTIVE per-pharmacist ceiling (engineRule), not the
+              // stored base rule — so when R072-25 overlays a 4-tech ceiling the
+              // label ("4/pharmacist") matches the computed limit, instead of
+              // printing the stored NAC 639.250 base (3).
+              `${engineRule.max_techs_per_pharmacist}/pharmacist`,
         headroom: pharmacistHeadroom(
           pharmacistsCounting.length,
           techsCounting.length,

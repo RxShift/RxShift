@@ -82,6 +82,7 @@ export default function AdminConsole({
   const [draftIsDemo, setDraftIsDemo] = useState(false);
   const [draftDemoRedirect, setDraftDemoRedirect] = useState("");
   const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const [draftBillStatus, setDraftBillStatus] =
     useState<TenantSummary["billing_status"]>("none");
   const [draftBillLocations, setDraftBillLocations] = useState("");
@@ -102,12 +103,31 @@ export default function AdminConsole({
   const currentTenantId = activeTenantId ?? ownTenantId;
   const currentUsers = users.filter((u) => u.tenant_id === currentTenantId);
 
-  async function act(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  async function act<R extends { ok: boolean; error?: string }>(
+    fn: () => Promise<R>
+  ): Promise<R> {
     setBusy(true);
     const result = await fn();
     if (!result.ok) alert(result.error);
     router.refresh();
     setBusy(false);
+    return result;
+  }
+
+  // Restore demo data + surface a confirmation with the re-seeded counts, so
+  // it's obvious the reset actually ran (it used to revert silently).
+  function handleRestore(t: TenantSummary) {
+    setRestoreMsg(null);
+    act(() => resetDemoTenant(t.id)).then((r) => {
+      setConfirmRestore(null);
+      if (!r.ok) return;
+      const d = r.data;
+      setRestoreMsg(
+        d
+          ? `Restored ${t.name}: re-seeded ${d.shifts} shifts across ${d.weeks} weeks; ${d.deficientHours} deficient compliance hour${d.deficientHours === 1 ? "" : "s"} recorded (dates re-anchored to this week).`
+          : `Restored ${t.name}.`
+      );
+    });
   }
 
   return (
@@ -127,6 +147,18 @@ export default function AdminConsole({
             <Button variant="secondary">+ Create a tenant</Button>
           </Link>
         </div>
+
+        {restoreMsg && (
+          <div className="mt-3 flex items-start justify-between gap-3 rounded-md border border-compliant bg-compliant-bg px-3 py-2 font-body text-sm text-compliant">
+            <span>{restoreMsg}</span>
+            <button
+              onClick={() => setRestoreMsg(null)}
+              className="shrink-0 text-xs underline-offset-2 hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <div className="mt-4">
           <Table>
@@ -194,11 +226,7 @@ export default function AdminConsole({
                                 <span className="font-body text-xs text-steel">Confirm?</span>
                                 <button
                                   disabled={busy}
-                                  onClick={() =>
-                                    act(() => resetDemoTenant(t.id)).then(() =>
-                                      setConfirmRestore(null)
-                                    )
-                                  }
+                                  onClick={() => handleRestore(t)}
                                   className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
                                 >
                                   {busy ? "Restoring…" : "Yes"}
@@ -405,11 +433,7 @@ export default function AdminConsole({
                                   <Button
                                     variant="destructive"
                                     disabled={busy}
-                                    onClick={() =>
-                                      act(() => resetDemoTenant(t.id)).then(() =>
-                                        setConfirmRestore(null)
-                                      )
-                                    }
+                                    onClick={() => handleRestore(t)}
                                   >
                                     {busy ? "Restoring…" : "Yes, restore"}
                                   </Button>

@@ -46,6 +46,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${spaceGrotesk.variable} ${inter.variable} h-full`}
+      // The no-flash scripts below mutate the <html> class (theme + sidebar
+      // collapse) before React hydrates, so the server/client class strings
+      // differ by design. Suppress the (expected) hydration warning so the dev
+      // overlay's red "1 Issue" badge doesn't appear on every screen — incl. the
+      // always-on kiosk wall display.
+      suppressHydrationWarning
     >
       {/* No-flash script: sets .dark on <html> before first paint — APP ONLY.
           Marketing (rxshift.io root paths) always renders light; the hostname

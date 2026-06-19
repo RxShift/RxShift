@@ -318,7 +318,7 @@ export async function publishPeriod(
       }
       await supabase.from("override_log").insert({
         tenant_id: ctx.tenantId,
-        actor_user_id: ctx.userId,
+        actor_user_id: ctx.actingUserId,
         target_type: "shift",
         target_id: periodId,
         warning_type: validation.ratioFlags.length > 0 ? "ratio" : "constraint",

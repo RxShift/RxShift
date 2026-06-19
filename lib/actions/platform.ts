@@ -122,7 +122,16 @@ export async function updateTenantBilling(
  * re-anchors every date to the current week — so the demo always looks
  * current. Tenant config and the demo login are preserved.
  */
-export async function resetDemoTenant(tenantId: string): Promise<ActionResult> {
+export async function resetDemoTenant(
+  tenantId: string
+): Promise<
+  ActionResult<{
+    tenantId: string;
+    weeks: number;
+    shifts: number;
+    deficientHours: number;
+  }>
+> {
   return runAction(async () => {
     await requirePlatformAdmin();
     const service = createServiceClient();
@@ -136,10 +145,12 @@ export async function resetDemoTenant(tenantId: string): Promise<ActionResult> {
     if (tenant.name !== MESA_VISTA_NAME)
       throw new ActionError("No reset routine exists for this demo tenant.");
 
-    await resetMesaVista(service);
+    // Return the re-seeded counts so the admin console can confirm the reset
+    // actually ran (with row counts) instead of silently reverting.
+    const result = await resetMesaVista(service);
 
     revalidatePath("/app", "layout");
-    return undefined;
+    return result;
   });
 }
 

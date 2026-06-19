@@ -17,7 +17,7 @@ export default async function AuditLogPage() {
   const ids = entries.map((e) => e.id);
 
   const [{ data: users }, { data: staff }, { data: notes }] = await Promise.all([
-    supabase.from("app_user").select("supabase_user_id, staff_id, role"),
+    supabase.from("app_user").select("supabase_user_id, staff_id, role, display_name"),
     supabase.from("staff").select("id, full_name"),
     ids.length
       ? supabase
@@ -40,10 +40,11 @@ export default async function AuditLogPage() {
     supabase_user_id: string;
     staff_id: string | null;
     role: string;
+    display_name: string | null;
   }[]) {
     actorName.set(
       u.supabase_user_id,
-      (u.staff_id && staffName.get(u.staff_id)) || u.role || "User"
+      (u.staff_id && staffName.get(u.staff_id)) || u.display_name || u.role || "User"
     );
   }
   const nameFor = (id: string | null) =>

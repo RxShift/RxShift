@@ -388,7 +388,7 @@ export async function decideTimeOff(
         impactReason = overrideReason.trim();
         await supabase.from("override_log").insert({
           tenant_id: ctx.tenantId,
-          actor_user_id: ctx.userId,
+          actor_user_id: ctx.actingUserId,
           target_type: "time_off",
           target_id: id,
           warning_type: "ratio",
@@ -650,7 +650,7 @@ export async function decideSwap(
         impactReason = overrideReason.trim();
         await supabase.from("override_log").insert({
           tenant_id: ctx.tenantId,
-          actor_user_id: ctx.userId,
+          actor_user_id: ctx.actingUserId,
           target_type: "swap",
           target_id: id,
           warning_type: "ratio",

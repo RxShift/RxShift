@@ -32,7 +32,7 @@ export async function appendComplianceNote(input: unknown): Promise<ActionResult
     const { error } = await supabase.from("compliance_record_note").insert({
       tenant_id: ctx.tenantId,
       compliance_record_id: data.compliance_record_id,
-      author_user_id: ctx.userId,
+      author_user_id: ctx.actingUserId,
       note: data.note,
     });
     if (error) throw new ActionError(error.message);

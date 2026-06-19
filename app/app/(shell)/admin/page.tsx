@@ -66,7 +66,11 @@ export default async function AdminPage() {
       id: u.id,
       tenant_id: u.tenant_id,
       role: u.role,
-      label: linkedStaff?.full_name ?? authEmail ?? "(no staff record)",
+      // Prefer the staff name, then the app_user display_name (set for owners
+      // with no staff record, e.g. the Mesa Vista demo owner), then the auth
+      // email — so the emulate dropdown reads "Frank DiMaggio", not his email.
+      label:
+        linkedStaff?.full_name ?? u.display_name ?? authEmail ?? "(no staff record)",
       email: linkedStaff?.login_email ?? authEmail ?? null,
     };
   });

@@ -31,7 +31,7 @@ export async function appendActivityNote(input: unknown): Promise<ActionResult> 
     const { error } = await supabase.from("activity_log_note").insert({
       tenant_id: ctx.tenantId,
       activity_log_id: data.activity_log_id,
-      author_user_id: ctx.userId,
+      author_user_id: ctx.actingUserId,
       note: data.note,
     });
     if (error) throw new ActionError(error.message);

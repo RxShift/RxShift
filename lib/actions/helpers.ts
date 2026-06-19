@@ -30,6 +30,15 @@ export interface AuthedContext extends SessionContext {
   appUser: NonNullable<SessionContext["appUser"]>;
   tenant: NonNullable<SessionContext["tenant"]>;
   tenantId: string;
+  /**
+   * The user id an action should be ATTRIBUTED to. Equals `userId` normally,
+   * but while a platform admin is emulating a tenant user it is the EMULATED
+   * user's supabase id (`appUser.supabase_user_id`) — so notes, overrides, and
+   * audit rows show the tenant person (e.g. "Frank DiMaggio"), matching the
+   * seeded data, instead of resolving to the operator's bare role. Use this
+   * (not `userId`) for any `actor_user_id` / `author_user_id` we persist.
+   */
+  actingUserId: string;
 }
 
 async function requireSession(): Promise<AuthedContext> {
@@ -42,6 +51,7 @@ async function requireSession(): Promise<AuthedContext> {
     appUser: session.appUser,
     tenant: session.tenant,
     tenantId: session.appUser.tenant_id,
+    actingUserId: session.appUser.supabase_user_id,
   };
 }
 
@@ -86,7 +96,7 @@ export async function logActivity(
     const supabase = await createClient();
     await supabase.from("activity_log").insert({
       tenant_id: ctx.tenantId,
-      actor_user_id: ctx.userId,
+      actor_user_id: ctx.actingUserId,
       action,
       entity_type: entityType,
       entity_id: entityId,

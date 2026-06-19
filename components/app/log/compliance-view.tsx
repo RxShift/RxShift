@@ -92,7 +92,9 @@ export default function ComplianceView({
       <div className="flex flex-wrap items-center gap-3 print:hidden">
         <select
           value={periodId}
-          onChange={(e) => router.push(`/app/log?period=${e.target.value}`)}
+          onChange={(e) =>
+            router.push(`/app/coverage-forecast?period=${e.target.value}`)
+          }
           className="rounded-md border-[1.5px] border-line bg-surface px-3 py-2 font-body text-sm text-navy"
         >
           {periods.map((p) => (
