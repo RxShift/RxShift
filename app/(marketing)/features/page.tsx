@@ -6,7 +6,7 @@ import Footer from "@/components/footer";
 export const metadata: Metadata = {
   title: "Features — RxShift",
   description:
-    "Ratio-aware scheduling, automated compliance documentation, and pricing designed for independent and regional pharmacies.",
+    "Ratio-aware scheduling, an automated hourly Compliance Record, and pricing designed for independent and regional pharmacies.",
 };
 
 const SECTIONS = [
@@ -15,8 +15,8 @@ const SECTIONS = [
     body: "RxShift applies your state's pharmacist-to-tech ratio rules to every shift as you build it. Certified, non-certified, trainee, and intern counts are tracked separately because the math is different for each — and most states require it.",
   },
   {
-    heading: "Automated compliance documentation",
-    body: "Every published schedule produces a timestamped hourly log: the pharmacist and each technician on duty per hour, deficiency flags when coverage falls short, and automatic notification triggers for extended deficiencies. Records are retained for two years and exportable on demand.",
+    heading: "An automated Compliance Record",
+    body: "RxShift builds a timestamped hourly Compliance Record of what actually happened — the pharmacist and each technician on duty per hour, deficiency flags when coverage falls short, and automatic notification triggers for extended deficiencies. It finalizes hour by hour from the published schedule and your team's live statuses; the record is retained two years and exportable on demand. (A separate Coverage Forecast projects the schedule for planning.)",
   },
   {
     heading: "Designed for small groups, not enterprises",

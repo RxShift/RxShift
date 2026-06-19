@@ -169,15 +169,20 @@ export default async function MePage() {
       : "present_counting";
 
   // "Can I step away without breaking ratio?" — only meaningful for a
-  // pharmacist on shift (techs leaving never break ratio). Reuse the live board
-  // view for this location; headroom >= 1 means at least one counting pharmacist
-  // (including them) can switch to non-counting and stay compliant.
+  // pharmacist on shift who is CURRENTLY counting (techs leaving never break
+  // ratio; and once they've already gone non-counting the question is moot —
+  // they've stepped away). Reuse the live board view for this location;
+  // headroom >= 1 means at least one counting pharmacist (including them) can
+  // switch to non-counting and stay compliant.
+  const currentStatusCounts =
+    statusOptions.find((o) => o.value === effectiveStatus)?.counts ?? true;
   let ratioImpact: { locationName: string; safeToLeave: boolean } | undefined;
   if (
     tenant.has_ratio &&
     onShiftNow &&
     staff.ratio_type === "pharmacist" &&
-    currentShift?.location_id
+    currentShift?.location_id &&
+    currentStatusCounts
   ) {
     const view = await buildBoardView(supabase, tenant);
     const card = view.locationCards.find(

@@ -34,11 +34,11 @@ const INCLUDED: { heading: string; items: string[] }[] = [
   {
     heading: "Documentation",
     items: [
-      "Automated hourly compliance log",
+      "Automated hourly Compliance Record (as-worked)",
       "Deficiency flagging (per hour)",
       "3-consecutive-day alerts to your managers",
       "2-year record retention",
-      "Compliance log export (.xlsx, board-ready)",
+      "Compliance Record export (.xlsx, board-ready)",
     ],
   },
   {

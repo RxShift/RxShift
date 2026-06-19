@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/live-ratio-check",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/finalize-compliance",
+      "schedule": "0 9 * * *"
     }
   ]
 }

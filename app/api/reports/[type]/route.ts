@@ -3,12 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import { xlsxResponse } from "@/lib/reports";
 import { loadPeriodBundle } from "@/lib/schedule-data";
-import type {
-  ComplianceRecordRow,
-  Location,
-  SchedulePeriod,
-  Staff,
-} from "@/lib/types";
+import type { ComplianceRecordRow, Location, Staff } from "@/lib/types";
 
 // Basic, structured exports — not a reporting engine. Each report is a
 // tenant-scoped query (RLS client) turned into a board/audit-ready .xlsx.
@@ -128,27 +123,21 @@ export async function GET(
     );
   }
 
-  // ── Compliance log ──────────────────────────────────────────────────────
+  // ── Compliance Record (as-worked) ─────────────────────────────────────────
   if (type === "compliance-log") {
     const locationId = sp.get("location_id");
 
-    let periodQuery = supabase
-      .from("schedule_period")
-      .select("id, location_id")
-      .lte("start_date", to)
-      .gte("end_date", from);
-    if (locationId) periodQuery = periodQuery.eq("location_id", locationId);
-    const { data: periods } = await periodQuery;
-    const periodIds = ((periods ?? []) as Pick<SchedulePeriod, "id">[]).map(
-      (p) => p.id
-    );
-
-    const { data: snapshots } = periodIds.length
-      ? await supabase
-          .from("compliance_snapshot")
-          .select("rows, schedule_period_id")
-          .in("schedule_period_id", periodIds)
-      : { data: [] };
+    // The board-ready export is the as-worked Compliance Record (immutable,
+    // what actually happened), not the schedule-derived forecast.
+    let recQuery = supabase
+      .from("compliance_record")
+      .select("detail, date, hour, location_id")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date")
+      .order("hour");
+    if (locationId) recQuery = recQuery.eq("location_id", locationId);
+    const { data: recordRows } = await recQuery;
 
     // CPhT annotation for technicians, per the board-ready format
     const { data: staff } = await supabase
@@ -174,33 +163,31 @@ export async function GET(
       : "";
 
     const out: Record<string, unknown>[] = [];
-    for (const snap of snapshots ?? []) {
-      for (const r of (snap.rows ?? []) as ComplianceRecordRow[]) {
-        if (r.date < from || r.date > to) continue;
-        out.push({
-          Date: r.date,
-          Hour: hourLabel(r.hour),
-          Location: r.location_name,
-          "Pharmacist(s)": r.pharmacists_on_duty.join(", "),
-          "Technician(s) counting": (r.technicians_counting as string[])
-            .map(cphtName)
-            .join(", "),
-          "Present, not counting": r.technicians_present_non_counting
-            .map((t) => `${t.name} (${t.function})`)
-            .join(", "),
-          "Required ratio": ruleLabel,
-          Status: r.ratio_status.toUpperCase(),
-          "Deficiency notes": r.deficiency_reason ?? "",
-        });
-      }
+    for (const rec of (recordRows ?? []) as { detail: ComplianceRecordRow }[]) {
+      const r = rec.detail;
+      out.push({
+        Date: r.date,
+        Hour: hourLabel(r.hour),
+        Location: r.location_name,
+        "Pharmacist(s)": r.pharmacists_on_duty.join(", "),
+        "Technician(s) counting": (r.technicians_counting as string[])
+          .map(cphtName)
+          .join(", "),
+        "Present, not counting": r.technicians_present_non_counting
+          .map((t) => `${t.name} (${t.function})`)
+          .join(", "),
+        "Required ratio": ruleLabel,
+        Status: r.ratio_status.toUpperCase(),
+        "Deficiency notes": r.deficiency_reason ?? "",
+      });
     }
     out.sort((a, b) =>
-      `${a.Date} ${a.Hour} ${a.Zone}`.localeCompare(`${b.Date} ${b.Hour} ${b.Zone}`)
+      `${a.Date} ${a.Hour}`.localeCompare(`${b.Date} ${b.Hour}`)
     );
     return xlsxResponse(
       out,
-      "Compliance Log",
-      `rxshift-compliance-log-${from}-to-${to}.xlsx`
+      "Compliance Record",
+      `rxshift-compliance-record-${from}-to-${to}.xlsx`
     );
   }
 

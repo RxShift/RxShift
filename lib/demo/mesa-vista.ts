@@ -21,7 +21,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDaysStr, eachDate, nowInTimeZone } from "../dates";
 import { evaluateZone } from "../engine/ratio";
 import { generateComplianceRecord } from "../engine/compliance";
+import { brandedEmailHtml, emailLines } from "../email-template";
+import { finalizeComplianceForTenant } from "../compliance-record";
 import type { EngineSegment } from "../engine/types";
+import type { Tenant } from "../types";
 
 export const MESA_VISTA_NAME = "Mesa Vista Pharmacy";
 export const FRANK_EMAIL = "frank@mesavistarx.com";
@@ -178,10 +181,13 @@ export async function clearMesaVistaData(
 ): Promise<void> {
   // FK-safe order; shift_segment cascades from shift
   const tables = [
+    "compliance_record_note",
+    "compliance_record",
     "compliance_snapshot",
     "override_log",
     "activity_log_note",
     "activity_log",
+    "email_log",
     "notification",
     "live_status",
     "swap_request",
@@ -698,6 +704,110 @@ export async function seedMesaVista(
     entity_id: tenantId,
     detail: { anchor, weeks: WEEK_OFFSETS.length, shifts: totalShifts },
   });
+
+  // Representative emails in the log, current-week-anchored, so a demo of
+  // /app/admin/emails shows real branded sends (not just stale PTO mail). The
+  // demo tenant redirects live mail, but the log shows what the pharmacy sends.
+  const weekLabel = `${anchor} – ${addDaysStr(anchor, 6)}`;
+  const fromEmail = "hello@rxshift.io";
+  await service.from("email_log").insert([
+    {
+      tenant_id: tenantId,
+      kind: "notification",
+      to_email: fictionalEmail("Jerome Williams"),
+      from_email: fromEmail,
+      subject: `Your schedule for ${weekLabel} is ready`,
+      body_html: brandedEmailHtml({
+        bodyHtml: emailLines([
+          "Hi Jerome,",
+          `Your Mesa Vista — Henderson schedule for ${weekLabel} has been published.`,
+          "Open My Schedule to see your shifts and set your live status when you're on the floor.",
+        ]),
+      }),
+      status: "sent",
+      actor_user_id: frankAuthId,
+      created_at: new Date(`${anchor}T16:35:00Z`).toISOString(), // ~9:35 AM PT Mon
+    },
+    {
+      tenant_id: tenantId,
+      kind: "notification",
+      to_email: FRANK_EMAIL,
+      from_email: fromEmail,
+      subject:
+        "Compliance alert: Henderson — ratio deficiency Thursday 2:00–4:00 PM",
+      body_html: brandedEmailHtml({
+        bodyHtml: emailLines([
+          "Heads up — a ratio deficiency was recorded at Mesa Vista — Henderson.",
+          `Thursday ${gapThursday}, 2:00–4:00 PM: no pharmacist on duty while technicians were counting.`,
+          "Dr. Patel left at 2:00 PM on a family emergency; the float pharmacist was held at Spring Valley until 4:00 PM. The reason is documented on the compliance record.",
+          "This was a single isolated day — no 3-consecutive-day board notification was triggered.",
+        ]),
+      }),
+      status: "sent",
+      actor_user_id: frankAuthId,
+      created_at: new Date(`${gapThursday}T21:05:00Z`).toISOString(), // ~2:05 PM PT Thu
+    },
+    {
+      tenant_id: tenantId,
+      kind: "notification",
+      to_email: fictionalEmail("Ashley Morales"),
+      from_email: fromEmail,
+      subject: "Your time-off request is approved",
+      body_html: brandedEmailHtml({
+        bodyHtml: emailLines([
+          "Hi Ashley,",
+          `Your time-off request for ${ptoStart} – ${ptoEnd} has been approved.`,
+          "Enjoy the long weekend — your shifts for those days have been cleared.",
+        ]),
+      }),
+      status: "sent",
+      actor_user_id: frankAuthId,
+      created_at: new Date(`${addDaysStr(anchor, -2)}T18:00:00Z`).toISOString(),
+    },
+  ]);
+
+  // Finalize the as-worked Compliance Record for the elapsed days so the demo
+  // shows a real, immutable record (not just a forecast). Treat today as a full
+  // day (asOf minutes = 1440) so the Henderson Thursday 2–4 PM gap is recorded
+  // regardless of the wall-clock time the demo is reset. Finalize from last
+  // Monday through today; future days (Fri+) are correctly NOT recorded yet.
+  const { data: tenantRow } = await service
+    .from("tenant")
+    .select("*")
+    .eq("id", tenantId)
+    .single();
+  if (tenantRow) {
+    // Record through the LATER of today and the gap-Thursday, treated as a full
+    // day, so the Henderson 2–4 PM incident is always in the demo record no
+    // matter which weekday the demo is reset on. Days after that stay unrecorded.
+    const today = nowInTimeZone(TZ).date;
+    const asOfDate = today >= gapThursday ? today : gapThursday;
+    const fin = await finalizeComplianceForTenant(service, tenantRow as Tenant, {
+      from: addDaysStr(anchor, -7),
+      to: asOfDate,
+      asOf: { date: asOfDate, minutes: 1440 },
+    });
+    log(`Finalized ${fin.recorded} compliance-record hours (as-worked).`);
+
+    // Attach the documented exception to the actual deficient Henderson hours,
+    // exactly as a managing pharmacist would after the fact.
+    const { data: deficientHrs } = await service
+      .from("compliance_record")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("location_id", locIds.get("HD")!)
+      .eq("date", gapThursday)
+      .eq("ratio_status", "deficient");
+    for (const row of (deficientHrs ?? []) as { id: string }[]) {
+      await service.from("compliance_record_note").insert({
+        tenant_id: tenantId,
+        compliance_record_id: row.id,
+        author_user_id: frankAuthId,
+        note: "Dr. Patel had a family emergency and left at 2:00 PM. Float pharmacist Dr. Fitzgerald was notified immediately but was held at Spring Valley until 4:00 PM. Coverage gap documented. Single isolated day — no 3-consecutive-day board notification triggered.",
+      });
+    }
+    log(`Annotated ${(deficientHrs ?? []).length} deficient Henderson hour(s).`);
+  }
 
   return { tenantId, weeks: WEEK_OFFSETS.length, shifts: totalShifts, deficientHours };
 }

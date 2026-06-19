@@ -15,7 +15,7 @@ const SECTIONS = [
   },
   {
     heading: "Every pharmacy's data is isolated",
-    body: "RxShift is multi-tenant with row-level isolation enforced in the database itself — every query is scoped to your organization at the data layer, not just in application code. Your schedules, staff, and compliance records are never visible to another customer.",
+    body: "RxShift is multi-tenant with row-level isolation enforced in the database itself — every query is scoped to your organization at the data layer, not just in application code. Your schedules, staff, and Compliance Records are never visible to another customer.",
   },
   {
     heading: "Encrypted in transit and at rest",

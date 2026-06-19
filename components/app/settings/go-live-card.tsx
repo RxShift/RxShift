@@ -36,7 +36,7 @@ export default function GoLiveCard({ status }: { status: "setup" | "trial" }) {
       </div>
       <p className="mt-2 font-body text-sm text-steel">
         Your pharmacy is in trial mode: everything works — schedules,
-        requests, the compliance record — but RxShift is{" "}
+        requests, the Compliance Record — but RxShift is{" "}
         <strong>not sending email to your staff</strong>. Load your data,
         check the roster, and go live when you&rsquo;re ready.
       </p>

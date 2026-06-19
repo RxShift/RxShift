@@ -50,14 +50,14 @@ const SOLUTION_CARDS = [
     body: "RxShift applies Nevada's pharmacist-to-tech ratio rules to every schedule you build — and flags any deficient half-hour before you publish, so the gap gets fixed on the screen instead of on the floor.",
   },
   {
-    eyebrow: "Hourly log",
+    eyebrow: "Compliance Record",
     heading: "The R113-24 record, auto-generated.",
-    body: "Every published schedule produces a timestamped hourly record: pharmacist and tech names per hour, deficiency flags when coverage falls short, and an alert to your managers after three consecutive deficient days — the moment a board report may be required. Retained for two years, exportable on demand. RxShift never contacts the board; that decision stays inside your pharmacy.",
+    body: "RxShift builds a timestamped hourly Compliance Record of what actually happened: pharmacist and tech names per hour, deficiency flags when coverage falls short, and an alert to your managers after three consecutive deficient days — the moment a board report may be required. It finalizes hour by hour from the published schedule and your team's live statuses, retained for two years and exportable on demand. RxShift never contacts the board; that decision stays inside your pharmacy.",
   },
   {
     eyebrow: "Zero extra work",
     heading: "Nothing new to do after you schedule.",
-    body: "The compliance documentation comes out of the schedule you were already building. No separate logging. No end-of-day forms. No spreadsheet to fill in. Publish the schedule — the record exists.",
+    body: "The Compliance Record comes out of the schedule you were already building. No separate logging. No end-of-day forms. No spreadsheet to fill in. Publish the schedule, keep your team's statuses current, and RxShift finalizes the record hour by hour.",
   },
 ];
 
@@ -186,7 +186,7 @@ export default function NevadaPage() {
               The problem
             </p>
             <h2 className="mt-3 font-brand text-[26px] font-bold text-navy sm:text-[30px]">
-              A schedule is not a compliance record.
+              A schedule is not a Compliance Record.
             </h2>
             <div className="mt-4 space-y-4 font-body text-base leading-[1.7] text-steel">
               <p>
@@ -197,7 +197,7 @@ export default function NevadaPage() {
               </p>
               <p>
                 R113-24 doesn&rsquo;t ask for a schedule. It asks for a
-                compliance record — a timestamped hourly log that accounts for
+                Compliance Record — a timestamped hourly record that accounts for
                 every position, every hour, and every deficiency. Building
                 that manually adds meaningful administrative time to every
                 shift.
@@ -223,8 +223,8 @@ export default function NevadaPage() {
               The solution
             </p>
             <h2 className="mx-auto mt-3 max-w-[680px] text-center font-brand text-[26px] font-bold leading-snug text-navy sm:text-[28px]">
-              When you publish a schedule, the compliance log is already
-              written.
+              Publish the schedule, and the Compliance Record writes itself —
+              hour by hour.
             </h2>
             <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {SOLUTION_CARDS.map((c) => (

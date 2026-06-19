@@ -13,14 +13,14 @@ const SECTIONS: { heading: string; paragraphs: string[] }[] = [
     heading: "1. Who this covers",
     paragraphs: [
       "Three groups interact with RxShift: Visitors (people browsing rxshift.io or submitting our contact forms), Customers (pharmacies that subscribe), and Staff Users (pharmacy staff whose information a Customer puts into the Service).",
-      "This distinction matters: for Visitor data, RxShift decides how data is used — we are the “controller.” For Customer and Staff User data inside the Service (rosters, schedules, compliance records), the PHARMACY decides — we process that data only on the Customer's behalf and instructions. Staff Users should direct privacy requests about their roster data to their pharmacy; we support the pharmacy in fulfilling them.",
+      "This distinction matters: for Visitor data, RxShift decides how data is used — we are the “controller.” For Customer and Staff User data inside the Service (rosters, schedules, Compliance Records), the PHARMACY decides — we process that data only on the Customer's behalf and instructions. Staff Users should direct privacy requests about their roster data to their pharmacy; we support the pharmacy in fulfilling them.",
     ],
   },
   {
     heading: "2. What we collect, and why",
     paragraphs: [
       "Visitors: name, pharmacy name, state, email, and any message you submit through a demo-request form — used solely to respond to your inquiry and track our own sales pipeline. We do not buy lists or load cold contacts.",
-      "Customers and Staff Users: account emails (used only to deliver one-time sign-in links — RxShift stores no passwords), staff names, job titles, certification status, employment type, schedules, time-off and callout records, ratio configuration, compliance records, and an audit trail of actions taken in the Service. This is the data the product exists to manage.",
+      "Customers and Staff Users: account emails (used only to deliver one-time sign-in links — RxShift stores no passwords), staff names, job titles, certification status, employment type, schedules, time-off and callout records, ratio configuration, Compliance Records, and an audit trail of actions taken in the Service. This is the data the product exists to manage.",
       "Automatically: standard server logs (IP address, browser, pages) for security and reliability. We do not run third-party advertising trackers.",
     ],
   },

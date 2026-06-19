@@ -7,6 +7,127 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-18 — The Compliance Record (as-worked) + compliance nomenclature across the product
+
+The foundational fix: RxShift now produces a real **as-worked** Compliance Record — the immutable,
+hour-by-hour record of what *actually* happened (who was on + counting, ratio met/not), distinct from the
+schedule-derived projection. This makes the audit defensible and the website's existing claims true. No
+change to the ratio math — the engine was already schedule-agnostic; this feeds it reconstructed actuals.
+
+### Canonical vocabulary (now used product-wide)
+- **Schedule** — the plan you build/publish.
+- **Coverage Forecast** — projected hourly ratio from the *published schedule* ("are we scheduled to be in
+  ratio?"). A planning aid. (This is the old `/app/log`, relocated to `/app/coverage-forecast`.)
+- **Compliance Record** — the **immutable, hour-by-hour record of what actually happened**, 2-year retained,
+  never edited, **annotatable** after the fact. The board-defensible artifact. (New, at `/app/log`.)
+- **Activity Log** / **Override Log** — unchanged (change trail / acknowledged-exception reasons).
+
+### Shipped
+- **Data model (migration 0029, applied):** `compliance_record` (immutable; manager-select RLS, no
+  insert/update/delete — written only by the finalizer via service role; unique per
+  tenant/location/date/hour) + `compliance_record_note` (append-only annotations, mirrors
+  `activity_log_note`).
+- **Finalization engine** (`lib/compliance-record.ts`, pure + tsx-safe): reconstructs each completed hour's
+  *actual* presence — published shift segments **split by each person's live-status history** (a non-counting
+  status removes them for those minutes) — runs the existing `evaluateZone` + `generateComplianceRecord`, and
+  writes immutable rows. **Idempotent** (only fills missing hours; self-heals missed runs). Reuses the engine;
+  the only new logic is the segment-splitting (unit-tested). `appendComplianceNote` action mirrors the audit
+  note pattern.
+- **Cron** `/api/cron/finalize-compliance` (CRON_SECRET) + `vercel.json` **daily** (`0 9 * * *`). Hourly
+  (`5 * * * *`) when on Vercel Pro — same code, just cadence (documented in the route).
+- **UI:** `/app/log` is now the **Compliance Record** (reads the immutable table; per-hour deficiency +
+  inline annotations + **+ Note** append; Save-as-PDF/CSV; "immutable, never edited" explainer). New
+  `/app/coverage-forecast` holds the old as-scheduled view (relabeled "forecast"). Sidebar adds Coverage
+  Forecast; dashboard/security-posture/override-log copy updated.
+- **Demo (Mesa Vista):** the seed finalizes the elapsed week's as-worked record (266 hours) and **annotates**
+  the actual Henderson Thursday 2–4 PM gap with the Patel family-emergency note — so the demo shows a real,
+  immutable, annotated record. `compliance_record` + `_note` added to the reset clear list.
+- **Copy:** help migration 0030 (applied) adds a "Compliance Record vs Coverage Forecast" article + corrects
+  two articles; marketing overclaims fixed ("publish the schedule — the record exists" → "RxShift builds the
+  record hour by hour"); features/nevada/vs-when-i-work/pricing aligned to "what actually happened."
+
+### Schema
+- `0029_compliance_record.sql` (**applied**), `0030_help_compliance_record.sql` (**applied**),
+  `0031_help_record_casing.sql` (**applied** — capitalizes "Compliance Record" across all help articles).
+
+### Naming sweep (follow-up, same day)
+- Standardized **"Compliance Record"** across all surfaces: marketing (hero, features, nevada,
+  nevada-callout, vs/when-i-work, pricing, layout meta), product (sidebar, dashboard, security-posture,
+  reports card, publish modal, settings/onboarding copy), legal (terms/privacy), and **all help articles**
+  (migration 0031). Fixed the wrong synonym "compliance log" everywhere. The **Reports xlsx export** now
+  pulls the **as-worked** Compliance Record (`compliance_record`) instead of the publish-time snapshot.
+- Demo guide gained a **"What changed June 18 — refresh checklist"** (new Compliance Record/Coverage
+  Forecast beats, the seeded as-worked record, and the **stale `compliance-record.jpg` to recapture**).
+
+### Verified
+- `tsc` clean, **55/55** vitest (5 new for the reconstruction/segment-splitting), `next build` clean.
+- `--reset` reproduces 266 finalized hours + the 2 annotated Henderson deficient hours (confirmed via SQL).
+- Cron tested locally: run 1 recorded 79 hours (other ratio tenants), run 2 recorded **0** (idempotent).
+- Browser (Mesa Vista, manager): `/app/log` shows the immutable record with Henderson Thu 14:00–15:00
+  **deficient (no pharmacist)** + Frank DiMaggio's appended annotation; `/app/coverage-forecast` shows the
+  as-scheduled projection; sidebar/nav use the new names.
+
+### Open / flags
+- **Legal/regulatory copy:** Terms/Privacy 2-year-retention + R113-24 language is now accurate to the real
+  record, but should get Susie/attorney review before the push publishes.
+- **Hourly cadence** needs Vercel Pro (daily until then — the record is retrospective, so defensible).
+- **"Actual" is inferred** (schedule + live status), not punched clock-in/out; annotations correct edge
+  cases; slot-granularity (30-min) on sub-slot status changes; overnight-shift live overlay is a v1
+  limitation. Clock-in/out is a future enhancement.
+- Optional: a final marketing pass to standardize remaining "compliance log" synonyms → "Compliance Record."
+
+---
+
+## 2026-06-18 — Demo Fixes v2 (six fixes) + compliance "as-worked" finding (design only)
+
+Second demo-debrief pass (live walkthrough with Susie). Six code/data fixes + a flagged compliance-architecture
+finding written up for review (no compliance code this pass). All seed/data survives `--reset`.
+
+### Shipped
+- **Emulation shows the real name.** Emulating an owner with no staff record (Frank) showed "unlinked user";
+  `lib/auth.ts` now falls back to `app_user.display_name` → banner reads "Viewing … as Frank DiMaggio
+  (owner_admin)". (display_name was added in 0028 last pass.)
+- **Empty-week Publish button fixed.** A week with nothing scheduled showed a green **"Published ✓"** button
+  (the code treated "no drafts" as "published"). Now it's a disabled **"Publish"** unless a published period
+  actually exists; the "Nothing scheduled here yet" pill was already correct. (`schedule-matrix.tsx`)
+- **Ask AI works on empty weeks.** The bar was hidden when no period covered the week and the action
+  hard-required a period. Now `app/app/(shell)/schedule/page.tsx` mounts it whenever a working location exists
+  (passing `periodId|null` + `locationId` + `refDate`); `lib/actions/ai.ts` simulates against an in-memory
+  window bundle and **materializes the real period only at apply** via the now-exported `ensurePeriodForDate`.
+  "Schedule Dr. Fitzgerald Mon–Fri 9–5" on a blank week proposes + validates + creates on confirm.
+- **Ask AI: accurate edits + before/after + deficiency ack.** Added an **`edit_shift`** op (extend/shorten/
+  move). The LLM prompt now lists each shift with **staff name + weekday** (it was mis-mapping staff UUIDs,
+  which caused the "extend Patel's Thursday shift → wrong times" bug). Proposals now show a **deterministic
+  before→after line computed from the data** ("Dr. Sunita Patel · Thu Jun 18: 09:00–14:00 → 09:00–16:00") +
+  the engine check; if an edit **adds** a deficiency, a confirm checkbox is required (warn, never block).
+- **Step-away indicator gated.** `/app/me` showed "can I step away?" even after a pharmacist set a
+  non-counting status; now only shown while the current status counts (`me/page.tsx`).
+- **Seeded demo emails.** The email log had no current mail; seeded 3 branded, current-week emails (schedule
+  published → Jerome, deficiency alert → Frank, PTO approved → Ashley). Extracted the pure template to
+  **`lib/email-template.ts`** (no `server-only`) so the tsx seed can build branded HTML; `lib/email.ts`
+  re-exports it. `email_log` added to the demo clear list (scoped by tenant).
+
+### Compliance finding (DESIGN ONLY — no code)
+- Confirmed the compliance record at `/app/log` is **as-scheduled, not as-worked** (regenerated from the
+  *published* schedule; live status never writes it). That proves intent, not adherence — not a defensible
+  audit. Per Jamison: ship the fixes now, **write the design** and validate the regulatory shape with
+  Susie/the Board before building. New **`docs/specs/as-worked-compliance.md`** (Proposed) + a `decisions.md`
+  entry. DEMO-GUIDE + FEATURE-MAP corrected to call `/app/log` a forecast and retire the "the second you
+  publish, the record exists" line.
+
+### Schema
+- None (no migration). `email_log` + `app_user.display_name` already exist.
+
+### Verified
+- `tsc` clean, **50/50** vitest, `next build` clean. `--reset` run; emails confirmed via SQL (3 branded,
+  current-week). Browser (Claude in Chrome, jamison platform admin emulating): Fix 1 banner "Frank DiMaggio";
+  Fix 2 empty week shows disabled "Publish"; Fix 3 Ask AI proposes 5 Fitzgerald shifts on a blank week; Fix 4
+  "extend Patel's Thursday to 4pm" → "09:00–14:00 → 09:00–16:00, ✓ removes 4 deficient slots"; Fix 5 step-away
+  line disappears after switching Patricia to Lunch. (No AI proposals were applied — demo data left pristine;
+  emulation/demo-clock state restored.)
+
+---
+
 ## 2026-06-18 — Demo QA fixes: override actor name, acknowledged exception inline, overtime amber ring
 
 Three defects found when CoWork dry-ran the demo against the live build. All fixed in the seed

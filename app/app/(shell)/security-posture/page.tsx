@@ -1,13 +1,13 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-17";
+const LAST_REVIEWED = "2026-06-18";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Data handled (and not handled)",
     items: [
-      "Stored: staff names, login/work emails, job titles, employment types, schedules, time-off and callout records, ratio configuration, compliance records, audit logs.",
+      "Stored: staff names, login/work emails, job titles, employment types, schedules, time-off and callout records, ratio configuration, Compliance Records, audit logs.",
       "Sales lead records (prospect pharmacy and contact details from website demo requests) are stored for internal follow-up and visible only to platform administrators — never to pharmacy tenants.",
       "An email log records every message the app sends (recipient, subject, and the rendered body) for delivery auditing; it is visible only to platform administrators. In-app feedback/bug reports may include a user-attached screenshot, stored in a private bucket reachable only by platform administrators.",
       "Not stored by design: PHI or any patient data, prescription data, compensation or payroll data, credential documents (license numbers, certificates).",
@@ -62,9 +62,9 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     items: [
       "Append-only activity log for schedule changes, approvals, imports, role changes, offboarding, and AI-applied operations — viewable by managers at Audit Log.",
       "Audit entries are never edited or deleted; an authorized manager can append a note for context (e.g. a missed clock-back), attributed and timestamped, leaving the original entry intact.",
-      "Offboarding blocks a departed employee's sign-in while preserving their name in historical schedules, logs, and compliance records.",
+      "Offboarding blocks a departed employee's sign-in while preserving their name in historical schedules, logs, and Compliance Records.",
       "Override log: every time a manager proceeds past a compliance warning — publishing a flagged schedule, or approving a time-off/swap that creates a ratio deficiency — records who, when, the warning type, and the required reason.",
-      "Compliance records snapshot at publish and are retained for two years; the official record exports as a non-editable PDF that includes any acknowledged exceptions (override reasons), with CSV available for raw data.",
+      "Compliance Record (as-worked): an immutable, hour-by-hour record of actual ratio compliance per location, finalized after each hour from the published schedule adjusted by live statuses and retained two years. Rows are never edited; a manager appends an attributed note to explain an hour. Exports as a non-editable PDF; CSV available for data. (The Coverage Forecast is the separate, schedule-derived planning projection.)",
     ],
   },
   {

@@ -456,3 +456,30 @@ export interface ComplianceRecordRow {
   ratio_status: "compliant" | "deficient";
   deficiency_reason: string | null;
 }
+
+// The Compliance Record (as-worked): an IMMUTABLE, frozen-once-the-hour-passes
+// row of what ACTUALLY happened (schedule adjusted by live-status history).
+// Distinct from the publish-time ComplianceSnapshot (the as-scheduled plan).
+export interface ComplianceRecord {
+  id: string;
+  tenant_id: string;
+  location_id: string;
+  date: string; // yyyy-mm-dd
+  hour: number; // 0–23 (tenant tz)
+  ratio_status: "compliant" | "deficient";
+  deficiency_reason: string | null;
+  required_max_techs: number | null;
+  detail: ComplianceRecordRow;
+  recorded_at: string;
+}
+
+// Append-only annotation on a compliance_record hour (mirrors ActivityLogNote).
+// The determination never changes; a note adds after-the-fact context.
+export interface ComplianceRecordNote {
+  id: string;
+  tenant_id: string;
+  compliance_record_id: string;
+  author_user_id: string | null;
+  note: string;
+  created_at: string;
+}

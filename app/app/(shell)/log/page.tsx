@@ -1,92 +1,74 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
-import ComplianceView from "@/components/app/log/compliance-view";
-import {
-  buildComplianceRecords,
-  loadPeriodBundle,
-  validateBundle,
-} from "@/lib/schedule-data";
-import { deficiencyStreaks } from "@/lib/engine/compliance";
-import { fmtRange, todayStr } from "@/lib/dates";
-import type { Location, OverrideLog, SchedulePeriod } from "@/lib/types";
+import ComplianceRecordView, {
+  type RecordLocation,
+} from "@/components/app/log/compliance-record-view";
+import { nowInTimeZone } from "@/lib/dates";
+import type {
+  ComplianceRecord,
+  ComplianceRecordNote,
+  Location,
+} from "@/lib/types";
 
-export default async function ComplianceLogPage({
+// The Compliance Record (as-worked) — the IMMUTABLE, hour-by-hour record of what
+// actually happened, written by the finalize-compliance job. One day at a time.
+export default async function ComplianceRecordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const params = await searchParams;
   const session = await getSession();
   const tenant = session!.tenant!;
   const supabase = await createClient();
 
-  const { data: periods } = await supabase
-    .from("schedule_period")
-    .select("*")
-    .eq("status", "published")
-    .order("start_date", { ascending: false });
-  const published = (periods ?? []) as SchedulePeriod[];
+  // Distinct recorded dates (RLS scopes to the tenant + managers).
+  const { data: dateRows } = await supabase
+    .from("compliance_record")
+    .select("date")
+    .order("date", { ascending: false });
+  const dates = [
+    ...new Set(((dateRows ?? []) as { date: string }[]).map((r) => r.date)),
+  ];
 
-  if (published.length === 0) {
+  if (dates.length === 0) {
     return (
       <>
         <PageHeader title="Compliance Record" />
         <div className="flex-1 p-8">
-          <EmptyState
-            message="The hourly compliance record generates automatically when you publish a schedule. No schedule has been published yet."
-            action={
-              <Link
-                href="/app/schedule"
-                className="rounded-md bg-amber px-5 py-2.5 font-brand text-sm font-bold text-white hover:bg-amber-dark"
-              >
-                Go to Schedule
-              </Link>
-            }
-          />
+          <EmptyState message="The Compliance Record is the immutable, hour-by-hour record of what actually happened. It fills automatically as each hour passes and a published schedule is in place. Nothing has been finalized yet." />
         </div>
       </>
     );
   }
 
-  // Default to the CURRENT week's record, not the newest period — with
-  // future weeks already published, "newest" would show an empty future log
-  const today = todayStr();
-  const defaultPeriod =
-    published.find((p) => p.start_date <= today && p.end_date >= today) ??
-    published.find((p) => p.start_date <= today) ??
-    published[0];
-  const periodId = params.period ?? defaultPeriod.id;
-  const bundle = await loadPeriodBundle(periodId);
-  const { data: locations } = await supabase.from("location").select("*");
+  const today = nowInTimeZone(tenant.timezone).date;
+  const valid = params.date && dates.includes(params.date) ? params.date : null;
+  const selectedDate = valid ?? dates.find((d) => d <= today) ?? dates[0];
+
+  const [{ data: recordRows }, { data: locations }] = await Promise.all([
+    supabase
+      .from("compliance_record")
+      .select("*")
+      .eq("date", selectedDate)
+      .order("hour"),
+    supabase.from("location").select("*"),
+  ]);
+  const recs = (recordRows ?? []) as ComplianceRecord[];
   const locs = (locations ?? []) as Location[];
 
-  if (!bundle) {
-    return (
-      <>
-        <PageHeader title="Compliance Record" />
-        <div className="p-8 font-body text-sm text-steel">Period not found.</div>
-      </>
-    );
-  }
-
-  // Live regeneration from the current schedule — the publish-time snapshot
-  // is retained separately in compliance_snapshot
-  const records = buildComplianceRecords(bundle, tenant);
-  const allRows = records.flatMap((r) => r.rows);
-  const streaks = deficiencyStreaks(allRows);
-  const validation = validateBundle(bundle, tenant);
-
-  // Overrides recorded when this period was published past a warning — shown on
-  // the record and in the printed PDF so a deficiency carries its justification.
-  const [{ data: overrideRows }, { data: users }, { data: staffRows }] =
+  // Annotations for the day's rows, with author names resolved.
+  const recIds = recs.map((r) => r.id);
+  const [{ data: noteRows }, { data: users }, { data: staffRows }] =
     await Promise.all([
-      supabase
-        .from("override_log")
-        .select("*")
-        .eq("target_id", periodId)
-        .order("created_at", { ascending: false }),
+      recIds.length
+        ? supabase
+            .from("compliance_record_note")
+            .select("*")
+            .in("compliance_record_id", recIds)
+            .order("created_at")
+        : Promise.resolve({ data: [] as ComplianceRecordNote[] }),
       supabase.from("app_user").select("supabase_user_id, staff_id, role, display_name"),
       supabase.from("staff").select("id, full_name"),
     ]);
@@ -108,37 +90,53 @@ export default async function ComplianceLogPage({
       (u.staff_id && staffNameById.get(u.staff_id)) || u.display_name || u.role || "User"
     );
   }
-  const overrides = ((overrideRows ?? []) as OverrideLog[]).map((o) => ({
-    id: o.id,
-    when: o.created_at,
-    warning_type: o.warning_type,
-    reason: o.reason,
-    actor: actorName.get(o.actor_user_id) ?? "User",
-  }));
+  const notesByRecord = new Map<
+    string,
+    { id: string; note: string; author: string; created_at: string }[]
+  >();
+  for (const n of (noteRows ?? []) as ComplianceRecordNote[]) {
+    const list = notesByRecord.get(n.compliance_record_id) ?? [];
+    list.push({
+      id: n.id,
+      note: n.note,
+      author: (n.author_user_id && actorName.get(n.author_user_id)) || "Manager",
+      created_at: n.created_at,
+    });
+    notesByRecord.set(n.compliance_record_id, list);
+  }
+
+  // Group hours by location (record order).
+  const locName = new Map(locs.map((l) => [l.id, l.name]));
+  const byLocation = new Map<string, RecordLocation>();
+  for (const r of recs) {
+    const loc = byLocation.get(r.location_id) ?? {
+      locationId: r.location_id,
+      locationName: locName.get(r.location_id) ?? "Location",
+      hours: [],
+    };
+    loc.hours.push({
+      id: r.id,
+      hour: r.hour,
+      ratio_status: r.ratio_status,
+      deficiency_reason: r.deficiency_reason,
+      detail: r.detail,
+      notes: notesByRecord.get(r.id) ?? [],
+    });
+    byLocation.set(r.location_id, loc);
+  }
+  const records = [...byLocation.values()].sort((a, b) =>
+    a.locationName.localeCompare(b.locationName)
+  );
 
   return (
     <>
-      <PageHeader
-        title={`Compliance Record — ${fmtRange(bundle.period.start_date, bundle.period.end_date)}`}
-      />
+      <PageHeader title={`Compliance Record — ${selectedDate}`} />
       <div className="flex-1 p-8">
-        <ComplianceView
-          periods={published.map((p) => ({
-            id: p.id,
-            label: `${locs.find((l) => l.id === p.location_id)?.name ?? ""} ${fmtRange(p.start_date, p.end_date)}`,
-          }))}
-          periodId={periodId}
-          records={records.map((r) => ({
-            locationId: r.location.id,
-            locationName: r.location.name,
-            rows: r.rows,
-          }))}
-          streaks={streaks}
-          constraintFlags={validation.constraintFlags}
-          hasRatio={tenant.has_ratio}
-          overrides={overrides}
+        <ComplianceRecordView
+          dates={dates}
+          selectedDate={selectedDate}
+          records={records}
           tenantName={tenant.name}
-          periodLabel={fmtRange(bundle.period.start_date, bundle.period.end_date)}
         />
       </div>
     </>

@@ -15,10 +15,10 @@ const COMPARISON: [string, Mark, Mark][] = [
   ["Built for pharmacy", "✓ Pharmacy-specific", "✗ General workforce"],
   ["State ratio rules engine", "✓ Configurable per state", "✗ Not available"],
   ["Real-time ratio enforcement", "✓ Enforced during scheduling", "no"],
-  ["Hourly compliance log generation", "✓ Auto-generated from schedule", "no"],
+  ["Hourly Compliance Record (as-worked)", "✓ Finalized hour by hour", "no"],
   ["Deficiency flagging per hour", "yes", "no"],
   ["3-day deficiency streak alerts (to your managers)", "yes", "no"],
-  ["Compliance log export (.xlsx)", "yes", "no"],
+  ["Compliance Record export (.xlsx)", "yes", "no"],
   ["2-year record retention", "yes", "no"],
   ["Nevada compliance (NAC 639.250) + R113-24 documentation", "yes", "no"],
   ["California compliance (BPC 4115 additive formula)", "yes", "no"],
@@ -70,7 +70,7 @@ export default function VsWhenIWorkPage() {
               When I Work is a general-purpose scheduling tool built for
               restaurants, retail, and service businesses. It does not know
               your state&rsquo;s pharmacist-to-tech ratio rules, and it does
-              not produce the compliance documentation your board may require.
+              not produce the Compliance Record your board may require.
               RxShift does both.
             </p>
           </div>
@@ -162,7 +162,7 @@ export default function VsWhenIWorkPage() {
               <p>
                 Your staff learns one tool. Your managing pharmacist stops
                 maintaining a separate spreadsheet for documentation. Your
-                compliance record generates itself.
+                Compliance Record builds itself, hour by hour.
               </p>
             </div>
           </div>

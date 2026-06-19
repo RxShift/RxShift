@@ -15,9 +15,15 @@ import {
 
 export default function AiCommandBar({
   periodId,
+  locationId,
+  refDate,
   contextNote,
 }: {
-  periodId: string;
+  /** Null on a week with no period yet — created at apply time. */
+  periodId: string | null;
+  locationId: string;
+  /** A date inside the working week — anchors the period the AI works on. */
+  refDate: string;
   /** e.g. "Working in Spring Valley · week of Jun 16" */
   contextNote?: string;
 }) {
@@ -26,6 +32,7 @@ export default function AiCommandBar({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<AiCommandResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ack, setAck] = useState(false);
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +40,8 @@ export default function AiCommandBar({
     setBusy(true);
     setError(null);
     setResult(null);
-    const res = await aiScheduleCommand(periodId, input.trim());
+    setAck(false);
+    const res = await aiScheduleCommand(periodId, input.trim(), locationId, refDate);
     if (res.ok && res.data) setResult(res.data);
     else if (!res.ok) setError(res.error);
     setBusy(false);
@@ -42,10 +50,16 @@ export default function AiCommandBar({
   async function handleApply() {
     if (!result?.operations) return;
     setBusy(true);
-    const res = await applyAiOperations(periodId, result.operations);
+    const res = await applyAiOperations(
+      periodId,
+      result.operations,
+      locationId,
+      refDate
+    );
     if (res.ok) {
       setResult(null);
       setInput("");
+      setAck(false);
       router.refresh();
     } else {
       setError(res.error);
@@ -94,14 +108,54 @@ export default function AiCommandBar({
           <p className="mt-1 font-body text-sm leading-relaxed text-navy">
             {result.description}
           </p>
+
+          {result.changes && result.changes.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {result.changes.map((c, i) => (
+                <li
+                  key={i}
+                  className="font-body text-[13px] font-medium text-navy"
+                >
+                  • {c}
+                </li>
+              ))}
+            </ul>
+          )}
+
           <p className="mt-2 font-body text-[13px] font-medium text-steel">
             Engine check: {result.validation}
           </p>
+
+          {result.addsDeficiency && (
+            <label className="mt-3 flex items-start gap-2 rounded-md bg-deficiency-bg p-3 font-body text-[13px] text-deficiency">
+              <input
+                type="checkbox"
+                checked={ack}
+                onChange={(e) => setAck(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                This creates {result.deficiencyDelta} new deficient ratio slot
+                {result.deficiencyDelta === 1 ? "" : "s"}. I understand and want
+                to proceed anyway.
+              </span>
+            </label>
+          )}
+
           <div className="mt-3 flex gap-2">
-            <Button onClick={handleApply} disabled={busy}>
+            <Button
+              onClick={handleApply}
+              disabled={busy || (result.addsDeficiency && !ack)}
+            >
               {busy ? "Applying…" : "Confirm & apply"}
             </Button>
-            <Button variant="secondary" onClick={() => setResult(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setResult(null);
+                setAck(false);
+              }}
+            >
               Discard
             </Button>
           </div>

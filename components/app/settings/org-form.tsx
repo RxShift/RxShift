@@ -73,7 +73,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
             <option value="60">60 minutes</option>
           </Select>
           <HelpText>
-            How finely ratio is evaluated. The compliance record always rolls
+            How finely ratio is evaluated. The Compliance Record always rolls
             up to hourly.
           </HelpText>
         </div>

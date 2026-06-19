@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 // Desktop-oriented surfaces (schedule builder, settings, staff, reports,
-// compliance log, platform admin). On a phone we don't invest in making these
+// Compliance Record, platform admin). On a phone we don't invest in making these
 // usable — we just render a gentle heads-up above the page (md:hidden).
 const DESKTOP_ONLY = [
   "/app/schedule",

@@ -54,7 +54,7 @@ export default async function OverrideLogPage() {
             flagged schedule, or approving a time-off/swap that creates a ratio
             deficiency — the required reason lands here: who, when, what kind of
             warning, and why it was acceptable. Append-only, and cross-referenced
-            on the compliance record.
+            on the Coverage Forecast.
           </p>
           {overrides.length === 0 ? (
             <EmptyState message="No overrides logged. When someone proceeds past a ratio or constraint flag, the acknowledgment appears here." />

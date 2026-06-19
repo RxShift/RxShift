@@ -3,6 +3,63 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 18, 2026 — Compliance Record (as-worked) BUILT + naming locked
+
+Implements the decision below (the sequencing changed: Jamison chose to build now, including public copy,
+rather than wait on regulatory validation). **Canonical names, used everywhere:** *Schedule* (plan),
+*Coverage Forecast* (schedule-derived projection, planning aid), *Compliance Record* (immutable, hour-by-hour,
+what-actually-happened audit; 2-year; annotatable), *Activity Log*, *Override Log*. The old `/app/log`
+(as-scheduled) moved to `/app/coverage-forecast`; `/app/log` is now the Compliance Record.
+
+**Architecture chosen:** reuse the existing schedule-agnostic engine (`evaluateZone`) — feed it *actual*
+presence reconstructed from the published shift split by each person's `live_status` history — and persist
+immutable hourly rows (`compliance_record`, migration 0029) via an idempotent finalizer
+(`lib/compliance-record.ts`) run by a daily cron (hourly on Pro). Immutable = service-role writes only, no
+user insert/update/delete policy; corrections are **append-only annotations** (`compliance_record_note`),
+never edits — the same model as the audit log. **Rejected:** explicit clock-in/out for v1 (inferring presence
+from schedule + live status is the lighter path; annotations + a future clock-in feature cover the gap);
+hourly cron now (Hobby caps at daily; retrospective record makes daily defensible). **v1 limitations
+(documented):** inferred (not punched) presence; 30-min slot granularity on sub-slot status changes; overnight
+live-overlay. **Regulatory:** 2-year retention is grounded (NAC 639.744; R113-24 hourly-staffing
+documentation) — but R113-24 is *proposed* and the exact required fields/retention should be confirmed by
+Susie/counsel; Terms/Privacy copy is accurate to the build but warrants attorney review before the push
+publishes.
+
+## June 18, 2026 — Compliance must become "as-worked"; today it's "as-scheduled" (design only, build deferred)
+
+Surfaced in the demo debrief with Susie (pharmacist co-founder). **Finding:** the compliance record at
+`/app/log` is **schedule-derived** — regenerated on read from the *published* shifts, with a publish-time
+`compliance_snapshot`; live status feeds only the board + alert cron, never the hourly record. That proves
+*intent*, not *adherence* — not a defensible audit (a pharmacy could schedule compliant, send the pharmacist
+home, and the record stays green). **Decision:** the defensible artifact is an **as-worked** record (actual
+hour-by-hour staffing), and we will build it — but **not in this pass**. Sequencing (Jamison's call): ship the
+six demo fixes now; write a design doc (`docs/specs/as-worked-compliance.md`) and validate the **regulatory
+shape (required fields + retention)** with Susie / the Nevada Board **before** building. **Rejected** bolting a
+half-version onto the demo-fix pass. **Honesty:** the DEMO-GUIDE + the demo script must stop implying the
+publish-time record is the audit ("the second you publish, the compliance record exists" is retired); frame
+`/app/log` as an as-scheduled forecast + documented exceptions, with as-worked on the roadmap. Confidence note:
+the *direction* is certain; the *exact NV/CA recordkeeping form + retention* is medium-confidence and must be
+confirmed by a pharmacist/the Board, not assumed.
+
+## June 18, 2026 — Demo-fix pass: emulation name, empty-week Publish, Ask AI on empty weeks + edit_shift, step-away gating, seeded emails
+
+Six fixes from the same debrief. **Emulation name:** `getSession`'s emulate path fell back to "unlinked user"
+for an owner with no staff record; now falls back to `app_user.display_name` (Frank shows correctly). **Empty
+week:** the Publish button read "Published ✓" when nothing was scheduled (it treated "no drafts" as
+"published"); now neutral/disabled "Publish" unless a published period actually exists. **Ask AI on empty
+weeks:** the bar was gated on an existing period and the action hard-required one; now it mounts whenever a
+working location exists, simulates against an in-memory window bundle, and **creates the real period only at
+apply** (`ensurePeriodForDate`) — chosen over auto-creating empty periods on navigation/questions (which would
+litter drafts). **Ask AI accuracy:** added an `edit_shift` op (extend/shorten/move) and, critically, put the
+**staff name + weekday on each shift row in the LLM prompt** — gpt-4o-mini was mis-mapping staff UUIDs across
+two lists, which is why "extend Dr. Patel's Thursday shift" hallucinated wrong times; proposals now show a
+**deterministic before→after line computed from the data** (not LLM prose) and require an ack checkbox if the
+edit *adds* a deficiency. **Step-away:** the "can I step away?" line showed even after a pharmacist went
+non-counting; now gated on the current status counting. **Seeded emails:** the email log was empty of current
+mail; seeded 3 branded, current-week emails (schedule published, deficiency alert, PTO approved) — required
+extracting the pure template into `lib/email-template.ts` so the tsx seed needn't import the `server-only`
+`lib/email.ts`.
+
 ## June 17, 2026 — "Ask AI" restored, bound to the working-location week
 
 Phase 7 (reverses the June 15 "deferred" note). The command bar is mounted on the schedule again, bound to

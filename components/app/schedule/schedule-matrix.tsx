@@ -351,7 +351,13 @@ export default function ScheduleMatrix({
             onClick={() => (flagCount > 0 ? setPublishOpen(true) : runPublish(null))}
             disabled={busy || !hasDraft}
           >
-            {busy ? "Working…" : hasDraft ? "Publish" : "Published ✓"}
+            {busy
+              ? "Working…"
+              : hasDraft
+                ? "Publish"
+                : statusTone === "published"
+                  ? "Published ✓"
+                  : "Publish"}
           </Button>
         </div>
       </div>
@@ -519,8 +525,9 @@ export default function ScheduleMatrix({
       >
         <p>
           Publishing makes this {viewStart === viewEnd ? "day" : "window"} visible
-          to staff and generates the hourly compliance record
-          {locationFilter ? "" : " for every location"}.
+          to staff and drives the Coverage Forecast
+          {locationFilter ? "" : " for every location"}. The Compliance Record
+          then finalizes hour by hour as the day passes.
         </p>
         {flagCount > 0 && (
           <div className="mt-4">

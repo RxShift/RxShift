@@ -12,7 +12,7 @@ const SECTIONS: { heading: string; paragraphs: string[] }[] = [
   {
     heading: "1. Definitions",
     paragraphs: [
-      "“RxShift,” “we,” or “us” means JWC LLC, doing business as RxShift. “Customer” means the pharmacy or pharmacy group that subscribes to the Service. “Staff User” means an individual (pharmacist, technician, or other staff) given access by a Customer. “Customer Data” means all data a Customer or its Staff Users submit to the Service, including staff rosters, schedules, and compliance records. “Service” means the RxShift application at app.rxshift.io; “Site” means rxshift.io.",
+      "“RxShift,” “we,” or “us” means JWC LLC, doing business as RxShift. “Customer” means the pharmacy or pharmacy group that subscribes to the Service. “Staff User” means an individual (pharmacist, technician, or other staff) given access by a Customer. “Customer Data” means all data a Customer or its Staff Users submit to the Service, including staff rosters, schedules, and Compliance Records. “Service” means the RxShift application at app.rxshift.io; “Site” means rxshift.io.",
     ],
   },
   {
@@ -36,10 +36,10 @@ const SECTIONS: { heading: string; paragraphs: string[] }[] = [
     ],
   },
   {
-    heading: "5. Customer Data: yours, and your compliance records stay reachable",
+    heading: "5. Customer Data: yours, and your Compliance Records stay reachable",
     paragraphs: [
       "The Customer owns Customer Data. We process it only to provide and improve the Service, and we never sell it. You grant us the limited license needed to host, process, back up, and display Customer Data to your authorized users.",
-      "Because compliance records exist to satisfy regulatory retention requirements, on termination the Customer may export its compliance records (and other Customer Data) in standard formats, and we will retain compliance records for the duration of the applicable regulatory retention window (currently two years for hourly staffing records under the rules the Service tracks) before deletion, unless you ask us in writing to delete them sooner. Other Customer Data is deleted within 60 days of termination.",
+      "Because Compliance Records exist to satisfy regulatory retention requirements, on termination the Customer may export its Compliance Records (and other Customer Data) in standard formats, and we will retain Compliance Records for the duration of the applicable regulatory retention window (currently two years for hourly staffing records under the rules the Service tracks) before deletion, unless you ask us in writing to delete them sooner. Other Customer Data is deleted within 60 days of termination.",
     ],
   },
   {
@@ -58,7 +58,7 @@ const SECTIONS: { heading: string; paragraphs: string[] }[] = [
   {
     heading: "8. Availability and changes",
     paragraphs: [
-      "We aim for high availability but the Service is provided without an uptime guarantee at this stage. We may improve or modify features; we will not materially degrade core functionality (scheduling, the compliance record, exports) during a paid term without notice. Customers are encouraged to export records periodically.",
+      "We aim for high availability but the Service is provided without an uptime guarantee at this stage. We may improve or modify features; we will not materially degrade core functionality (scheduling, the Compliance Record, exports) during a paid term without notice. Customers are encouraged to export records periodically.",
     ],
   },
   {

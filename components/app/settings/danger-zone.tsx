@@ -32,7 +32,7 @@ export default function DangerZone({ tenantName }: { tenantName: string }) {
       </h2>
       <p className="mt-1 max-w-[420px] font-body text-sm leading-relaxed text-steel">
         Deleting this workspace permanently removes every location, staff
-        record, schedule, request, and compliance record in it. There is no
+        record, schedule, request, and Compliance Record in it. There is no
         undo.
       </p>
       <Button
@@ -68,7 +68,7 @@ export default function DangerZone({ tenantName }: { tenantName: string }) {
       >
         <p>
           This deletes <strong>everything</strong> in this workspace —
-          schedules, staff, compliance records, all of it. Type the workspace
+          schedules, staff, Compliance Records, all of it. Type the workspace
           name to confirm:
         </p>
         <div className="mt-4">

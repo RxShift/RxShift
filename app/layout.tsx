@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "RxShift — Compliance-ready pharmacy scheduling",
     description:
-      "Ratio-aware schedules and automated hourly compliance logs for pharmacies with 1–25 locations.",
+      "Ratio-aware schedules and an automated hourly Compliance Record for pharmacies with 1–25 locations.",
     url: "https://rxshift.io",
     siteName: "RxShift",
   },

@@ -769,7 +769,7 @@ export default function RequestsView({
               <HelpText>
                 RxShift never blocks you — but approving despite a ratio
                 deficiency records this reason in the override log and the
-                compliance record.
+                Compliance Record.
               </HelpText>
             </div>
           )}

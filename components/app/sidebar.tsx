@@ -61,6 +61,7 @@ export function sections(
       label: "Compliance",
       items: [
         { label: "Compliance Record", href: "/app/log", roles: MANAGE },
+        { label: "Coverage Forecast", href: "/app/coverage-forecast", roles: MANAGE },
         { label: "Override Log", href: "/app/log/overrides", roles: MANAGE },
         { label: "Audit Log", href: "/app/log/audit", roles: MANAGE },
         { label: "Reports", href: "/app/reports", roles: MANAGE },

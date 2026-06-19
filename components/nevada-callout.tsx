@@ -33,8 +33,9 @@ export default function NevadaCallout() {
           </div>
 
           <p className="mt-8 max-w-[600px] font-body text-base leading-[1.7] text-white/80">
-            RxShift generates that record automatically from every published
-            schedule. No extra steps. No new forms. Done before the shift starts.
+            RxShift builds that Compliance Record automatically — finalized hour
+            by hour from your published schedule and your team&rsquo;s live
+            statuses. No extra steps. No new forms. No spreadsheet.
           </p>
 
           <p className="mt-8 font-body text-sm font-medium text-white/60">
@@ -50,11 +51,11 @@ export default function NevadaCallout() {
           </p>
         </div>
 
-        {/* Right — the compliance record, the artifact R113-24 requires */}
+        {/* Right — the Compliance Record, the artifact R113-24 requires */}
         <div>
           <Image
             src="/images/screenshots/compliance-record.jpg"
-            alt="RxShift hourly compliance record: each pharmacist and technician on duty, by hour, with compliant status — the documentation R113-24 requires"
+            alt="RxShift Compliance Record: each pharmacist and technician on duty, by hour, with compliant status — the documentation R113-24 requires"
             width={1440}
             height={900}
             className="w-full rounded-lg ring-1 ring-white/15 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.55)]"

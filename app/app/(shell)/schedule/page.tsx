@@ -225,10 +225,16 @@ export default async function SchedulePage({
             </Link>
           </div>
         </div>
-        {aiPeriod && (
+        {workingLocationId && (
           <AiCommandBar
-            periodId={aiPeriod.id}
-            contextNote={`Working in ${aiLocName} · ${fmtRange(aiPeriod.start_date, aiPeriod.end_date)}`}
+            periodId={aiPeriod?.id ?? null}
+            locationId={workingLocationId}
+            refDate={refDate}
+            contextNote={
+              aiPeriod
+                ? `Working in ${aiLocName} · ${fmtRange(aiPeriod.start_date, aiPeriod.end_date)}`
+                : `Working in ${aiLocName} · ${fmtRange(start, end)} (no shifts yet)`
+            }
           />
         )}
         <ScheduleMatrix

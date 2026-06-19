@@ -464,6 +464,49 @@ shared code so they survive `--reset`:
 the **Admin Console** (`/app/admin`), **platform-admin only**, and the Platform nav is hidden while
 emulating — set the clock + reset *before* you emulate a tenant person.
 
+## Demo Fixes v2 + compliance "as-worked" finding (June 18, 2026)
+
+Second debrief (live walkthrough with Susie). Six more fixes — no migration:
+
+- **Emulation name:** `getSession`'s emulate path (`lib/auth.ts`) now falls back to `app_user.display_name`,
+  so emulating Frank shows "Frank DiMaggio" not "unlinked user".
+- **Empty-week Publish:** the matrix Publish button no longer reads "Published ✓" when nothing is scheduled
+  (only when a published period exists); empty = disabled "Publish".
+- **Ask AI on empty weeks + `edit_shift`:** the bar mounts even with no period (`schedule/page.tsx` passes
+  `periodId|null` + `locationId` + `refDate`); `lib/actions/ai.ts` simulates against an in-memory window
+  bundle and creates the real period only at apply (exported `ensurePeriodForDate`). Added an `edit_shift`
+  op; the LLM prompt now lists shifts by **staff name + weekday** (UUID cross-referencing was the
+  wrong-times bug); proposals show a **deterministic before→after line** + an ack checkbox when an edit adds
+  a deficiency.
+- **Step-away gating:** `/app/me` shows "can I step away?" only while the pharmacist's current status counts.
+- **Seeded emails:** 3 branded current-week emails in `email_log` via the seed. Pure template extracted to
+  **`lib/email-template.ts`** (no `server-only`); `lib/email.ts` re-exports it; `email_log` added to the
+  demo clear list.
+
+## The Compliance Record (as-worked) — BUILT June 18, 2026
+
+The compliance audit is now real. Three distinct artifacts, named consistently across product/help/marketing:
+- **Schedule** — the plan. **Coverage Forecast** (`/app/coverage-forecast`) — projected hourly ratio from the
+  *published schedule* (planning aid; the old `/app/log` view, relocated). **Compliance Record** (`/app/log`)
+  — the **immutable, hour-by-hour record of what actually happened**, 2-year retained, never edited,
+  annotatable. **Activity Log** / **Override Log** — change trail / acknowledged-exception reasons.
+
+- **How the record is written:** the finalizer (`lib/compliance-record.ts`, pure/tsx-safe — no `server-only`)
+  reconstructs each completed hour's actual presence (published shift segments **split by each person's
+  `live_status` history**; non-counting status removes them for those minutes), runs the existing
+  `evaluateZone` + `generateComplianceRecord`, and writes immutable `compliance_record` rows (migration 0029).
+  **Idempotent.** Cron `/api/cron/finalize-compliance` runs **daily** (`vercel.json`); switch to hourly
+  (`5 * * * *`) on Vercel Pro — same code. Managers add after-the-fact notes via `appendComplianceNote`
+  (`compliance_record_note`, mirrors `activity_log_note`); the determination is never edited.
+- **Demo:** the Mesa Vista seed finalizes the elapsed week (≈266 hours) and annotates the actual Henderson
+  Thursday 2–4 PM gap (Patel family-emergency). `compliance_record` + `_note` are in the reset clear list.
+- **Don't regress:** `/app/log` is the as-worked audit; the schedule projection is the **Coverage Forecast**,
+  not "the compliance record." The engine stays the single source of compliance truth.
+- **Open:** hourly cadence needs Pro; "actual" is inferred from schedule + live status (no clock-in/out —
+  annotations correct edge cases; 30-min slot granularity; overnight live-overlay is a v1 limitation). Legal
+  copy (Terms/Privacy retention, R113-24) is accurate but should get Susie/attorney review before publish.
+  Implemented spec archived at `docs/specs/_archive/as-worked-compliance.md`; rationale in `docs/decisions.md`.
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.

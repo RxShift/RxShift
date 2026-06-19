@@ -670,7 +670,7 @@ export default function OnboardingWizard({ userEmail }: { userEmail: string }) {
                     <option value="60">60 minutes</option>
                   </Select>
                   <HelpText>
-                    How finely ratio is evaluated. The compliance record always
+                    How finely ratio is evaluated. The Compliance Record always
                     rolls up to hourly.
                   </HelpText>
                 </div>

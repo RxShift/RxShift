@@ -61,6 +61,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
         .maybeSingle();
       const staffName =
         (target.staff as { full_name?: string } | null)?.full_name ??
+        (target as { display_name?: string | null }).display_name ??
         "unlinked user";
       const appUser = { ...target } as AppUser & { staff?: unknown };
       delete appUser.staff;

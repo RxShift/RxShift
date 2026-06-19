@@ -12,14 +12,17 @@ import { aiConfigured, aiJson, aiText } from "@/lib/ai";
 import { evaluateZone } from "@/lib/engine/ratio";
 import { evaluateConstraints } from "@/lib/engine/constraints";
 import {
+  loadAllLocationsBundle,
   loadPeriodBundle,
   toEngineRule,
   toEngineSegments,
   validateBundle,
+  type PeriodBundle,
 } from "@/lib/schedule-data";
-import { eachDate } from "@/lib/dates";
+import { eachDate, fmtDay, mondayOf, monthStart, periodEnd } from "@/lib/dates";
 import { timeToMinutes } from "@/lib/engine/ratio";
-import type { ConstraintRule } from "@/lib/types";
+import { ensurePeriodForDate } from "./schedule";
+import type { ConstraintRule, Tenant } from "@/lib/types";
 import {
   ActionError,
   logActivity,
@@ -101,6 +104,16 @@ const operationSchema = z.discriminatedUnion("op", [
     op: z.literal("delete_shift"),
     shift_id: z.string().uuid(),
   }),
+  z
+    .object({
+      op: z.literal("edit_shift"),
+      shift_id: z.string().uuid(),
+      new_start_time: z.string().regex(/^\d{2}:\d{2}$/).nullish(),
+      new_end_time: z.string().regex(/^\d{2}:\d{2}$/).nullish(),
+    })
+    .refine((o) => o.new_start_time || o.new_end_time, {
+      message: "edit_shift needs a new start and/or end time",
+    }),
   z.object({
     op: z.literal("create_shifts"),
     staff_id: z.string().uuid(),
@@ -174,29 +187,85 @@ export interface AiCommandResult {
   description?: string;
   operations?: AiOperation[];
   validation?: string;
+  /** Deterministic before/after lines, computed from the data (not the LLM). */
+  changes?: string[];
+  /** True if the change introduces a NET-NEW ratio deficiency (needs ack). */
+  addsDeficiency?: boolean;
+  deficiencyDelta?: number;
+}
+
+/**
+ * The bundle the AI works against: the real period if we have one, otherwise a
+ * synthesized window bundle for the location's cycle-aligned period containing
+ * refDate — so Ask AI works on an empty week that has NO period yet. No DB write
+ * here; the real period is materialized only when operations are applied.
+ */
+async function resolveAiBundle(
+  periodId: string | null,
+  locationId: string,
+  refDate: string,
+  tenant: Tenant
+): Promise<PeriodBundle | null> {
+  if (periodId) {
+    const real = await loadPeriodBundle(periodId);
+    if (real) return real;
+  }
+  if (!locationId) return null;
+  const start =
+    tenant.schedule_cycle === "monthly" ? monthStart(refDate) : mondayOf(refDate);
+  const end = periodEnd(start, tenant.schedule_cycle);
+  const range = await loadAllLocationsBundle(start, end);
+  return {
+    period: {
+      id: "",
+      tenant_id: tenant.id,
+      location_id: locationId,
+      cycle: tenant.schedule_cycle,
+      start_date: start,
+      end_date: end,
+      status: "draft",
+      published_at: null,
+      published_by: null,
+      created_at: "",
+    },
+    shifts: range.shifts.filter((s) => s.location_id === locationId),
+    staff: range.staff,
+    workTypes: range.workTypes,
+    locations: range.locations,
+    ratioRule: range.ratioRule,
+    constraints: range.constraints,
+    approvedTimeOff: range.approvedTimeOff,
+  };
 }
 
 export async function aiScheduleCommand(
-  periodId: string,
-  command: string
+  periodId: string | null,
+  command: string,
+  locationId: string,
+  refDate: string
 ): Promise<ActionResult<AiCommandResult>> {
   return runAction(async () => {
     const ctx = await requireManager();
     if (!aiConfigured())
       throw new ActionError("The AI assistant isn't configured yet.");
 
-    const bundle = await loadPeriodBundle(periodId);
-    if (!bundle) throw new ActionError("Period not found.");
+    const bundle = await resolveAiBundle(periodId, locationId, refDate, ctx.tenant);
+    if (!bundle)
+      throw new ActionError("Couldn't load the schedule for that week.");
     const validation = validateBundle(bundle, ctx.tenant);
 
     const staffList = bundle.staff
       .filter((s) => s.active)
       .map((s) => `${s.id} | ${s.full_name} | ${s.ratio_type}`)
       .join("\n");
+    // Include the staff NAME and weekday on each shift row so the model can map
+    // "Dr. Patel's Thursday shift" straight to a row (cross-referencing staff
+    // UUIDs across two lists is exactly what small models get wrong).
+    const staffNameById = new Map(bundle.staff.map((s) => [s.id, s.full_name]));
     const shiftList = bundle.shifts
       .map(
         (s) =>
-          `${s.id} | ${s.date} | staff=${s.staff_id} | ${s.segments
+          `${s.id} | ${s.date} (${fmtDay(s.date).dow}) | ${staffNameById.get(s.staff_id) ?? s.staff_id} | ${s.segments
             .map((g) => `${String(g.start_time).slice(0, 5)}-${String(g.end_time).slice(0, 5)}`)
             .join(",")}`
       )
@@ -221,6 +290,7 @@ export async function aiScheduleCommand(
         "Allowed operations:\n" +
         '- {"op":"reassign_shift","shift_id":"<uuid>","to_staff_id":"<uuid>"}\n' +
         '- {"op":"delete_shift","shift_id":"<uuid>"}\n' +
+        '- {"op":"edit_shift","shift_id":"<uuid>","new_start_time":"HH:MM or null","new_end_time":"HH:MM or null"}\n' +
         '- {"op":"create_shifts","staff_id":"<uuid>","days_of_week":["mon","tue"],"start_time":"08:00","end_time":"17:00","date_from":"yyyy-mm-dd or null","date_to":"yyyy-mm-dd or null"}\n' +
         '- {"op":"add_constraint","staff_id":"<uuid>","rule_type":"always_off|recurring_unavailable|unavailable_window|hour_cap","params":{...},"effective_start":"yyyy-mm-dd","effective_end":"yyyy-mm-dd or null"}\n' +
         'Constraint params: always_off {"days":["fri"]}; recurring_unavailable {"recurrence":{"days":["mon"],"interval_weeks":2}}; ' +
@@ -230,10 +300,15 @@ export async function aiScheduleCommand(
         '"start_time":"08:00","end_time":"17:00","date_from":<start>,"date_to":<start+20 days>}. Dates are clamped ' +
         "to this schedule period; days where the person already works or has approved time off are skipped " +
         "automatically — mention in the description if part of the request falls outside this period.\n" +
+        "edit_shift changes ONE existing shift's hours: to extend/shorten/move, find the shift in SHIFTS by " +
+        "staff+date, read its CURRENT start-end from the data, and set new_start_time and/or new_end_time " +
+        '(omit/null the one that doesn\'t change). E.g. a shift shown "09:00-14:00" + "extend to 4pm" → ' +
+        '{"op":"edit_shift","shift_id":"<that uuid>","new_end_time":"16:00"}. Never guess the current times — ' +
+        "use exactly what SHIFTS shows. " +
         "Use ONLY ids from the data. To give someone days off for a date range, use add_constraint with " +
         "effective dates, AND reassign or delete their conflicting shifts if asked. " +
-        "If the request is ambiguous or impossible, use mode answer to say what you need.",
-      `Schedule period: ${bundle.period.start_date} to ${bundle.period.end_date}\n\nSTAFF (id | name | type):\n${staffList}\n\nSHIFTS (id | date | staff | times):\n${shiftList}\n\nCURRENT FLAGS:\n${flagSummary || "none"}\n\nUSER REQUEST: ${command}`,
+        "If the request is ambiguous (e.g. several matching shifts) or impossible, use mode answer to ask what you need.",
+      `Schedule period: ${bundle.period.start_date} to ${bundle.period.end_date}\n\nSTAFF (id | name | type):\n${staffList}\n\nSHIFTS (id | date (weekday) | staff name | times):\n${shiftList}\n\nCURRENT FLAGS:\n${flagSummary || "none"}\n\nUSER REQUEST: ${command}`,
       900
     );
 
@@ -301,6 +376,36 @@ export async function aiScheduleCommand(
               }
             : s
         );
+      } else if (op.op === "edit_shift") {
+        // Move the shift's hours: new start lands on its earliest segment, new
+        // end on its latest (single-segment shifts: both hit the same segment).
+        const segs = simulated.filter((s) => s.shift_id === op.shift_id);
+        if (segs.length) {
+          const minStart = segs.reduce(
+            (a, s) => (s.start_time < a ? s.start_time : a),
+            segs[0].start_time
+          );
+          const maxEnd = segs.reduce(
+            (a, s) => (s.end_time > a ? s.end_time : a),
+            segs[0].end_time
+          );
+          let startDone = false;
+          let endDone = false;
+          simulated = simulated.map((s) => {
+            if (s.shift_id !== op.shift_id) return s;
+            let start_time = s.start_time;
+            let end_time = s.end_time;
+            if (op.new_start_time && !startDone && s.start_time === minStart) {
+              start_time = op.new_start_time;
+              startDone = true;
+            }
+            if (op.new_end_time && !endDone && s.end_time === maxEnd) {
+              end_time = op.new_end_time;
+              endDone = true;
+            }
+            return { ...s, start_time, end_time };
+          });
+        }
       } else if (op.op === "add_constraint") {
         simulatedRules.push({
           id: `proposed-${simulatedRules.length}`,
@@ -344,6 +449,62 @@ export async function aiScheduleCommand(
     const constraintFlagsAfter = evaluateConstraints(simulatedRules, simulated).length;
     const constraintFlagsBefore = validation.constraintFlags.length;
 
+    // Deterministic before/after lines — read straight from the data, never from
+    // the LLM's prose, so the times the manager confirms are always correct.
+    const shiftById = new Map(bundle.shifts.map((s) => [s.id, s]));
+    const dayLabel = (d: string) => {
+      const f = fmtDay(d);
+      return `${f.dow} ${f.label}`;
+    };
+    const span = (sh: (typeof bundle.shifts)[number]): [string, string] => {
+      const segs = sh.segments ?? [];
+      if (!segs.length) return ["—", "—"];
+      const starts = segs.map((g) => String(g.start_time).slice(0, 5));
+      const ends = segs.map((g) => String(g.end_time).slice(0, 5));
+      return [
+        starts.reduce((a, b) => (b < a ? b : a)),
+        ends.reduce((a, b) => (b > a ? b : a)),
+      ];
+    };
+    const changes: string[] = [];
+    for (const op of ops) {
+      if (op.op === "create_shifts") {
+        const person = staffById.get(op.staff_id);
+        const n = expandCreateDates(op, bundle).length;
+        changes.push(
+          `Create ${n} shift${n === 1 ? "" : "s"}: ${person?.full_name ?? "?"} ${op.days_of_week.join("/")} ${op.start_time}–${op.end_time}`
+        );
+      } else if (op.op === "edit_shift") {
+        const sh = shiftById.get(op.shift_id);
+        if (sh) {
+          const [os, oe] = span(sh);
+          changes.push(
+            `${staffById.get(sh.staff_id)?.full_name ?? "?"} · ${dayLabel(sh.date)}: ${os}–${oe} → ${op.new_start_time ?? os}–${op.new_end_time ?? oe}`
+          );
+        }
+      } else if (op.op === "reassign_shift") {
+        const sh = shiftById.get(op.shift_id);
+        if (sh) {
+          const [os, oe] = span(sh);
+          changes.push(
+            `${dayLabel(sh.date)} ${os}–${oe}: ${staffById.get(sh.staff_id)?.full_name ?? "?"} → ${staffById.get(op.to_staff_id)?.full_name ?? "?"}`
+          );
+        }
+      } else if (op.op === "delete_shift") {
+        const sh = shiftById.get(op.shift_id);
+        if (sh) {
+          const [os, oe] = span(sh);
+          changes.push(
+            `Remove: ${staffById.get(sh.staff_id)?.full_name ?? "?"} ${dayLabel(sh.date)} ${os}–${oe}`
+          );
+        }
+      } else if (op.op === "add_constraint") {
+        changes.push(
+          `Add ${op.rule_type.replace(/_/g, " ")} for ${staffById.get(op.staff_id)?.full_name ?? "?"}`
+        );
+      }
+    }
+
     const validationSummary = [
       createdCount > 0 ? `✓ Creates ${createdCount} shift(s).` : "",
       deficientAfter > deficientBefore
@@ -363,13 +524,18 @@ export async function aiScheduleCommand(
       description: result.description ?? "Proposed change",
       operations: ops,
       validation: validationSummary,
+      changes,
+      addsDeficiency: deficientAfter > deficientBefore,
+      deficiencyDelta: Math.max(0, deficientAfter - deficientBefore),
     };
   });
 }
 
 export async function applyAiOperations(
-  periodId: string,
-  operations: unknown[]
+  periodId: string | null,
+  operations: unknown[],
+  locationId: string,
+  refDate: string
 ): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requireManager();
@@ -377,10 +543,24 @@ export async function applyAiOperations(
 
     const ops = operations.map((o) => operationSchema.parse(o));
 
+    // On an empty week there's no period yet — materialize the real one now
+    // (only at apply time, so questions/discarded proposals never create one).
+    let realPeriodId = periodId;
+    if (!realPeriodId) {
+      if (!locationId) throw new ActionError("No location selected.");
+      realPeriodId = await ensurePeriodForDate(
+        supabase,
+        ctx.tenantId,
+        ctx.tenant.schedule_cycle,
+        locationId,
+        refDate
+      );
+    }
+
     // create_shifts needs the period context to expand dates exactly the
     // way the simulation previewed them
     const needsBundle = ops.some((o) => o.op === "create_shifts");
-    const bundle = needsBundle ? await loadPeriodBundle(periodId) : null;
+    const bundle = needsBundle ? await loadPeriodBundle(realPeriodId) : null;
     if (needsBundle && !bundle) throw new ActionError("Period not found.");
 
     for (const op of ops) {
@@ -397,7 +577,7 @@ export async function applyAiOperations(
               location_id: bundle.period.location_id,
               staff_id: op.staff_id,
               date,
-              schedule_period_id: periodId,
+              schedule_period_id: realPeriodId,
               status: bundle.period.status,
               break_minutes: breakMin,
               created_by: ctx.userId,
@@ -429,6 +609,32 @@ export async function applyAiOperations(
           .eq("id", op.shift_id)
           .eq("tenant_id", ctx.tenantId);
         if (error) throw new ActionError(error.message);
+      } else if (op.op === "edit_shift") {
+        // Update the shift's hours: new start on the earliest segment, new end
+        // on the latest (single-segment shifts hit the same row for both).
+        const { data: segs, error: segReadErr } = await supabase
+          .from("shift_segment")
+          .select("id, start_time, end_time")
+          .eq("shift_id", op.shift_id)
+          .eq("tenant_id", ctx.tenantId)
+          .order("start_time");
+        if (segReadErr) throw new ActionError(segReadErr.message);
+        if (segs && segs.length) {
+          if (op.new_start_time) {
+            const { error } = await supabase
+              .from("shift_segment")
+              .update({ start_time: op.new_start_time })
+              .eq("id", segs[0].id);
+            if (error) throw new ActionError(error.message);
+          }
+          if (op.new_end_time) {
+            const { error } = await supabase
+              .from("shift_segment")
+              .update({ end_time: op.new_end_time })
+              .eq("id", segs[segs.length - 1].id);
+            if (error) throw new ActionError(error.message);
+          }
+        }
       } else if (op.op === "add_constraint") {
         const { error } = await supabase.from("constraint_rule").insert({
           tenant_id: ctx.tenantId,
@@ -444,7 +650,7 @@ export async function applyAiOperations(
       }
     }
 
-    await logActivity(ctx, "ai_apply", "schedule_period", periodId, {
+    await logActivity(ctx, "ai_apply", "schedule_period", realPeriodId, {
       operations: ops.length,
     });
     revalidatePath("/app/schedule");

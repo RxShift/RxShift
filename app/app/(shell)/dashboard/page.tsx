@@ -194,7 +194,7 @@ export default async function DashboardPage() {
               {[
                 { href: "/app/schedule", label: "Open the schedule", sub: "Build, validate, publish" },
                 { href: "/app/requests", label: "Review requests", sub: `${(pendingTimeOff ?? 0) + (pendingSwaps ?? 0)} pending` },
-                { href: "/app/log", label: "Compliance record", sub: "Hourly documentation & exports" },
+                { href: "/app/log", label: "Compliance Record", sub: "What actually happened, hour by hour" },
                 { href: "/app/staff", label: "Manage staff", sub: `${staffCount ?? 0} active people` },
               ].map((a) => (
                 <Link

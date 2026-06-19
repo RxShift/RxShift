@@ -440,7 +440,7 @@ export default function StaffManager({
                     <strong>No longer with the pharmacy?</strong> Offboarding
                     removes {initial.full_name} from scheduling and the live
                     board and blocks their sign-in. Every past schedule, log,
-                    and compliance record keeps their name. Reversible by
+                    and Compliance Record keeps their name. Reversible by
                     re-activating them later.
                   </p>
                   <div className="mt-3 flex gap-3">

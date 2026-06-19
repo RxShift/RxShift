@@ -61,6 +61,22 @@ export function demoClockMinutes(demoClock: string | null | undefined): number |
   return h * 60 + m;
 }
 
+/** Minutes-since-midnight of an instant in an IANA timezone — used to place a
+ *  stored timestamp (e.g. a live-status change) on the tenant's local clock. */
+export function minutesInTimeZone(
+  instant: Date | string,
+  timeZone: string
+): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(typeof instant === "string" ? new Date(instant) : instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10);
+}
+
 /** The local date (yyyy-mm-dd) of an instant in an IANA timezone — used to tell
  *  whether a stored timestamp falls on the tenant's "today". */
 export function dateInTimeZone(instant: Date | string, timeZone: string): string {

@@ -12,7 +12,7 @@ export default async function WorkTypesSettingsPage() {
         Work types are the activities people do during a shift — and they, not
         job titles, decide whether someone counts toward the ratio in that
         block. A technician on Dispensing counts; the same technician on
-        Inventory does not, and the compliance record documents the exception.
+        Inventory does not, and the Compliance Record documents the exception.
       </p>
       <div className="mb-6 max-w-[640px] rounded-lg border border-line bg-cloud/40 p-4">
         <p className="font-brand text-[11px] font-bold uppercase tracking-[1px] text-steel">

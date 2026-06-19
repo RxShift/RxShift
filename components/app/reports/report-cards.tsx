@@ -42,11 +42,12 @@ export default function ReportCards({
     <div className="grid max-w-[1040px] gap-5 lg:grid-cols-2">
       <Card>
         <h2 className="font-brand text-base font-bold text-navy">
-          Compliance log
+          Compliance Record
         </h2>
         <p className="mt-1 font-body text-sm text-steel">
-          The hourly staffing record — pharmacists, technicians (CPhT
-          flagged), required ratio, and every deficiency. Board-ready.
+          The immutable, hour-by-hour record of what actually happened —
+          pharmacists, technicians (CPhT flagged), required ratio, and every
+          deficiency. Board-ready.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div>

@@ -33,7 +33,7 @@ import {
  * invisible plumbing; we materialize them on demand when a shift lands in a
  * week that has no period yet.
  */
-async function ensurePeriodForDate(
+export async function ensurePeriodForDate(
   supabase: SupabaseClient,
   tenantId: string,
   cycle: ScheduleCycle,
