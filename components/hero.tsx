@@ -14,9 +14,9 @@ export default function Hero() {
           </h1>
           <p className="mx-auto mt-6 max-w-[540px] font-body text-lg leading-[1.7] text-steel lg:mx-0">
             RxShift generates compliant pharmacy schedules automatically —
-            tracking pharmacist-to-tech ratios, producing the hourly
-            documentation regulators require, and handling the staffing math
-            that spreadsheets get wrong.
+            tracking pharmacist-to-tech ratios, keeping an hour-by-hour
+            compliance record, and handling the staffing math that
+            spreadsheets get wrong.
           </p>
           <div className="mt-8">
             <a

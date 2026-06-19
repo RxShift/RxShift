@@ -5,7 +5,8 @@ export default function Problem() {
         <p className="font-brand text-lg font-medium leading-relaxed text-navy">
           Pharmacy scheduling isn&rsquo;t like other scheduling. Your state has
           ratio rules. Those ratios depend on whether your techs are certified,
-          non-certified, or trainees — and the math changes when volumes shift.
+          non-certified, or trainees — and the math changes shift to shift as
+          your staffing does.
         </p>
         <p className="font-brand text-lg font-medium leading-relaxed text-navy">
           Generic scheduling tools don&rsquo;t know any of this. Excel
