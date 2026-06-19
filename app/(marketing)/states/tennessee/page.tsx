@@ -6,18 +6,21 @@ import ContactForm from "@/components/contact-form";
 export const metadata: Metadata = {
   title: "Tennessee Pharmacy Ratio Compliance Scheduling | RxShift",
   description:
-    "Tennessee requires 1:2 base pharmacist-to-tech ratios, expandable with certified techs. RxShift is building certification-mix tracking into the same compliance engine.",
+    "Tennessee caps non-certified technicians at 6 per pharmacist; certified (CPhT) technicians are uncapped. RxShift tracks your certification mix and enforces the right ratio on every shift.",
 };
 
 const RULES = [
-  { bold: "Base ratio: 1 pharmacist to 2 technicians", rest: "" },
   {
-    bold: "With board-certified technicians: expandable to 1 pharmacist to 4 technicians",
-    rest: "(board approval required)",
+    bold: "Non-certified technicians:",
+    rest: "your pharmacist may supervise up to 6 at a time",
   },
   {
-    bold: "Mix matters:",
-    rest: "if your shift has both certified and non-certified techs, the lower ratio applies",
+    bold: "Certified technicians (CPhT / NHA ExCPT):",
+    rest: "can be added beyond the 6 non-certified cap with no fixed limit",
+  },
+  {
+    bold: "Tracking your techs' certification status",
+    rest: "is how RxShift manages this calculation",
   },
 ];
 
@@ -36,10 +39,10 @@ export default function TennesseePage() {
               mix.
             </h1>
             <p className="mx-auto mt-5 max-w-[620px] font-body text-lg leading-[1.7] text-steel">
-              A base 1:2 ratio expands to 1:4 when your technicians are
-              board-certified. RxShift&rsquo;s Tennessee configuration —
-              tracking the certification mix and applying the right rule to
-              every shift — is in active development.
+              Tennessee caps non-certified techs at 6 per pharmacist and lifts
+              that cap for certified technicians. RxShift&rsquo;s Tennessee
+              configuration tracks your certification mix and enforces the right
+              rule on every shift.
             </p>
           </div>
         </section>
@@ -50,7 +53,7 @@ export default function TennesseePage() {
               The rules
             </p>
             <h2 className="mt-3 font-brand text-[26px] font-bold text-navy sm:text-[30px]">
-              How Tennessee&rsquo;s pharmacist-to-tech ratios work.
+              How Tennessee&rsquo;s pharmacist-to-tech ratio works.
             </h2>
             <div className="mt-6 grid gap-3">
               {RULES.map((r) => (
@@ -67,19 +70,25 @@ export default function TennesseePage() {
             </div>
             <div className="mt-6 space-y-4 font-body text-base leading-[1.7] text-steel">
               <p>
-                Tennessee&rsquo;s ratio system means your compliance posture
-                can change shift to shift based on which technicians are
-                scheduled. A shift where your certified techs have the day off
-                may require an additional pharmacist to stay compliant.
+                Tennessee&rsquo;s rule means your compliance posture depends on
+                who is scheduled: one pharmacist can oversee up to six
+                non-certified technicians, and certified technicians don&rsquo;t
+                count against that cap at all. Swap a certified tech for a
+                non-certified one and your headroom changes.
               </p>
               <p>
-                That&rsquo;s a certification-aware calculation — and
-                it&rsquo;s on RxShift&rsquo;s near-term roadmap. Today,
-                RxShift enforces your configured ratio on every shift and
-                flags non-compliant slots before they&rsquo;re published;
-                certification-mix tracking extends the same engine.
+                RxShift tracks each technician&rsquo;s certification status and
+                applies the right cap to every shift — flagging any slot that
+                exceeds six non-certified technicians per pharmacist before you
+                publish. Certified technicians are counted separately and never
+                against the cap.
               </p>
             </div>
+            <p className="mt-6 font-body text-[13px] leading-[1.7] text-steel">
+              Source: Tenn. Comp. R. &amp; Regs. 1140-02-.02. Always verify
+              against the Tennessee Board of Pharmacy&rsquo;s current language
+              before relying on it.
+            </p>
           </div>
         </section>
 
@@ -87,7 +96,7 @@ export default function TennesseePage() {
           source="tennessee-page"
           id="demo-form"
           heading="Managing a Tennessee pharmacy?"
-          body="We'd like to understand your scheduling workflow as we build Tennessee's configuration. Schedule a 20-minute conversation."
+          body="See how RxShift tracks your certification mix and enforces Tennessee's ratio on every shift. Schedule a 20-minute walkthrough."
         />
       </main>
       <Footer />

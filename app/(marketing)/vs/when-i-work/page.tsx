@@ -22,7 +22,7 @@ const COMPARISON: [string, Mark, Mark][] = [
   ["2-year record retention", "yes", "no"],
   ["Nevada compliance (NAC 639.250); R072-25-ready", "yes", "no"],
   ["California compliance (BPC 4115 additive formula)", "yes", "no"],
-  ["Tennessee ratio support", "yes", "no"],
+  ["Tennessee ratio (6 non-cert per RPh; certified uncapped)", "yes", "no"],
   ["Tech certification (CPhT) tracking", "yes", "no"],
   ["Trainee supervision sublimit (Nevada R072-25)", "yes", "no"],
   ["Basic schedule building", "yes", "yes"],

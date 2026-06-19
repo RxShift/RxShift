@@ -442,14 +442,23 @@ report anything is always the pharmacy's decision. This is contractual
 June 19, 2026 off the old R113-24 "board report may be required"
 language; R072-25 has no board-notification trigger.)
 
-**Tennessee enforcement — RESOLVED June 19, 2026 (was deferred for contradictory research):**
-Implemented per Tenn. Comp. R. & Regs. **1140-02-.02**: a pharmacist may supervise up to
-**6 non-certified** technicians; **certified (CPhT) technicians are uncapped**. The engine
-applies this via `certified_uncapped` when `ratio_rule.state === 'TN'` (only non-certified
-techs count against the cap), reusing the existing `staff.certified` field. Jamison chose to
-ship it now (the earlier blocker was contradictory secondary research; 1140-02-.02 is the
-primary source). Per the standing "verify before relying" rule, a TN customer should still
-confirm current board language before depending on it.
+**Tennessee enforcement — RESOLVED & CONFIRMED June 19, 2026 (was deferred for contradictory research):**
+**Rule confirmed (high confidence): 6 non-certified technicians per pharmacist; certified
+(CPhT / NHA ExCPT) technicians are uncapped (counted separately).** Confirmed against the primary
+source — **Tenn. Comp. R. & Regs. 1140-02-.02** (LII Cornell + tnsosfiles.com) — and independently
+corroborated by two secondary sources (rxtechexam.com, verified May 2026; pharmacytechscholar.com,
+verified June 2026). The earlier blocker was a **wrong 1:2→1:4 framing** that caused confusion; that
+framing is incorrect and has been removed.
+
+- **Engine: already shipped** (not pending a spec). `buildEngineRule` sets `certified_uncapped` when
+  `ratio_rule.state === 'TN'`, so only non-certified techs count against the cap; reuses `staff.certified`.
+  This is *simpler* than Nevada — a single numeric cap on non-cert techs, CPhT counted separately. Tested in
+  `lib/engine/__tests__/floor-and-r072.test.ts` (6 compliant, 7 deficient, 10 certified compliant).
+- **Marketing corrected June 19, 2026:** `app/(marketing)/states/tennessee/page.tsx` rewrote the wrong
+  1:2→1:4 bullets/hero to the confirmed 6-non-cert / certified-uncapped framing; the `/vs/when-i-work` row
+  matches. (The page was publicly understating what TN pharmacies are allowed — a trust risk with informed
+  TN prospects.)
+- Per the standing "verify before relying" rule, a TN customer should still confirm current board language.
 
 **California shipped as additive formula:** BPC 4115 (max techs =
 2 × pharmacists − 1) is enforced by the engine (`formula='additive'`,

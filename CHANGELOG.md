@@ -39,9 +39,14 @@ Full build notes: `docs/rxshift-r072-25-build.md`.
   passed"). `nevada-callout`, `vs/when-i-work`, layout meta, `features` all reframed. **Zero "R113-24"** in
   `app/ components/ lib/ supabase/` or the live help corpus. No hourly-doc mandate, no volume-enforcement
   claim.
+- **Tennessee (rule confirmed, high confidence):** 6 non-certified techs per pharmacist, certified (CPhT/NHA
+  ExCPT) uncapped — confirmed against Tenn. Comp. R. & Regs. 1140-02-.02 + two secondary sources. The engine
+  already enforces this (shipped above). Corrected the `/states/tennessee` marketing page, which had a **wrong
+  1:2→1:4 framing** that understated what TN pharmacies are allowed; the `/vs/when-i-work` row matches.
 - **Help (migration 0033, applied):** rewrote the legacy `compliance-record` help article (per-location,
-  as-worked, ceiling/floor, sustained-deficiency) and fixed stale "ratio zone" wording in three other articles
-  (zones were removed in 0018).
+  as-worked, ceiling/floor, sustained-deficiency) and fixed stale "ratio zone" wording in five other help
+  articles (zones were removed in 0018). Also cleaned R113-24 from three live `ratio_rule.notes` rows
+  (onboarding template + two test tenants).
 - **Demo (Mesa Vista):** R072-25 on; all retail; Spring Valley drive-through (compliant under the floor of 2);
   Tyler Brooks + Miguel Santos `tech_in_training`; expected Rx seeded. Two distinct, annotated current-week
   deficiencies: **ceiling** (Henderson Thu 2–4 PM, no pharmacist) + **floor** (North Las Vegas Tue 9–10 AM,
