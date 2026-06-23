@@ -95,7 +95,11 @@ export default function AiCommandBar({
   }
 
   return (
-    <div className="rounded-[10px] border border-line bg-surface p-4 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
+    // w-full so that when this lives inside the build-mode command strip (a
+    // flex-wrap row), the expanded card takes a full line of its own instead of
+    // squeezing in beside the other controls. No effect in its normal full-width
+    // page slot.
+    <div className="w-full rounded-[10px] border border-line bg-surface p-4 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 className="font-brand text-sm font-bold text-navy">Ask AI</h2>
         <div className="flex items-baseline gap-3">

@@ -62,7 +62,6 @@ export default function ScheduleMatrix({
   aiPeriodId,
   aiLocationId,
   aiRefDate,
-  aiContextNote,
 }: {
   tenant: Tenant;
   today: string;
@@ -86,7 +85,6 @@ export default function ScheduleMatrix({
   aiPeriodId: string | null;
   aiLocationId: string | null;
   aiRefDate: string;
-  aiContextNote: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<{
@@ -536,11 +534,13 @@ export default function ScheduleMatrix({
 
           <div className="ml-auto flex items-center gap-2">
             {aiLocationId && (
+              // No contextNote in the strip — the location dropdown + date nav
+              // already say where/when, and the long note wrapped the strip.
               <AiCommandBar
                 periodId={aiPeriodId}
                 locationId={aiLocationId}
                 refDate={aiRefDate}
-                contextNote={aiContextNote}
+                contextNote=""
               />
             )}
             <Button

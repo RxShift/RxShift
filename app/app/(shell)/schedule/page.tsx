@@ -285,7 +285,6 @@ export default async function SchedulePage({
           aiPeriodId={aiPeriod?.id ?? null}
           aiLocationId={workingLocationId}
           aiRefDate={refDate}
-          aiContextNote={aiContextNote}
         />
       </div>
     </>
