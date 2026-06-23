@@ -12,6 +12,7 @@ import type {
   ComplianceRecordRow,
   ConstraintRule,
   Location,
+  PtoDay,
   RatioRule,
   SchedulePeriod,
   Shift,
@@ -37,6 +38,8 @@ export interface PeriodBundle {
   ratioRule: RatioRule | null;
   constraints: ConstraintRule[];
   approvedTimeOff: TimeOffRequest[];
+  /** Direct PTO records (scheduler-entered or written on time-off approval). */
+  ptoDays: PtoDay[];
 }
 
 export interface RatioFlagOut {
@@ -76,6 +79,7 @@ export async function loadPeriodBundle(
     { data: rules },
     { data: constraints },
     { data: timeOff },
+    { data: ptoDays },
   ] = await Promise.all([
     supabase.from("shift").select("*").eq("schedule_period_id", periodId),
     supabase
@@ -109,6 +113,12 @@ export async function loadPeriodBundle(
       .eq("status", "approved")
       .lte("start_date", period.end_date)
       .gte("end_date", period.start_date),
+    supabase
+      .from("pto_day")
+      .select("*")
+      .eq("tenant_id", period.tenant_id)
+      .gte("date", period.start_date)
+      .lte("date", period.end_date),
   ]);
 
   const segsByShift = new Map<string, ShiftSegment[]>();
@@ -135,6 +145,7 @@ export async function loadPeriodBundle(
     ratioRule: tenantRule,
     constraints: (constraints ?? []) as ConstraintRule[],
     approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
+    ptoDays: (ptoDays ?? []) as PtoDay[],
   };
 }
 
@@ -157,6 +168,8 @@ export interface RangeBundle {
   ratioRule: RatioRule | null;
   constraints: ConstraintRule[];
   approvedTimeOff: TimeOffRequest[];
+  /** Direct PTO records (scheduler-entered or written on time-off approval). */
+  ptoDays: PtoDay[];
 }
 
 export async function loadRangeBundle(
@@ -183,6 +196,7 @@ export async function loadRangeBundle(
     { data: rules },
     { data: constraints },
     { data: timeOff },
+    { data: ptoDays },
     { data: periods },
   ] = await Promise.all([
     shiftIds.length
@@ -199,6 +213,11 @@ export async function loadRangeBundle(
       .eq("status", "approved")
       .lte("start_date", viewEnd)
       .gte("end_date", viewStart),
+    supabase
+      .from("pto_day")
+      .select("*")
+      .gte("date", viewStart)
+      .lte("date", viewEnd),
     supabase
       .from("schedule_period")
       .select("*")
@@ -235,6 +254,7 @@ export async function loadRangeBundle(
     ratioRule: tenantRule,
     constraints: (constraints ?? []) as ConstraintRule[],
     approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
+    ptoDays: (ptoDays ?? []) as PtoDay[],
   };
 }
 
@@ -268,6 +288,7 @@ export async function loadAllLocationsBundle(
     { data: rules },
     { data: constraints },
     { data: timeOff },
+    { data: ptoDays },
     { data: periods },
   ] = await Promise.all([
     shiftIds.length
@@ -284,6 +305,11 @@ export async function loadAllLocationsBundle(
       .eq("status", "approved")
       .lte("start_date", viewEnd)
       .gte("end_date", viewStart),
+    supabase
+      .from("pto_day")
+      .select("*")
+      .gte("date", viewStart)
+      .lte("date", viewEnd),
     supabase
       .from("schedule_period")
       .select("*")
@@ -319,6 +345,7 @@ export async function loadAllLocationsBundle(
     ratioRule: tenantRule,
     constraints: (constraints ?? []) as ConstraintRule[],
     approvedTimeOff: (timeOff ?? []) as TimeOffRequest[],
+    ptoDays: (ptoDays ?? []) as PtoDay[],
   };
 }
 
@@ -351,6 +378,7 @@ export function validateRangeBundle(
     ratioRule: range.ratioRule,
     constraints: range.constraints,
     approvedTimeOff: range.approvedTimeOff,
+    ptoDays: range.ptoDays,
   };
   return validateBundle(pseudo, tenant);
 }

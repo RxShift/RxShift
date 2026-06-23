@@ -314,6 +314,7 @@ async function resolveAiBundle(
     ratioRule: range.ratioRule,
     constraints: range.constraints,
     approvedTimeOff: range.approvedTimeOff,
+    ptoDays: range.ptoDays,
   };
 }
 

@@ -21,6 +21,7 @@ import type { ValidationOut } from "@/lib/schedule-data";
 import type {
   Department,
   Location,
+  PtoDay,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -46,6 +47,7 @@ export default function ScheduleMatrix({
   locations,
   departments,
   approvedTimeOff,
+  ptoDays,
   validation,
   avatarUrls,
   /** When set, show only this location (rows with a shift there); null = all. */
@@ -62,6 +64,7 @@ export default function ScheduleMatrix({
   locations: Location[];
   departments: Department[];
   approvedTimeOff: TimeOffRequest[];
+  ptoDays: PtoDay[];
   validation: ValidationOut;
   avatarUrls: Record<string, string>;
   locationFilter: string | null;
@@ -281,13 +284,22 @@ export default function ScheduleMatrix({
     return map;
   }, [visibleShifts]);
 
+  // PTO cells = approved time-off ranges UNION direct pto_day rows. Both render
+  // identically (blacked out); pto_day is the write target going forward.
   const timeOffByCell = useMemo(() => {
     const set = new Set<string>();
     for (const t of approvedTimeOff)
       for (const d of eachDate(t.start_date, t.end_date))
         set.add(`${t.staff_id}|${d}`);
+    for (const p of ptoDays) set.add(`${p.staff_id}|${p.date}`);
     return set;
-  }, [approvedTimeOff]);
+  }, [approvedTimeOff, ptoDays]);
+
+  // The pto_day record per cell (for the editor's "Remove PTO" + reason).
+  const ptoByCell = useMemo(
+    () => new Map(ptoDays.map((p) => [`${p.staff_id}|${p.date}`, p])),
+    [ptoDays]
+  );
 
   const deficientShiftIds = useMemo(() => {
     const out = new Set<string>();
@@ -516,6 +528,10 @@ export default function ScheduleMatrix({
           // All-locations create: pick a location, resolve its covering period.
           locationOptions={editing.shift ? undefined : locations}
           periods={periods}
+          existingPto={
+            ptoByCell.get(`${editing.staff.id}|${editing.date}`) ?? null
+          }
+          ptoReasonRequired={tenant.pto_reason_required}
         />
       )}
 

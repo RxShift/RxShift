@@ -73,6 +73,8 @@ export interface Tenant {
   demo_clock: string | null;
   /** When true, every shift must be assigned a department */
   require_department: boolean;
+  /** When true, a reason is required to save any PTO (request or scheduler-entered) */
+  pto_reason_required: boolean;
   /** Nevada R072-25 (proposed, not adopted): when on, retail locations use the
    *  4-tech ceiling + 2-trainee sublimit + the solo-pharmacist staffing floor. */
   nevada_r072_25: boolean;
@@ -313,6 +315,32 @@ export interface TimeOffRequest {
   status: RequestStatus;
   approver_id: string | null;
   decided_at: string | null;
+  created_at: string;
+}
+
+/**
+ * A first-class PTO fact: this person is off on this date. One row per person per
+ * date, independent of publish/period state (so future PTO shows before any period
+ * exists). Written by time-off approval AND by a scheduler directly. The engine
+ * never reads this — PTO affects ratio only via the absence of a shift.
+ */
+export interface PtoDay {
+  id: string;
+  tenant_id: string;
+  staff_id: string;
+  date: string; // yyyy-mm-dd
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** A tenant-wide holiday (uniform across locations). Purely visual on the grid —
+ *  it tints/labels the column, never blocks staffing. */
+export interface Holiday {
+  id: string;
+  tenant_id: string;
+  date: string; // yyyy-mm-dd
+  name: string;
   created_at: string;
 }
 

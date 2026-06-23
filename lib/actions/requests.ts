@@ -14,6 +14,7 @@ import {
   type ValidationOut,
 } from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
+import { eachDate } from "@/lib/dates";
 import type { ConstraintFlag } from "@/lib/engine/types";
 import type { SwapRequest } from "@/lib/types";
 import {
@@ -409,7 +410,8 @@ export async function decideTimeOff(
 
     // Approving executes the request: clear any shifts the person had in the
     // approved window so they actually come off the schedule (the manager sees
-    // the gap and backfills). PTO then overlays those days.
+    // the gap and backfills), AND write the durable pto_day records that black
+    // the days out on the grid (the same record a scheduler enters directly).
     if (decision === "approved") {
       await supabase
         .from("shift")
@@ -418,6 +420,22 @@ export async function decideTimeOff(
         .eq("staff_id", request.staff_id)
         .gte("date", request.start_date)
         .lte("date", request.end_date);
+
+      const ptoRows = eachDate(request.start_date, request.end_date).map(
+        (date) => ({
+          tenant_id: ctx.tenantId,
+          staff_id: request.staff_id,
+          date,
+          // The requester's note carries through as the PTO reason (optional);
+          // it lives on pto_day, never in the override log.
+          reason: request.staff_message?.trim() || null,
+          created_by: ctx.actingUserId,
+        })
+      );
+      if (ptoRows.length > 0)
+        await supabase
+          .from("pto_day")
+          .upsert(ptoRows, { onConflict: "tenant_id,staff_id,date" });
     }
 
     const email = await staffEmail(ctx, request.staff_id);

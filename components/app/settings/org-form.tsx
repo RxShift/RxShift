@@ -25,6 +25,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
       has_ratio: data.get("has_ratio") === "on",
       default_break_minutes: data.get("default_break_minutes"),
       nevada_r072_25: data.get("nevada_r072_25") === "on",
+      pto_reason_required: data.get("pto_reason_required") === "on",
     });
     setMessage(result.ok ? "Saved." : result.error);
     setSaving(false);
@@ -116,6 +117,26 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
           />
           <label htmlFor="has_ratio" className="font-body text-sm text-navy">
             We have a pharmacist-to-technician ratio requirement
+          </label>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            id="pto_reason_required"
+            name="pto_reason_required"
+            defaultChecked={tenant.pto_reason_required}
+            className="mt-0.5 h-4 w-4 accent-amber"
+          />
+          <label
+            htmlFor="pto_reason_required"
+            className="font-body text-sm text-navy"
+          >
+            Require a reason on PTO
+            <span className="block font-body text-xs text-steel">
+              When on, a reason must be entered to save time off (whether a
+              scheduler enters it directly or approves a request). The reason is
+              stored with the PTO record, never in the compliance override log.
+            </span>
           </label>
         </div>
         <div className="rounded-lg border border-line bg-cloud/40 p-4">

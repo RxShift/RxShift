@@ -189,23 +189,25 @@ export default function ScheduleGrid({
                       <td
                         key={d}
                         onClick={() => onCellClick(person, d, null)}
-                        className={`min-w-[116px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
+                        className={`min-w-[116px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
                           hasPto
-                            ? "bg-cloud"
+                            ? "bg-[#222a38]"
                             : isDraft
-                              ? "bg-alert-bg"
+                              ? "bg-alert-bg hover:bg-navy/[0.04]"
                               : noPeriod
-                                ? "bg-cloud/40"
-                                : ""
+                                ? "bg-cloud/40 hover:bg-navy/[0.04]"
+                                : "hover:bg-navy/[0.04]"
                         }`}
                         title={
-                          noPeriod
-                            ? "Not built yet — scheduling here creates this period."
-                            : undefined
+                          hasPto
+                            ? "Time off (PTO) — click to edit or remove"
+                            : noPeriod
+                              ? "Not built yet — scheduling here creates this period."
+                              : undefined
                         }
                       >
                         {hasPto && (
-                          <span className="block font-brand text-[9px] font-bold uppercase tracking-[0.5px] text-steel">
+                          <span className="block py-1 font-brand text-[10px] font-bold uppercase tracking-[1.5px] text-white/85">
                             PTO
                           </span>
                         )}

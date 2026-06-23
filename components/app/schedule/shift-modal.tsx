@@ -10,9 +10,11 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
 import { deleteShift, upsertShift } from "@/lib/actions/schedule";
+import { clearPtoDay, setPtoDay } from "@/lib/actions/pto";
 import type {
   Department,
   Location,
+  PtoDay,
   SchedulePeriod,
   Shift,
   ShiftSegment,
@@ -46,6 +48,8 @@ export default function ShiftModal({
   defaultBreakMinutes,
   locationOptions,
   periods,
+  existingPto = null,
+  ptoReasonRequired = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -65,6 +69,10 @@ export default function ShiftModal({
   locationOptions?: Location[];
   /** Periods across locations, used to resolve the covering period when picking. */
   periods?: SchedulePeriod[];
+  /** The PTO record for this person+date, if they're already marked off. */
+  existingPto?: PtoDay | null;
+  /** When true, a reason is required to save PTO (tenant setting). */
+  ptoReasonRequired?: boolean;
 }) {
   const router = useRouter();
   const [selectedLocationId, setSelectedLocationId] = useState(
@@ -91,6 +99,11 @@ export default function ShiftModal({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // PTO: marking the day off blacks out the rest of the record. A PTO cell has
+  // no shift (it was deleted), so isPto starts true only when there's an existing
+  // pto_day. Checking it on a shift cell converts the day to PTO on save.
+  const [isPto, setIsPto] = useState(!!existingPto);
+  const [ptoReason, setPtoReason] = useState(existingPto?.reason ?? "");
 
   function updateSegment(i: number, patch: Partial<SegmentDraft>) {
     setSegments((prev) =>
@@ -98,7 +111,42 @@ export default function ShiftModal({
     );
   }
 
+  async function handleSavePto() {
+    if (ptoReasonRequired && !ptoReason.trim()) {
+      setError("A reason is required for PTO at this pharmacy.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const result = await setPtoDay({
+      staff_id: staff.id,
+      date,
+      reason: ptoReason.trim() || null,
+    });
+    if (result.ok) {
+      onClose();
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+    setBusy(false);
+  }
+
+  async function handleRemovePto() {
+    setBusy(true);
+    setError(null);
+    const result = await clearPtoDay({ staff_id: staff.id, date });
+    if (result.ok) {
+      onClose();
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+    setBusy(false);
+  }
+
   async function handleSave() {
+    if (isPto) return handleSavePto();
     if (requireDepartment && !departmentId) {
       setError("This pharmacy requires a department on every shift.");
       return;
@@ -168,7 +216,7 @@ export default function ShiftModal({
       wide
       footer={
         <>
-          {shift && (
+          {shift && !isPto && (
             <Button
               variant="destructive"
               onClick={handleDelete}
@@ -178,16 +226,59 @@ export default function ShiftModal({
               Delete shift
             </Button>
           )}
+          {existingPto && (
+            <Button
+              variant="destructive"
+              onClick={handleRemovePto}
+              disabled={busy}
+              className="mr-auto"
+            >
+              Remove PTO
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={busy}>
-            {busy ? "Saving…" : "Save shift"}
+            {busy ? "Saving…" : isPto ? "Save PTO" : "Save shift"}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
+        {/* PTO blacks out the day — checking it hides the shift fields and saves
+            a pto_day record (deleting any shift that day). */}
+        <label className="flex items-center gap-2.5 rounded-lg border border-line bg-cloud/50 p-3">
+          <input
+            type="checkbox"
+            checked={isPto}
+            onChange={(e) => setIsPto(e.target.checked)}
+            className="h-4 w-4 accent-amber"
+          />
+          <span className="font-body text-sm font-medium text-navy">
+            PTO / time off — {staff.full_name} is off this day
+          </span>
+        </label>
+
+        {isPto ? (
+          <div>
+            <Label htmlFor="pto-reason">
+              Reason{ptoReasonRequired ? "" : " (optional)"}
+            </Label>
+            <Input
+              id="pto-reason"
+              value={ptoReason}
+              onChange={(e) => setPtoReason(e.target.value)}
+              placeholder="e.g. vacation, sick, personal"
+            />
+            <HelpText>
+              PTO is a person-level record — it shows blacked out on the schedule
+              and isn&rsquo;t tied to a published period. The reason stays here; it
+              never goes into the compliance override log.
+            </HelpText>
+          </div>
+        ) : (
+          <>
         <div className="flex flex-wrap gap-4">
           {locationOptions && (
             <div className="w-[280px]">
@@ -348,6 +439,8 @@ export default function ShiftModal({
             </button>
           )}
         </div>
+          </>
+        )}
 
         {error && <p className="font-body text-sm text-deficiency">{error}</p>}
       </div>

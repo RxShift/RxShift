@@ -249,6 +249,7 @@ export default async function SchedulePage({
           locations={allBundle.locations}
           departments={depts}
           approvedTimeOff={allBundle.approvedTimeOff}
+          ptoDays={allBundle.ptoDays}
           validation={validation}
           locationFilter={locationFilter}
           avatarUrls={avatarUrls}

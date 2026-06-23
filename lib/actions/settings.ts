@@ -26,6 +26,8 @@ const tenantSchema = z.object({
   // retail NV locations use the 4-tech ceiling + 2-trainee sublimit + the
   // solo-pharmacist floor. Off by default — only NAC 639.250 is current law.
   nevada_r072_25: z.coerce.boolean().default(false),
+  // When on, a reason is required to save any PTO (request or scheduler-entered).
+  pto_reason_required: z.coerce.boolean().default(false),
 });
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {
