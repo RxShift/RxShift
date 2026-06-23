@@ -5,6 +5,9 @@ import { createServiceClient } from "@/lib/supabase/admin";
 // see vercel.json) keeps the database awake.
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

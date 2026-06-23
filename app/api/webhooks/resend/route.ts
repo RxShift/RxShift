@@ -20,6 +20,12 @@ function verifySvixSignature(
     const ts = headers.get("svix-timestamp");
     const sigHeader = headers.get("svix-signature");
     if (!id || !ts || !sigHeader) return false;
+    // Replay protection: reject events whose signed timestamp (unix seconds) is
+    // more than 5 minutes off, so a captured valid event can't be replayed later.
+    const tsNum = Number(ts);
+    if (!Number.isFinite(tsNum) || Math.abs(Date.now() / 1000 - tsNum) > 300) {
+      return false;
+    }
     const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
     const signed = `${id}.${ts}.${rawBody}`;
     const expected = crypto
