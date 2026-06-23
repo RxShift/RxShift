@@ -24,14 +24,14 @@ export default function BuildModeToggle() {
     <button
       type="button"
       onClick={() => setBuildMode(!isBuildMode())}
-      title="Hide the chrome and fill the screen with the schedule grid"
+      title="Collapse the menus and fill the screen with the schedule grid"
       className={`whitespace-nowrap rounded-md border px-3 py-1.5 font-brand text-[13px] font-semibold transition-colors ${
         on
           ? "border-amber bg-amber text-white hover:bg-amber-dark"
           : "border-line bg-surface text-navy hover:border-navy"
       }`}
     >
-      {on ? "Exit build mode" : "Build mode"}
+      {on ? "⤢ Exit" : "⤢ Maximize"}
     </button>
   );
 }

@@ -173,8 +173,8 @@ export default async function ViewSchedulePage({
     "rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40";
 
   const title = locationFilter
-    ? `Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
-    : "Schedule — All locations";
+    ? `View Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
+    : "View Schedule — All locations";
 
   return (
     <>

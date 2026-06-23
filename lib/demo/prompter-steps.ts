@@ -190,19 +190,19 @@ export const STEPS: PrompterStep[] = [
       { t: "d", v: "Switch to Tab B — Build Schedule. Confirm Henderson in the location pill. Note the header: 'Building: <period>' (Optum builds a month at a time)." },
       {
         t: "s",
-        v: '"This is Build Schedule — managers only. There\'s a separate read-only View Schedule everyone can see; building lives here. It\'s locked to your build cadence — Optum schedules a month at a time, so the header says \'Building: June 2026\' and the steppers move a month at a time. No fiddling with week vs month while you build.\n\nRows are role-banded — pharmacists on top, technicians below — which mirrors how ratio math works.\n\nTwo ring types, completely separate channels. Red ring with ⚠: a hard conflict — a ratio deficiency, or someone scheduled on their day off. [Scroll to Jerome\'s Saturday] Amber ring: a constraint flag — Jerome\'s 40-hour cap, showing up before you publish.\n\n[Point to a blacked-out PTO cell] Anyone off shows blacked out as PTO — true for time off months out, before the period is even built. [Point to Ashley\'s PTO day with a shift on it] And if someone\'s scheduled on a day they\'re off, that shift gets the red flag.\n\n[Point to a tinted holiday column] Holidays tint the column — a cue, never a block.\n\nTwo ways to build fast: \'Copy last month\'s pattern\' repeats the whole prior period in one click. And on any single shift you can copy it across the following days in one move."',
+        v: '"This is Build Schedule — managers only. There\'s a separate read-only View Schedule everyone can see; building lives here. It\'s locked to your build cadence — Optum schedules a month at a time, so the header says \'Building: June 2026\' and the steppers move a month at a time. No fiddling with week vs month while you build.\n\nRows are role-banded — pharmacists on top, technicians below — which mirrors how ratio math works.\n\nTwo ring types, completely separate channels. Red ring with ⚠: a hard conflict — a ratio deficiency, or someone scheduled on their day off. [Scroll to Jerome\'s Saturday] Amber ring: a constraint flag — Jerome\'s 40-hour cap, showing up before you publish.\n\n[Point to a blacked-out PTO cell] Anyone off shows blacked out as PTO — true for time off months out, before the period is even built. [Point to Keisha Brown\'s Friday — blacked out PTO with a shift still on it] And if someone\'s scheduled on a day they\'re off — like Keisha, who requested Friday off but is still on the schedule — that shift gets the red flag.\n\n[Point to a tinted holiday column] Holidays tint the column — a cue, never a block.\n\nTwo ways to build fast: \'Copy last month\'s pattern\' repeats the whole prior period in one click. And on any single shift you can copy it across the following days in one move."',
       },
       {
         t: "d",
-        v: "Click Build mode (next to the 'Building: <period>' label). The page chrome collapses into ONE command strip and the grid fills the screen.",
+        v: "Click ⤢ Maximize (next to the 'Building: <period>' label). The page chrome collapses into ONE command strip and the grid fills the screen.",
       },
       {
         t: "s",
-        v: '"On a normal laptop you want to see as many people as possible at once. Build mode strips everything down to one bar — date nav, the period, location, publish, Ask AI — so the grid shows far more rows. Everything you need is still right there; nothing is buried."',
+        v: '"On a normal laptop you want to see as many people as possible at once. Maximize strips everything down to one bar — date nav, the period, location, publish, Ask AI — so the grid shows far more rows. Everything you need is still right there; nothing is buried."',
       },
       {
         t: "n",
-        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots (ratio) and Ashley's PTO-day shift. Click ⤢ Exit in the strip (far right) to bring the chrome back before the next beat.",
+        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots (ratio) and Keisha Brown's Friday shift (scheduled on her approved day off). Click ⤢ Exit in the strip (far right) to bring the chrome back before the next beat.",
       },
     ],
   },

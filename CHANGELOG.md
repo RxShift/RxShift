@@ -7,6 +7,21 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — QA round 3 fixes (Build/View split)
+
+CoWork QA (`docs/qa/2026-06-23-build-view-split-qa.md`) ran the split on Mesa Vista (weekly cadence):
+5 PASS / 1 FAIL. The fail was a demo-data gap, not a code bug.
+
+- **PTO conflict now demoable on Mesa Vista.** The feature was verified on Optum, but Mesa Vista had no
+  scheduled-on-a-day-off scenario. The seed now seeds a deliberate one — **Keisha Brown (Henderson) has
+  an approved day off Friday but stays on Friday's schedule** → red ⚠ + Open Flags + publish gate.
+  (Needs a "Restore demo data" to appear.) Prompter beat 6 repointed to Keisha (was the Optum-only
+  "Ashley Dinh").
+- **View Schedule page title** → "View Schedule — …" (matches nav).
+- **"Build mode" button renamed "⤢ Maximize"** — it's the chrome-collapse for laptop rows; the old name
+  was confusing now that Build is its own screen. Prompter updated. Prompter → v4.2.
+- Work-types chip row hiding on an empty week confirmed by-design (no change).
+
 ## 2026-06-23 — Build vs View split: cadence-locked builder + read-only schedule for everyone
 
 The big scheduling-UX decision realized. Building and viewing are now two distinct surfaces, so the

@@ -610,6 +610,11 @@ export async function seedMesaVista(
   // disturb the two deficiency stories) to show direct entry. Days with PTO get
   // no shift — keyed staffName|date so the shift loop below skips them.
   const danaPtoDay = addDaysStr(anchor, 2); // current-week Wednesday at SV
+  // A DELIBERATE PTO conflict for the demo: Keisha (Henderson) has an approved
+  // day off this Friday but is STILL on Friday's schedule — so her Friday shift
+  // gets the red "scheduled on a day off" flag. She is intentionally NOT in
+  // ptoExcluded below, so the shift stays and the conflict shows.
+  const keishaConflictDay = addDaysStr(anchor, 4); // current-week Friday at Henderson
   const ptoExcluded = new Set<string>([
     `Ashley Morales|${ptoStart}`,
     `Ashley Morales|${ptoEnd}`,
@@ -633,6 +638,12 @@ export async function seedMesaVista(
       staff_id: staffIds.get("Dana Holt")!,
       date: danaPtoDay,
       reason: "Dentist appointment (entered by the scheduler).",
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Keisha Brown")!,
+      date: keishaConflictDay,
+      reason: "Requested Friday off — approved (still on the schedule → flagged).",
     },
   ]);
 
