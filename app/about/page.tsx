@@ -178,7 +178,7 @@ export default function AboutPage() {
               href="/#demo"
               className="inline-block rounded-md bg-amber px-6 py-3 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
             >
-              Schedule a Walkthrough
+              Schedule a Demo
             </Link>
           </div>
         </section>

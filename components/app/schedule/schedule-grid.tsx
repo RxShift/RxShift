@@ -86,14 +86,23 @@ export default function ScheduleGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLSpanElement>(null);
 
-  // On open, center today's column so a mid-month view doesn't start on the 1st.
+  // On open, land TODAY flush against the right edge of the frozen staff column,
+  // so the grid opens on "today → forward" with no manual horizontal scrolling (a
+  // mid-month view otherwise starts on the 1st, hiding the days that matter).
+  // Horizontal only — no vertical jump.
   useEffect(() => {
-    if (todayRef.current && dates.includes(today)) {
-      todayRef.current.scrollIntoView({
-        inline: "center",
-        block: "nearest",
-      });
-    }
+    const scroller = scrollRef.current;
+    const todaySpan = todayRef.current;
+    if (!scroller || !todaySpan || !dates.includes(today)) return;
+    const th = todaySpan.closest("th");
+    if (!th) return;
+    const staffTh = scroller.querySelector("thead th");
+    const staffWidth = staffTh ? staffTh.getBoundingClientRect().width : 180;
+    const offset =
+      th.getBoundingClientRect().left -
+      scroller.getBoundingClientRect().left -
+      staffWidth;
+    scroller.scrollLeft += offset; // clamps at 0 / max automatically
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

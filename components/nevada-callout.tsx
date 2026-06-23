@@ -45,7 +45,7 @@ export default function NevadaCallout() {
             </a>{" "}
             or{" "}
             <a href="#demo" className="font-bold text-amber hover:underline">
-              schedule a walkthrough
+              schedule a demo
             </a>
             .
           </p>

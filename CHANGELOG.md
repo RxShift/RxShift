@@ -7,6 +7,17 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Grid opens on today + website copy = "Demo"
+
+- **Schedule grid auto-scrolls so TODAY is the leftmost day column** (flush against the frozen staff
+  column), instead of centering it. On a month / 2-week view you now open on "today → forward" with no
+  manual horizontal scrolling. Horizontal-only (no vertical jump). Applies to both Build and View
+  (shared `schedule-grid.tsx`).
+- **Website copy consolidated on "Demo."** Susie flagged mixed "walkthrough"/"demo" language. The form,
+  the `#demo` anchor, the success message, the privacy policy, and the Features CTA already said
+  "Demo," so the stray "Schedule a Walkthrough" CTAs (nav, /nevada, /about, pricing signal + calculator,
+  /states/tennessee, Nevada callout) are now "Schedule a Demo." (Internal code comment + docs untouched.)
+
 ## 2026-06-23 — QA round 3 fixes (Build/View split)
 
 CoWork QA (`docs/qa/2026-06-23-build-view-split-qa.md`) ran the split on Mesa Vista (weekly cadence):

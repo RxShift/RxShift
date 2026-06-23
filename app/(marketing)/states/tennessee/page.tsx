@@ -96,7 +96,7 @@ export default function TennesseePage() {
           source="tennessee-page"
           id="demo-form"
           heading="Managing a Tennessee pharmacy?"
-          body="See how RxShift tracks your certification mix and enforces Tennessee's ratio on every shift. Schedule a 20-minute walkthrough."
+          body="See how RxShift tracks your certification mix and enforces Tennessee's ratio on every shift. Schedule a 20-minute demo."
         />
       </main>
       <Footer />

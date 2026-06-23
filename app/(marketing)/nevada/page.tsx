@@ -79,7 +79,7 @@ export default function NevadaPage() {
               href="#demo-form"
               className="mt-8 inline-block rounded-md bg-amber px-6 py-3 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
             >
-              Schedule a Walkthrough
+              Schedule a Demo
             </a>
           </div>
         </section>

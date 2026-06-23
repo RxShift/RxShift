@@ -31,7 +31,7 @@ export default function PricingSignal() {
 
         <p className="mt-6 font-body text-[13px] text-alert">
           Currently piloting with Nevada pharmacies.
-          <br className="hidden sm:block" /> Schedule a walkthrough to discuss
+          <br className="hidden sm:block" /> Schedule a demo to discuss
           pricing for your group.
         </p>
 

@@ -91,7 +91,7 @@ export default function Nav() {
             href="/#demo"
             className="ml-3 rounded-md bg-amber px-5 py-2.5 font-brand text-sm font-bold text-white transition-colors hover:bg-amber-dark"
           >
-            Schedule a Walkthrough
+            Schedule a Demo
           </Link>
           <a
             href="https://app.rxshift.io"
@@ -154,7 +154,7 @@ export default function Nav() {
             onClick={() => setOpen(false)}
             className="mt-2 block rounded-md bg-amber px-5 py-3 text-center font-brand text-sm font-bold text-white"
           >
-            Schedule a Walkthrough
+            Schedule a Demo
           </Link>
         </div>
       )}
