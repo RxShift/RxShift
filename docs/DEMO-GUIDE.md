@@ -184,6 +184,9 @@ Both are isolated incidents — **not** a sustained deficiency. RxShift never co
   has headroom, so it doesn't disturb the two deficiency stories) — shows the direct-entry path.
 - **Holidays seeded:** the US federal holidays for the current + next year (tinted/labeled columns on the
   schedule).
+- **Next week is seeded as a DRAFT** (not published) so you can demo Publish live — its status pill reads
+  "Draft — not visible to staff yet," publishing it requires a reason (open flags), and a 2-week view spanning
+  this week + next shows the honest "7/14 days published" partial status.
 - **Compliance Record (as-worked):** the seed finalizes the elapsed week (~294 immutable hourly rows across
   the 3 locations); Henderson **Thursday 14:00 + 15:00 are recorded DEFICIENT** ("3 technicians counting with
   no pharmacist on duty", **flag_type = ceiling**) and North Las Vegas **Tuesday 09:00 DEFICIENT** ("solo

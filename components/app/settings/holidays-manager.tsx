@@ -136,8 +136,8 @@ export default function HolidaysManager({ initial }: { initial: Holiday[] }) {
                 key={h.id}
                 className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2"
               >
-                <span className="w-24 font-body text-[13px] font-medium text-steel">
-                  {day.dow} {day.label}
+                <span className="w-36 font-body text-[13px] font-medium text-steel">
+                  {day.dow} {day.label}, {h.date.slice(0, 4)}
                 </span>
                 <span className="flex-1 font-body text-sm text-navy">
                   {h.name}

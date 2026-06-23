@@ -56,19 +56,23 @@ export default async function ShellLayout({
       {/* Mobile: no sidebar margin + bottom padding for the tab bar. Desktop
           (md+): the fixed sidebar's ml-60 (and the collapse override). */}
       <div className="app-content ml-0 flex min-h-screen min-w-0 flex-1 flex-col pb-16 md:ml-60 md:pb-0">
-        {showBanner && (
-          <PlatformBanner
-            tenantName={session.tenant.name}
-            emulatingLabel={session.platform.emulatingLabel}
+        {/* Banners collapse in schedule Build mode (html.schedule-build) to give
+            the grid maximum vertical room. */}
+        <div className="app-top-banners">
+          {showBanner && (
+            <PlatformBanner
+              tenantName={session.tenant.name}
+              emulatingLabel={session.platform.emulatingLabel}
+            />
+          )}
+          <DemoBanner
+            isDemo={session.tenant.is_demo}
+            demoRedirectEmail={session.tenant.demo_redirect_email}
+            status={session.tenant.status}
+            isOwner={session.appUser.role === "owner_admin"}
+            isEmulating={isEmulating}
           />
-        )}
-        <DemoBanner
-          isDemo={session.tenant.is_demo}
-          demoRedirectEmail={session.tenant.demo_redirect_email}
-          status={session.tenant.status}
-          isOwner={session.appUser.role === "owner_admin"}
-          isEmulating={isEmulating}
-        />
+        </div>
         <DesktopOnlyNotice />
         {children}
       </div>

@@ -32,6 +32,18 @@ interface ShiftWithSegments extends Shift {
 /** Per-column publish state, used by the range view to show the cutoff. */
 export type DateStatus = "published" | "draft" | "none";
 
+// Holiday column treatment, applied to every cell in a holiday column (header +
+// body) as an INLINE style so it composes over each cell's own state background
+// (draft amber, PTO, empty) and can't be overridden by Tailwind's border-color
+// class ordering: a translucent tint overlay (background-IMAGE layers over the
+// state background-COLOR) plus inset left/right accent lines that frame the column.
+const HOLIDAY_CELL_STYLE = {
+  backgroundImage:
+    "linear-gradient(var(--color-holiday-overlay), var(--color-holiday-overlay))",
+  boxShadow:
+    "inset 1px 0 0 var(--color-holiday), inset -1px 0 0 var(--color-holiday)",
+} as const;
+
 export default function ScheduleGrid({
   dates,
   today,
@@ -94,10 +106,13 @@ export default function ScheduleGrid({
       ref={scrollRef}
       className="h-full overflow-auto rounded-[10px] border border-line bg-surface shadow-[0_1px_3px_rgba(28,47,94,0.08)]"
     >
-      <table className="w-full border-separate border-spacing-0">
+      {/* table-fixed: every column is a uniform width and long cell content
+          (e.g. a work-type name like "CCC (Clinical Call Center)") truncates
+          instead of widening its column. */}
+      <table className="w-full table-fixed border-separate border-spacing-0">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 min-w-[160px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
+            <th className="sticky left-0 top-0 z-30 w-[180px] border-b border-r border-line bg-cloud px-3 py-2 text-left font-brand text-[9.5px] font-bold uppercase tracking-[1px] text-steel">
               Staff
             </th>
             {dates.map((d) => {
@@ -109,15 +124,14 @@ export default function ScheduleGrid({
               return (
                 <th
                   key={d}
-                  className={`sticky top-0 z-20 min-w-[116px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
-                    holiday ? "bg-[#EEF1FB]" : "bg-cloud"
-                  } ${
+                  className={`sticky top-0 z-20 w-[120px] border-b border-line bg-cloud px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
                     status === "draft"
                       ? "border-b-2 border-b-alert"
                       : status === "published"
                         ? "border-b-2 border-b-compliant"
                         : ""
                   } ${isWeekend ? "text-steel/70" : "text-steel"}`}
+                  style={holiday ? HOLIDAY_CELL_STYLE : undefined}
                 >
                   <span ref={isToday ? todayRef : undefined}>
                     {day.dow}
@@ -142,10 +156,11 @@ export default function ScheduleGrid({
                   )}
                   {holiday && (
                     <span
-                      className="mt-0.5 block truncate font-body text-[8px] font-semibold normal-case tracking-normal text-navy/70"
+                      className="mt-0.5 flex items-center justify-center gap-0.5 font-body text-[8px] font-bold normal-case tracking-normal text-holiday"
                       title={holiday}
                     >
-                      Holiday
+                      <span aria-hidden>★</span>
+                      <span className="truncate">{holiday}</span>
                     </span>
                   )}
                   {expectedRxByDate?.get(d) != null && (
@@ -204,17 +219,16 @@ export default function ScheduleGrid({
                       <td
                         key={d}
                         onClick={() => onCellClick(person, d, null)}
-                        className={`min-w-[116px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
+                        className={`w-[120px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
                           hasPto
                             ? "bg-[#222a38]"
                             : isDraft
                               ? "bg-alert-bg hover:bg-navy/[0.04]"
                               : noPeriod
                                 ? "bg-cloud/40 hover:bg-navy/[0.04]"
-                                : isHoliday
-                                  ? "bg-[#EEF1FB] hover:bg-navy/[0.04]"
-                                  : "hover:bg-navy/[0.04]"
+                                : "hover:bg-navy/[0.04]"
                         }`}
+                        style={isHoliday ? HOLIDAY_CELL_STYLE : undefined}
                         title={
                           hasPto
                             ? "Time off (PTO) — click to edit or remove"

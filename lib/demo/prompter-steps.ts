@@ -235,10 +235,17 @@ export const STEPS: PrompterStep[] = [
     tab: "TAB B",
     tabNote: "Frank · /app/schedule",
     beats: [
-      { t: "d", v: "Show the Publish button and the status pill." },
+      {
+        t: "d",
+        v: 'Click Next once to NEXT week — it\'s seeded as a draft (the pill reads "Draft — not visible to staff yet"). Show the Publish button + status pill there.',
+      },
       {
         t: "s",
         v: '"When the week looks right, you publish. Staff get notified. The status is honest down to the day — if part of the window is live and part is still draft, it says so, e.g. \'5/7 days published.\' And if the schedule carries open flags, publishing requires a reason — it won\'t go through blank.\n\nWhen you publish, two things exist. The Coverage Forecast — the plan, whether you\'re scheduled to be compliant. Useful for planning.\n\nBut that\'s not the artifact you hand an inspector."',
+      },
+      {
+        t: "n",
+        v: 'Partial status: switch to the 2-week view to show the pill read "7/14 days published" (this week live, next week draft). Click Publish on the draft week to show the required-reason dialog (open flags) — then Cancel; don\'t actually publish during the demo.',
       },
       { t: "pv", v: "This is." },
       { t: "d", v: "Pause. Let that land. Then switch to Tab C — Compliance Record, Henderson." },

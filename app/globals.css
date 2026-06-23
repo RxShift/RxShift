@@ -29,6 +29,11 @@
   --color-alert-bg:       #FEF7ED;
   --color-deficiency-bg:  #FEF0EF;
 
+  /* Holiday column (schedule) — visual cue; flips for dark mode below */
+  --color-holiday-bg:     #E9EEFB;   /* soft periwinkle column tint */
+  --color-holiday:        #4F6FB0;   /* accent: column frame + indicator */
+  --color-holiday-overlay: rgba(79, 111, 176, 0.10); /* layers OVER any cell bg */
+
   /* Spacing — 4px base unit */
   --space-1:  4px;
   --space-2:  8px;
@@ -76,6 +81,9 @@
   --color-compliant-bg:   rgba(46,  125, 94,  0.2);
   --color-alert-bg:       rgba(212, 134, 10,  0.2);
   --color-deficiency-bg:  rgba(192,  57, 43,  0.2);
+  --color-holiday-bg:     rgba(90, 130, 210, 0.16); /* translucent blue on the dark grid */
+  --color-holiday:        #7CA0E0;                  /* brighter accent for dark mode */
+  --color-holiday-overlay: rgba(124, 160, 224, 0.14);
 
   --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -105,6 +113,8 @@
   --color-compliant-bg:  var(--color-compliant-bg);
   --color-alert-bg:      var(--color-alert-bg);
   --color-deficiency-bg: var(--color-deficiency-bg);
+  --color-holiday:       var(--color-holiday);
+  --color-holiday-bg:    var(--color-holiday-bg);
 
   --font-brand: var(--font-space-grotesk), 'DM Sans', -apple-system, 'Helvetica Neue', sans-serif;
   --font-body:  var(--font-inter), -apple-system, 'Helvetica Neue', sans-serif;
@@ -154,8 +164,15 @@ html.sidebar-collapsed .app-content {
 html.schedule-build .schedule-chrome {
   display: none;
 }
+/* Reclaim the top chrome: drop the page-title bar and the platform/demo banners
+   so the grid fills the viewport. The filters row (week / 2-week / month +
+   prev/next + Exit build mode) stays as the compact top control strip. */
+html.schedule-build .app-page-header,
+html.schedule-build .app-top-banners {
+  display: none;
+}
 html.schedule-build .schedule-content {
-  padding-top: 0.75rem;
+  padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 }
 

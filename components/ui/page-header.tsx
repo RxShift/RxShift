@@ -6,7 +6,7 @@ export default function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-[60px] items-center justify-between border-b border-line bg-surface px-8">
+    <div className="app-page-header flex h-[60px] items-center justify-between border-b border-line bg-surface px-8">
       <h1 className="font-brand text-lg font-bold text-navy">{title}</h1>
       {actions && <div className="flex items-center gap-3">{actions}</div>}
     </div>
