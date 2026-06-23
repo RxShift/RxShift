@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-19";
+const LAST_REVIEWED = "2026-06-23";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -25,7 +25,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Authentication & access",
     items: [
-      "Magic-link email sign-in (Supabase Auth) — no passwords stored, phished, or reused. Auth endpoints are rate-limited.",
+      "Magic-link email sign-in (Supabase Auth) — no passwords stored, phished, or reused. The sign-in and public demo-request endpoints are rate-limited with a shared, cross-instance store (per email and per IP), so a known inbox can't be flooded with sign-in links and accounts can't be enumerated at scale.",
       "An account may have additional admin-registered sign-in addresses (e.g., a work email for the work desktop); every sign-in still proves control of the inbox via a one-time link.",
       "Roles: Owner/Admin, Scheduler (department-scopable), Approver/Supervisor, Read-only, Staff. Server actions re-check the role on every write. Schedulers and supervisors can edit pharmacy configuration (locations, ratio rules, work types); going live, deleting the workspace, assigning roles, and offboarding remain Owner/Admin-only.",
       "Staff see their own schedule and requests; managers see their tenant; nobody sees another tenant.",
@@ -34,8 +34,9 @@ const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Encryption & secrets",
     items: [
-      "TLS for all traffic; encryption at rest via Supabase/AWS.",
+      "TLS for all traffic (HSTS enforced); encryption at rest via Supabase/AWS.",
       "All secrets (database service role, Resend, OpenAI) are server-side environment variables. No AI or email call ever originates from the browser.",
+      "Baseline HTTP security headers on every response: HSTS, X-Frame-Options (anti-clickjacking), X-Content-Type-Options, Referrer-Policy, Permissions-Policy. (A Content-Security-Policy is a tracked follow-up.)",
     ],
   },
   {

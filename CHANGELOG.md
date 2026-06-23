@@ -7,6 +7,40 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Security audit + pre-launch hardening
+
+Full read-only security audit (tenant isolation, RLS, privilege escalation, RBAC, service-role usage,
+API perimeter, secrets, AI, storage). **Core posture is sound** — RLS genuinely isolates tenants
+(`tenant_id = private.user_tenant_id()`, SECURITY DEFINER helpers with pinned search_path, derived from
+`auth.uid()`), no privilege-escalation path, service-role usage is tenant-scoped, storage buckets private,
+AI can't decide compliance. Fixed the perimeter items below; OpenAI-DPA and a strict CSP are deferred to
+Jamison.
+
+**Shipped:**
+- **Shared, cross-instance rate limiting** on `/api/auth/login-link` and `/api/contact` (new `lib/rate-limit-db.ts`
+  → `check_rate_limit` RPC). Replaces the old in-memory `Map` throttles, which didn't share state across
+  serverless instances and were bypassable — this closes an **email-bomb vector** (a known inbox being flooded
+  with sign-in links) and blunts enumeration. Per-IP + per-email limits.
+- **Removed the login-link enumeration/timing oracle:** the O(users) `listUsers` page-scan is replaced by an
+  indexed `auth_user_email_exists` RPC (service-role only). Faster and no timing signal.
+- **Baseline security headers** on every response (`next.config.ts`): HSTS, X-Frame-Options DENY,
+  X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
+- **Cron routes** now fail-closed if `CRON_SECRET` is unset (returns 500 instead of accepting `"Bearer undefined"`).
+- **Resend webhook** rejects stale events (svix-timestamp freshness ±5 min) — replay protection.
+- **Removed dead `createAdminClient`** from `lib/supabase/server.ts` (a service-role factory with no `server-only`
+  guard — latent footgun). The only service-role client is `lib/supabase/admin.ts` (`server-only`).
+
+**Schema (migration 0036, applied):**
+- `rate_limit` table (RLS deny-all; service-role + SECURITY DEFINER fn only) + `check_rate_limit()` fn.
+- `auth_user_email_exists()` fn (indexed auth.users lookup, service-role only).
+- Pinned `search_path` on `touch_leads_updated_at` (advisor WARN).
+
+**Open / deferred (need Jamison):**
+- OpenAI data egress (staff names + schedules → gpt-4o-mini): confirm privacy policy / DPA / zero-retention.
+- Content-Security-Policy: deferred — needs per-page testing; other headers shipped.
+- Optional: CAPTCHA on the demo form; enable Supabase "leaked password protection" (dashboard toggle);
+  add an audit entry when a platform admin emulates/switches into a tenant (observability).
+
 ## 2026-06-23 — Grid opens on today + website copy = "Demo"
 
 - **Schedule grid auto-scrolls so TODAY is the leftmost day column** (flush against the frozen staff
