@@ -158,7 +158,24 @@ export async function upsertShift(
         data.location_id,
         data.date
       ));
-    const shiftFields = { ...rest, schedule_period_id: periodId };
+    // A shift inherits its covering period's status. Saving into an already-
+    // PUBLISHED period goes live immediately (what a manager expects for a
+    // short-term change); building a DRAFT period stays hidden until publish.
+    // (Without this, new shifts defaulted to 'draft' and silently never reached
+    // staff on a published schedule.)
+    const { data: per } = await supabase
+      .from("schedule_period")
+      .select("status")
+      .eq("id", periodId)
+      .maybeSingle();
+    const periodStatus = (per?.status as string) === "published"
+      ? "published"
+      : "draft";
+    const shiftFields = {
+      ...rest,
+      schedule_period_id: periodId,
+      status: periodStatus,
+    };
     let id = shiftId;
 
     if (id) {

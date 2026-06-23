@@ -18,7 +18,6 @@ import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
 import { BUILD_MODE_EVENT, isBuildMode, setBuildMode } from "@/lib/build-mode";
 import ShiftModal from "./shift-modal";
 import AiCommandBar from "./ai-command-bar";
-import { WorkTypeLegend } from "./shift-block";
 import ScheduleGrid, { type DateStatus } from "./schedule-grid";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
@@ -99,7 +98,9 @@ export default function ScheduleMatrix({
   const [toolError, setToolError] = useState<string | null>(null);
   const [flagsOpen, setFlagsOpen] = useState(false);
   // Pure view filters (what do I want to look at) — no scheduling effect.
-  const [deptFilter, setDeptFilter] = useState(""); // "" = all departments
+  // Departments + work types are treated identically: both multi-select chip
+  // rows (no dropdown), click to toggle.
+  const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set());
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
 
   // Build mode = the focused, chrome-free surface. When on, the four stacked
@@ -114,14 +115,19 @@ export default function ScheduleMatrix({
     return () => window.removeEventListener(BUILD_MODE_EVENT, sync);
   }, []);
 
-  function toggleWorkType(id: string) {
-    setWorkTypeFilter((prev) => {
+  function toggleInSet(
+    setter: typeof setWorkTypeFilter,
+    id: string
+  ) {
+    setter((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
   }
+  const toggleWorkType = (id: string) => toggleInSet(setWorkTypeFilter, id);
+  const toggleDept = (id: string) => toggleInSet(setDeptFilter, id);
 
   const flagCount =
     validation.ratioFlags.length + validation.constraintFlags.length;
@@ -288,7 +294,10 @@ export default function ScheduleMatrix({
 
   const visibleShifts = useMemo(() => {
     let list = locShifts;
-    if (deptFilter) list = list.filter((s) => s.department_id === deptFilter);
+    if (deptFilter.size > 0)
+      list = list.filter(
+        (s) => s.department_id != null && deptFilter.has(s.department_id)
+      );
     if (workTypeFilter.size > 0)
       list = list.filter((s) =>
         s.segments.some(
@@ -299,7 +308,7 @@ export default function ScheduleMatrix({
   }, [locShifts, deptFilter, workTypeFilter]);
 
   const anyFilter =
-    !!locationFilter || !!deptFilter || workTypeFilter.size > 0;
+    !!locationFilter || deptFilter.size > 0 || workTypeFilter.size > 0;
 
   const windowWorkTypes = useMemo(() => {
     const ids = new Set<string>();
@@ -418,13 +427,6 @@ export default function ScheduleMatrix({
     return map;
   }, [dates, locations, locationFilter]);
 
-  const usedWorkTypeIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const s of visibleShifts)
-      for (const seg of s.segments) ids.add(seg.work_type_id ?? "__none__");
-    return ids;
-  }, [visibleShifts]);
-
   // Rows: All Locations shows the whole roster (it's where you build). Filtered
   // to one location, it's a view — show only people actually scheduled there
   // (add someone new from All Locations).
@@ -437,7 +439,7 @@ export default function ScheduleMatrix({
     // not-yet-built week is still buildable. Without this, a filtered empty week
     // has zero rows and there's nothing to click to add anyone.
     const showHomeTeam =
-      !!locationFilter && !deptFilter && workTypeFilter.size === 0;
+      !!locationFilter && deptFilter.size === 0 && workTypeFilter.size === 0;
     return base.filter(
       (s) =>
         scheduledIds.has(s.id) ||
@@ -638,26 +640,49 @@ export default function ScheduleMatrix({
         </div>
       )}
 
-      {/* View filters — what do I want to look at (no scheduling effect). */}
+      {/* View filters — two compact chip rows, departments + work types treated
+          the same. (The old bottom color legend is gone — these chips already
+          show each work type's color, so it was redundant and ate vertical space.) */}
       {!buildMode && (departments.length > 0 || windowWorkTypes.length > 0) && (
-        <div className="flex flex-none flex-wrap items-center gap-2 pb-3 font-body text-[12px]">
+        <div className="flex flex-none flex-col gap-1.5 pb-2.5 font-body text-[11px]">
           {departments.length > 0 && (
-            <select
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              className="rounded-md border-[1.5px] border-line bg-surface px-2.5 py-1.5 text-navy"
-            >
-              <option value="">All departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="w-[74px] shrink-0 font-brand text-[10px] font-bold uppercase tracking-[0.5px] text-steel">
+                Departments
+              </span>
+              {departments.map((d) => {
+                const on = deptFilter.has(d.id);
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => toggleDept(d.id)}
+                    className={`rounded-full border px-2.5 py-0.5 font-medium transition-colors ${
+                      on
+                        ? "border-navy bg-navy text-white"
+                        : "border-line bg-surface text-steel hover:text-navy"
+                    }`}
+                  >
+                    {d.name}
+                  </button>
+                );
+              })}
+              {deptFilter.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDeptFilter(new Set())}
+                  className="ml-1 text-steel underline underline-offset-2 hover:text-navy"
+                >
+                  clear
+                </button>
+              )}
+            </div>
           )}
           {windowWorkTypes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-steel">Work type:</span>
+              <span className="w-[74px] shrink-0 font-brand text-[10px] font-bold uppercase tracking-[0.5px] text-steel">
+                Work types
+              </span>
               {windowWorkTypes.map((w) => {
                 const on = workTypeFilter.has(w.id);
                 return (
@@ -665,7 +690,7 @@ export default function ScheduleMatrix({
                     key={w.id}
                     type="button"
                     onClick={() => toggleWorkType(w.id)}
-                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium transition-colors ${
                       on
                         ? "border-navy bg-navy text-white"
                         : "border-line bg-surface text-steel hover:text-navy"
@@ -713,12 +738,6 @@ export default function ScheduleMatrix({
           }
         />
       </div>
-
-      {!buildMode && (
-        <div className="flex-none pt-3">
-          <WorkTypeLegend workTypes={workTypes} usedIds={usedWorkTypeIds} />
-        </div>
-      )}
 
       {editing && (
         <ShiftModal
