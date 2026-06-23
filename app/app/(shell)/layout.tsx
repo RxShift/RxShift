@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/app/sidebar";
+import SidebarReopenButton from "@/components/app/sidebar-reopen-button";
 import MobileTabBar from "@/components/app/mobile-tab-bar";
 import DesktopOnlyNotice from "@/components/app/desktop-only-notice";
 import PlatformBanner from "@/components/app/platform-banner";
@@ -50,6 +51,8 @@ export default async function ShellLayout({
         isEmulating={isEmulating}
         tenantLogoUrl={logoUrl}
       />
+      {/* Fixed, always-reachable reopen tab (shown only while collapsed). */}
+      <SidebarReopenButton />
       {/* Mobile: no sidebar margin + bottom padding for the tab bar. Desktop
           (md+): the fixed sidebar's ml-60 (and the collapse override). */}
       <div className="app-content ml-0 flex min-h-screen min-w-0 flex-1 flex-col pb-16 md:ml-60 md:pb-0">

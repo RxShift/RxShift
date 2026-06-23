@@ -99,6 +99,9 @@ const operationSchema = z.discriminatedUnion("op", [
     op: z.literal("reassign_shift"),
     shift_id: z.string().uuid(),
     to_staff_id: z.string().uuid(),
+    // The target person's name as shown in STAFF — WE resolve it to the id, so a
+    // mis-cross-referenced UUID can't reassign to the wrong person (bug fix).
+    to_staff_name: z.string().optional(),
   }),
   z.object({
     op: z.literal("delete_shift"),
@@ -117,6 +120,7 @@ const operationSchema = z.discriminatedUnion("op", [
   z.object({
     op: z.literal("create_shifts"),
     staff_id: z.string().uuid(),
+    staff_name: z.string().optional(),
     days_of_week: z
       .array(z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]))
       .min(1),
@@ -128,6 +132,7 @@ const operationSchema = z.discriminatedUnion("op", [
   z.object({
     op: z.literal("add_constraint"),
     staff_id: z.string().uuid(),
+    staff_name: z.string().optional(),
     rule_type: z.enum([
       "unavailable_window",
       "recurring_unavailable",
@@ -179,6 +184,80 @@ function expandCreateDates(
     if (pto.some((t) => t.start_date <= date && date <= t.end_date)) return false;
     return true;
   });
+}
+
+// ─── Deterministic staff name resolution (wrong-person bug fix) ──────────────
+// Small models reliably READ a name but mis-cross-reference UUIDs. So the model
+// echoes the target person's name and WE resolve it to an id here — exact match
+// wins, then unambiguous containment, then typo-tolerant edit distance. If it's
+// ambiguous or nothing's close, we ask instead of guessing.
+
+function normalizeName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\bdr\.?\b/g, "") // drop the "Dr." honorific
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  const dp = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = Math.min(
+        dp[j] + 1,
+        dp[j - 1] + 1,
+        prev + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+type StaffLite = { id: string; full_name: string };
+
+function resolveStaffName(
+  query: string,
+  staff: StaffLite[]
+): { id: string } | { ambiguous: string[] } | null {
+  const q = normalizeName(query);
+  if (!q) return null;
+  const norm = staff.map((s) => ({ s, n: normalizeName(s.full_name) }));
+
+  // 1) Exact normalized match.
+  const exact = norm.filter((x) => x.n === q);
+  if (exact.length === 1) return { id: exact[0].s.id };
+  if (exact.length > 1) return { ambiguous: exact.map((x) => x.s.full_name) };
+
+  // 2) Containment — handles "Ashley" → "Ashley Din", or a last-name reference.
+  const contains = norm.filter((x) => x.n.includes(q) || q.includes(x.n));
+  if (contains.length === 1) return { id: contains[0].s.id };
+  if (contains.length > 1)
+    return { ambiguous: contains.map((x) => x.s.full_name) };
+
+  // 3) Typo tolerance — closest by edit distance, but only if clearly the best.
+  const scored = norm
+    .map((x) => ({ s: x.s, d: levenshtein(q, x.n) }))
+    .sort((a, b) => a.d - b.d);
+  const best = scored[0];
+  const threshold = Math.max(2, Math.floor(q.length * 0.34));
+  if (best && best.d <= threshold) {
+    const next = scored[1];
+    if (!next || next.d - best.d >= 1) return { id: best.s.id };
+    return {
+      ambiguous: scored.filter((x) => x.d === best.d).map((x) => x.s.full_name),
+    };
+  }
+  return null;
 }
 
 export interface AiCommandResult {
@@ -288,11 +367,17 @@ export async function aiScheduleCommand(
         '{"mode":"answer","answer":"..."} for questions, or\n' +
         '{"mode":"proposal","description":"plain-English summary of what will change","operations":[...]}.\n' +
         "Allowed operations:\n" +
-        '- {"op":"reassign_shift","shift_id":"<uuid>","to_staff_id":"<uuid>"}\n' +
+        '- {"op":"reassign_shift","shift_id":"<uuid>","to_staff_id":"<uuid>","to_staff_name":"<name from STAFF>"}\n' +
         '- {"op":"delete_shift","shift_id":"<uuid>"}\n' +
         '- {"op":"edit_shift","shift_id":"<uuid>","new_start_time":"HH:MM or null","new_end_time":"HH:MM or null"}\n' +
-        '- {"op":"create_shifts","staff_id":"<uuid>","days_of_week":["mon","tue"],"start_time":"08:00","end_time":"17:00","date_from":"yyyy-mm-dd or null","date_to":"yyyy-mm-dd or null"}\n' +
-        '- {"op":"add_constraint","staff_id":"<uuid>","rule_type":"always_off|recurring_unavailable|unavailable_window|hour_cap","params":{...},"effective_start":"yyyy-mm-dd","effective_end":"yyyy-mm-dd or null"}\n' +
+        '- {"op":"create_shifts","staff_id":"<uuid>","staff_name":"<name from STAFF>","days_of_week":["mon","tue"],"start_time":"08:00","end_time":"17:00","date_from":"yyyy-mm-dd or null","date_to":"yyyy-mm-dd or null"}\n' +
+        '- {"op":"add_constraint","staff_id":"<uuid>","staff_name":"<name from STAFF>","rule_type":"always_off|recurring_unavailable|unavailable_window|hour_cap","params":{...},"effective_start":"yyyy-mm-dd","effective_end":"yyyy-mm-dd or null"}\n' +
+        "For ANY operation that targets a person, ALWAYS include the name field " +
+        "(staff_name / to_staff_name) copied EXACTLY as it appears in the STAFF " +
+        "list. The system resolves the person from that name (not the id), so " +
+        "copying the exact name is what prevents scheduling the wrong person. " +
+        "If the requested person is NOT in STAFF, do not guess — use mode answer " +
+        "to ask who they mean.\n" +
         'Constraint params: always_off {"days":["fri"]}; recurring_unavailable {"recurrence":{"days":["mon"],"interval_weeks":2}}; ' +
         'unavailable_window {"days":["mon"],"time_range":{"start":"14:00","end":"18:00"}}; hour_cap {"hours":40,"period":"week"}.\n' +
         "create_shifts builds recurring shifts: e.g. \"Marcus works 8 to 5 Monday through Friday for the next " +
@@ -329,6 +414,55 @@ export async function aiScheduleCommand(
       throw new ActionError(
         "The assistant proposed something invalid. Try rephrasing."
       );
+
+    // Deterministic name resolution (wrong-person bug fix): the model echoed the
+    // target person's name; WE resolve it to an id and overwrite the model's
+    // guess. On ambiguity or no match, ask rather than schedule the wrong person.
+    const staffLite: StaffLite[] = bundle.staff.map((s) => ({
+      id: s.id,
+      full_name: s.full_name,
+    }));
+    const validStaffIds = new Set(staffLite.map((s) => s.id));
+    const roster = staffLite.map((s) => s.full_name).join(", ");
+    for (const op of ops) {
+      if (op.op === "create_shifts" || op.op === "add_constraint") {
+        const r =
+          op.staff_name && op.staff_name.trim()
+            ? resolveStaffName(op.staff_name, staffLite)
+            : validStaffIds.has(op.staff_id)
+              ? { id: op.staff_id }
+              : null;
+        if (!r)
+          return {
+            mode: "answer" as const,
+            answer: `I couldn't match "${op.staff_name?.trim() ?? "that person"}" to anyone here. Who did you mean? Staff: ${roster}.`,
+          };
+        if ("ambiguous" in r)
+          return {
+            mode: "answer" as const,
+            answer: `"${op.staff_name?.trim()}" matches more than one person: ${r.ambiguous.join(", ")}. Which one?`,
+          };
+        op.staff_id = r.id;
+      } else if (op.op === "reassign_shift") {
+        const r =
+          op.to_staff_name && op.to_staff_name.trim()
+            ? resolveStaffName(op.to_staff_name, staffLite)
+            : validStaffIds.has(op.to_staff_id)
+              ? { id: op.to_staff_id }
+              : null;
+        if (!r)
+          return {
+            mode: "answer" as const,
+            answer: `I couldn't match "${op.to_staff_name?.trim() ?? "that person"}" to anyone here. Who did you mean? Staff: ${roster}.`,
+          };
+        if ("ambiguous" in r)
+          return {
+            mode: "answer" as const,
+            answer: `"${op.to_staff_name?.trim()}" matches more than one person: ${r.ambiguous.join(", ")}. Which one?`,
+          };
+        op.to_staff_id = r.id;
+      }
+    }
 
     // Deterministic validation: simulate the operations and diff the flags
     const segments = toEngineSegments(bundle);

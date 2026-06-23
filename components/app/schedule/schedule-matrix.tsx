@@ -551,7 +551,10 @@ export default function ScheduleMatrix({
             <Button variant="secondary" onClick={() => setPublishOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => runPublish(reason || null)} disabled={busy}>
+            <Button
+              onClick={() => runPublish(reason || null)}
+              disabled={busy || (flagCount > 0 && reason.trim().length < 3)}
+            >
               {busy ? "Publishing…" : "Publish"}
             </Button>
           </>

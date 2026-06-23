@@ -1,5 +1,3 @@
-import SidebarReopenButton from "@/components/app/sidebar-reopen-button";
-
 export default function PageHeader({
   title,
   actions,
@@ -9,11 +7,7 @@ export default function PageHeader({
 }) {
   return (
     <div className="flex h-[60px] items-center justify-between border-b border-line bg-surface px-8">
-      <div className="flex items-center gap-2">
-        {/* Appears only when the sidebar is collapsed — sits where the « was. */}
-        <SidebarReopenButton />
-        <h1 className="font-brand text-lg font-bold text-navy">{title}</h1>
-      </div>
+      <h1 className="font-brand text-lg font-bold text-navy">{title}</h1>
       {actions && <div className="flex items-center gap-3">{actions}</div>}
     </div>
   );

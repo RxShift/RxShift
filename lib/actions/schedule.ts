@@ -13,7 +13,12 @@ import {
 } from "@/lib/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScheduleCycle, Shift, ShiftSegment } from "@/lib/types";
-import { buildComplianceRecords, loadPeriodBundle } from "@/lib/schedule-data";
+import {
+  buildComplianceRecords,
+  loadAllLocationsBundle,
+  loadPeriodBundle,
+  validateRangeBundle,
+} from "@/lib/schedule-data";
 import { deficiencyStreaks, SUSTAINED_DEFICIENCY_DAYS } from "@/lib/engine/compliance";
 import { sendNotificationEmail } from "@/lib/email";
 import {
@@ -297,7 +302,7 @@ export async function copyForward(
 export async function publishPeriod(
   periodId: string,
   overrideReason: string | null
-): Promise<ActionResult> {
+): Promise<ActionResult<{ flagsOverridden: number }>> {
   return runAction(async () => {
     const ctx = await requireManager();
     const supabase = await createClient();
@@ -404,7 +409,7 @@ export async function publishPeriod(
       streak_alerts: streakAlerts.length,
     });
     revalidateScheduleViews();
-    return undefined;
+    return { flagsOverridden: flagCount };
   });
 }
 
@@ -420,6 +425,27 @@ export async function publishWindow(
   return runAction(async () => {
     const ctx = await requireManager();
     const supabase = await createClient();
+
+    // Gate on the SAME validation the user saw (window-wide, all locations) —
+    // never trust a client-supplied flag count. Per-period publish alone can
+    // miss window-only flags (a cross-location double-booking, or an hour cap
+    // that only trips across the window), which is how a flagged schedule could
+    // publish with no reason. Re-validate the window here so the reason
+    // requirement always matches the flags shown in the publish dialog.
+    const windowBundle = await loadAllLocationsBundle(viewStart, viewEnd);
+    const windowValidation = validateRangeBundle(windowBundle, ctx.tenant);
+    const windowFlagCount =
+      windowValidation.ratioFlags.length +
+      windowValidation.constraintFlags.length;
+    if (
+      windowFlagCount > 0 &&
+      (!overrideReason || overrideReason.trim().length < 3)
+    ) {
+      throw new ActionError(
+        `This schedule has ${windowFlagCount} open flag${windowFlagCount === 1 ? "" : "s"}. Publishing requires a reason, which is logged.`
+      );
+    }
+
     let q = supabase
       .from("schedule_period")
       .select("id")
@@ -434,12 +460,30 @@ export async function publishWindow(
         "Nothing to publish — there's no draft schedule in this window."
       );
     let published = 0;
+    let flagsLogged = 0;
     for (const p of drafts) {
       // Reuse the per-period publish (flag/override + compliance snapshot).
       const result = await publishPeriod(p.id as string, overrideReason);
       if (!result.ok) throw new ActionError(result.error);
+      flagsLogged += result.data?.flagsOverridden ?? 0;
       published += 1;
     }
+
+    // If the window had flags but no single period reproduced them (e.g. a
+    // cross-location double-booking), publishPeriod logged nothing — record the
+    // acknowledged reason once here so the override log never loses it.
+    if (windowFlagCount > 0 && flagsLogged === 0 && overrideReason) {
+      await supabase.from("override_log").insert({
+        tenant_id: ctx.tenantId,
+        actor_user_id: ctx.actingUserId,
+        target_type: "shift",
+        target_id: drafts[0].id as string,
+        warning_type:
+          windowValidation.ratioFlags.length > 0 ? "ratio" : "constraint",
+        reason: overrideReason.trim(),
+      });
+    }
+
     return { published };
   });
 }
