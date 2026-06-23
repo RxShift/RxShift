@@ -57,6 +57,28 @@ export interface ValidationOut {
   deficientCells: { [locationId: string]: string[] };
 }
 
+/**
+ * Fetch EVERY row of a query, paging past Supabase/PostgREST's 1000-row response
+ * cap. Without this, a busy month / all-locations window silently truncates:
+ * shifts past row 1000 vanish from the grid, and a copy-forward that fetched all
+ * segments in one shot created shifts with NO segments (the phantom "SMRX"
+ * cells). Pass a builder that applies `.range(from, to)`; we page until a short
+ * page comes back. Give the query a stable `.order()` so pages don't overlap.
+ */
+export async function fetchAllRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+): Promise<T[]> {
+  const SIZE = 1000;
+  const out: T[] = [];
+  for (let from = 0; ; from += SIZE) {
+    const { data } = await page(from, from + SIZE - 1);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < SIZE) break;
+  }
+  return out;
+}
+
 export async function loadPeriodBundle(
   periodId: string,
   client?: SupabaseClient
@@ -179,17 +201,21 @@ export async function loadRangeBundle(
 ): Promise<RangeBundle> {
   const supabase = await createClient();
 
-  const { data: shifts } = await supabase
-    .from("shift")
-    .select("*")
-    .eq("location_id", locationId)
-    .gte("date", viewStart)
-    .lte("date", viewEnd);
-  const shiftRows = (shifts ?? []) as Shift[];
+  // Paginated: a busy window can exceed the 1000-row cap (see fetchAllRows).
+  const shiftRows = await fetchAllRows<Shift>((from, to) =>
+    supabase
+      .from("shift")
+      .select("*")
+      .eq("location_id", locationId)
+      .gte("date", viewStart)
+      .lte("date", viewEnd)
+      .order("id")
+      .range(from, to)
+  );
   const shiftIds = shiftRows.map((s) => s.id);
 
   const [
-    { data: segments },
+    segments,
     { data: staff },
     { data: workTypes },
     { data: locations },
@@ -200,8 +226,15 @@ export async function loadRangeBundle(
     { data: periods },
   ] = await Promise.all([
     shiftIds.length
-      ? supabase.from("shift_segment").select("*").in("shift_id", shiftIds)
-      : Promise.resolve({ data: [] as ShiftSegment[] }),
+      ? fetchAllRows<ShiftSegment>((from, to) =>
+          supabase
+            .from("shift_segment")
+            .select("*")
+            .in("shift_id", shiftIds)
+            .order("id")
+            .range(from, to)
+        )
+      : Promise.resolve([] as ShiftSegment[]),
     supabase.from("staff").select("*").order("full_name"),
     supabase.from("work_type").select("*").order("name"),
     supabase.from("location").select("*").eq("id", locationId),
@@ -228,7 +261,7 @@ export async function loadRangeBundle(
   ]);
 
   const segsByShift = new Map<string, ShiftSegment[]>();
-  for (const seg of (segments ?? []) as ShiftSegment[]) {
+  for (const seg of segments) {
     const list = segsByShift.get(seg.shift_id) ?? [];
     list.push(seg);
     segsByShift.set(seg.shift_id, list);
@@ -272,16 +305,21 @@ export async function loadAllLocationsBundle(
 ): Promise<RangeBundle> {
   const supabase = await createClient();
 
-  const { data: shifts } = await supabase
-    .from("shift")
-    .select("*")
-    .gte("date", viewStart)
-    .lte("date", viewEnd);
-  const shiftRows = (shifts ?? []) as Shift[];
+  // Paginated: an all-locations month easily exceeds the 1000-row cap (see
+  // fetchAllRows) — without paging, shifts AND their segments silently vanish.
+  const shiftRows = await fetchAllRows<Shift>((from, to) =>
+    supabase
+      .from("shift")
+      .select("*")
+      .gte("date", viewStart)
+      .lte("date", viewEnd)
+      .order("id")
+      .range(from, to)
+  );
   const shiftIds = shiftRows.map((s) => s.id);
 
   const [
-    { data: segments },
+    segments,
     { data: staff },
     { data: workTypes },
     { data: locations },
@@ -292,8 +330,15 @@ export async function loadAllLocationsBundle(
     { data: periods },
   ] = await Promise.all([
     shiftIds.length
-      ? supabase.from("shift_segment").select("*").in("shift_id", shiftIds)
-      : Promise.resolve({ data: [] as ShiftSegment[] }),
+      ? fetchAllRows<ShiftSegment>((from, to) =>
+          supabase
+            .from("shift_segment")
+            .select("*")
+            .in("shift_id", shiftIds)
+            .order("id")
+            .range(from, to)
+        )
+      : Promise.resolve([] as ShiftSegment[]),
     supabase.from("staff").select("*").order("full_name"),
     supabase.from("work_type").select("*").order("name"),
     supabase.from("location").select("*").order("name"),
@@ -319,7 +364,7 @@ export async function loadAllLocationsBundle(
   ]);
 
   const segsByShift = new Map<string, ShiftSegment[]>();
-  for (const seg of (segments ?? []) as ShiftSegment[]) {
+  for (const seg of segments) {
     const list = segsByShift.get(seg.shift_id) ?? [];
     list.push(seg);
     segsByShift.set(seg.shift_id, list);

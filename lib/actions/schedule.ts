@@ -15,6 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScheduleCycle, Shift, ShiftSegment } from "@/lib/types";
 import {
   buildComplianceRecords,
+  fetchAllRows,
   loadAllLocationsBundle,
   loadPeriodBundle,
   validateRangeBundle,
@@ -506,39 +507,54 @@ export async function copyForwardWindow(
     const priorStart = addDaysStr(viewStart, -len);
     const priorEnd = addDaysStr(viewStart, -1);
 
-    let pq = supabase
-      .from("shift")
-      .select("*")
-      .gte("date", priorStart)
-      .lte("date", priorEnd);
-    if (locationId) pq = pq.eq("location_id", locationId);
-    const { data: prior } = await pq;
-    const priorShifts = (prior ?? []) as Shift[];
+    // Paginate: a month-long copy fetches 800+ shifts and even MORE segments.
+    // A single query caps at 1000 rows, so the segment fetch below used to
+    // silently drop segments for shifts past row 1000 — creating shifts with no
+    // segments (the phantom "SMRX" cells). fetchAllRows pages past the cap.
+    const priorShifts = await fetchAllRows<Shift>((from, to) => {
+      let pq = supabase
+        .from("shift")
+        .select("*")
+        .gte("date", priorStart)
+        .lte("date", priorEnd)
+        .order("id")
+        .range(from, to);
+      if (locationId) pq = pq.eq("location_id", locationId);
+      return pq;
+    });
     if (priorShifts.length === 0)
       throw new ActionError("No shifts in the previous window to copy.");
 
-    let tq = supabase
-      .from("shift")
-      .select("staff_id, location_id, date")
-      .gte("date", viewStart)
-      .lte("date", viewEnd);
-    if (locationId) tq = tq.eq("location_id", locationId);
-    const { data: existing } = await tq;
+    const existing = await fetchAllRows<{
+      staff_id: string;
+      location_id: string;
+      date: string;
+    }>((from, to) => {
+      let tq = supabase
+        .from("shift")
+        .select("staff_id, location_id, date")
+        .gte("date", viewStart)
+        .lte("date", viewEnd)
+        .order("staff_id")
+        .range(from, to);
+      if (locationId) tq = tq.eq("location_id", locationId);
+      return tq;
+    });
     const taken = new Set(
-      (existing ?? []).map(
-        (s) => `${s.staff_id}|${s.location_id}|${s.date}`
-      )
+      existing.map((s) => `${s.staff_id}|${s.location_id}|${s.date}`)
     );
 
-    const { data: segs } = await supabase
-      .from("shift_segment")
-      .select("*")
-      .in(
-        "shift_id",
-        priorShifts.map((s) => s.id)
-      );
+    const priorIds = priorShifts.map((s) => s.id);
+    const segs = await fetchAllRows<ShiftSegment>((from, to) =>
+      supabase
+        .from("shift_segment")
+        .select("*")
+        .in("shift_id", priorIds)
+        .order("id")
+        .range(from, to)
+    );
     const segByShift = new Map<string, ShiftSegment[]>();
-    for (const sg of (segs ?? []) as ShiftSegment[]) {
+    for (const sg of segs) {
       const list = segByShift.get(sg.shift_id) ?? [];
       list.push(sg);
       segByShift.set(sg.shift_id, list);

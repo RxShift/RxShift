@@ -7,6 +7,28 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Fix: copy-forward dropped shift segments past 1000 rows (phantom "SMRX" cells)
+
+Susie hit empty cells showing only a tiny "SMRX" tag and no shift. Root cause: she ran **"Copy last
+week's pattern" on the Month view**, which copied **809 shifts** at once. `copyForwardWindow` fetched
+all of the source segments in a single `.in(shift_id, […809])` query — and Supabase/PostgREST silently
+caps any response at **1000 rows**, so segments past row 1000 were dropped and those shifts were created
+**with no segments** (a shift block with no time/work-type renders as just its location tag). 808 such
+shifts landed in the Optum demo tenant (Jul 2–31); no other tenant affected.
+
+### Shipped
+- **New `fetchAllRows` helper** (`lib/schedule-data.ts`) pages past the 1000-row cap with `.range()`.
+- **`copyForwardWindow`** now pages the prior-shift fetch, the existing-shift ("taken") fetch, AND the
+  segment fetch — so a month-long copy carries every segment. This was the actual bug.
+- **`loadRangeBundle` + `loadAllLocationsBundle`** now page their shift AND segment fetches too. These
+  had the same latent cap: a busy all-locations **month** view could silently under-display the grid
+  (shifts/segments past row 1000 just vanished). Fixed before it bit anyone.
+- **Display guard:** the matrix ignores any shift with zero segments, so a broken artifact can never
+  render a phantom location tag again (real shifts always have ≥1 segment, enforced on save).
+
+### Data
+- Pending: delete the 808 segment-less artifact shifts from the Optum demo tenant (Jul 2–31).
+
 ## 2026-06-23 — Build mode v2 (one command strip) + grid uniform columns + holiday polish
 
 The scheduling surface Susie/Brandy will judge. `tsc` clean; 74 tests pass; build clean.

@@ -275,13 +275,16 @@ export default function ScheduleMatrix({
         : "bg-cloud text-steel";
 
   // Location-scoped shifts (drives the work-type chips so they stay stable).
-  const locShifts = useMemo(
-    () =>
-      locationFilter
-        ? shifts.filter((s) => s.location_id === locationFilter)
-        : shifts,
-    [shifts, locationFilter]
-  );
+  // A shift with no segments has nothing to draw (no time, no work type); render
+  // it and you get a phantom location tag over an empty block. Real shifts always
+  // have ≥1 segment (enforced on save), so dropping segment-less ones only hides
+  // broken artifacts — never legitimate data.
+  const locShifts = useMemo(() => {
+    const real = shifts.filter((s) => s.segments.length > 0);
+    return locationFilter
+      ? real.filter((s) => s.location_id === locationFilter)
+      : real;
+  }, [shifts, locationFilter]);
 
   const visibleShifts = useMemo(() => {
     let list = locShifts;
