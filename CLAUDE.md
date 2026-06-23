@@ -189,6 +189,14 @@ non-demo internal screens.
 - **Always `git pull` before starting work** — standard discipline.
 - **Commit frequently** with plain-English messages.
 - **Never push without Jamison's explicit approval.**
+- **Deploying (June 23, 2026): use the Vercel CLI, not git-push or the deploy hook.** On the personal
+  Hobby account, both git-push auto-deploy AND the deploy hook get **Blocked** ("commit author did not
+  have contributing access" — the Hobby private-repo author check, tripped by the `Co-Authored-By:`
+  trailer). The CLI sidesteps it (attributed to the authed account, not the commit author). After
+  pushing both remotes, deploy with **`npx --yes vercel --prod --yes`** from the repo — Claude can run
+  this (CLI is authed as `jamisonwest-ship-it`); it needs Jamison's explicit "deploy" each time
+  (production-deploy guardrail). Permanent fix: upgrade the account to Vercel Pro (lifts the
+  restriction so git-push works again). Details in memory `vercel_deploy_hook.md`.
 - For any multi-step task, create a task list before starting.
 - Match the brand spec in `Brand Items/DESIGN.md` for all UI work — do not improvise colors or typography.
 - When adding new API routes, check whether the Supabase keep-alive cron is in place first (required for free-tier).
