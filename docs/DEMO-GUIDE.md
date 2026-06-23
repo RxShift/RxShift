@@ -84,14 +84,16 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
 - **PTO** shows **blacked out** ("PTO") on a person's row — including time off months out, before that
   week is built. **Holiday** columns are lightly tinted and labeled "Holiday." Both are visual; holidays
   never block staffing.
-- Publish / Copy last week / Export CSV. **Publish status is honest per day** — a window that's part
-  published, part draft reads e.g. **"5/7 days published,"** not "Published ✓." Publishing with open flags
-  **requires a reason** (it won't go through blank). Build cadence is fixed per tenant (Settings →
-  Organization); you can still *view* any span.
-- **Build mode** (button by the view pills): collapses everything into ONE command strip — date nav,
-  view, location, status, Ask AI, Copy/Export/Publish, and a ⤢ Exit button — so the grid fills the screen
-  with many staff rows at once (~16–17 on a laptop vs ~11 normally). Nothing is buried; it's all on the
-  one bar. Click ⤢ Exit to bring the chrome back. (Designed for a normal laptop, not a big external monitor.)
+- **Build vs View are two screens.** **Build Schedule** (`/app/schedule`, managers/schedulers) is where
+  you construct/edit — it's **cadence-locked**: the window IS one build-cadence period (Optum = a month),
+  the header reads **"Building: June 2026"** and the steppers move a month at a time (no week/2-week/month
+  picker here). **View Schedule** (`/app/view-schedule`, everyone) is read-only, **published-only**, with
+  the week/2-week/month **zoom** for looking. So: managers build a period; everyone views the result.
+- Publish / **Copy last month's pattern** (label follows the cadence) / Export CSV. Publishing makes the
+  period live; publishing with open flags **requires a reason** (it won't go through blank).
+- **Build mode** (button by the "Building: <period>" label): collapses everything into ONE command strip —
+  date nav, the period, location, status, Ask AI, Copy/Export/Publish, ⤢ Exit — so the grid fills the
+  screen with many staff rows (~16–17 on a laptop). Click ⤢ Exit to bring the chrome back.
 - **Carry-forward:** open a shift → "Copy this shift to following days" → pick a through-date → it repeats
   the shift across those days in one move (skipping days the person already works or is off).
 - Clicking an **unbuilt future week** just works — the period is created when you save (no "create period"
@@ -267,12 +269,15 @@ The schedule builder got a lot stronger, and the demo prompter is now part of th
 
 **Run the prompter from the app.** The presenter script lives at **`/app/demo-prompter`** (platform-admin
 only). Open it from the **Admin Console → "Open demo prompter"** — it pops out into a small window you can
-park on a second monitor. It's always current (v4.1). The old standalone HTML file is retired.
+park on a second monitor. It's always current (v4.2). The old standalone HTML file is retired.
 
 **New on the schedule (work these into the build beat):**
-- **Build mode** — a button by the view pills that collapses the chrome into one command strip (date nav,
-  view, location, status, Ask AI, publish, ⤢ Exit) so the grid fills the screen with many staff rows.
-  Designed for a normal laptop. Click ⤢ Exit (far right of the strip) to bring the chrome back.
+- **Build vs View split** — building lives on **Build Schedule** (managers, cadence-locked, "Building:
+  <period>"); a separate read-only **View Schedule** is for everyone (published-only, week/2-week/month
+  zoom). Build a period; everyone views it.
+- **Build mode** — a button by the "Building: <period>" label that collapses the chrome into one command
+  strip (date nav, the period, location, status, Ask AI, publish, ⤢ Exit) so the grid fills the screen.
+  Click ⤢ Exit (far right of the strip) to bring the chrome back.
 - **PTO is blacked out** on the grid — including future time off, before that week is built. Approve a request
   *or* mark someone off directly with the **PTO checkbox** on the shift editor. The seed shows both (Ashley
   next week, Dana this Wednesday).

@@ -8,8 +8,12 @@
 // and the publish reason-gate fix.
 // v4.1 (June 23, 2026): Build mode is now ONE command strip (date nav · view ·
 // location · status · Ask AI · publish · ⤢ Exit) — beat 6 reworded to match.
+// v4.2 (June 23, 2026): Build vs View split. Demo builds on "Build Schedule"
+// (managers, cadence-locked — Optum = month, "Building: <period>"); a separate
+// read-only "View Schedule" is for everyone. Copy is "last month's pattern";
+// PTO-day-with-shift now shows the red conflict flag.
 
-export const PROMPTER_VERSION = "v4.1";
+export const PROMPTER_VERSION = "v4.2";
 
 export interface Beat {
   /** d=direction, s=script, pv=pivot, pause, p=Ask-AI prompt, n=note, cond=condition */
@@ -178,27 +182,27 @@ export const STEPS: PrompterStep[] = [
     id: 6,
     act: "ACT 2 — SCHEDULE",
     actColor: "#F07C30",
-    title: "Schedule Builder",
+    title: "Build Schedule",
     time: "0:12–0:17",
     tab: "TAB B",
-    tabNote: "Frank · /app/schedule → Henderson",
+    tabNote: "Frank · Build Schedule (/app/schedule) → Henderson",
     beats: [
-      { t: "d", v: "Switch to Tab B. Confirm Henderson is selected in the location pill." },
+      { t: "d", v: "Switch to Tab B — Build Schedule. Confirm Henderson in the location pill. Note the header: 'Building: <period>' (Optum builds a month at a time)." },
       {
         t: "s",
-        v: '"Schedule builder. Location pill at the top filters which pharmacy. Rows are role-banded — pharmacists on top, technicians below — which mirrors how ratio math works.\n\nTwo ring types, completely separate channels. Red ring with ⚠: ratio deficiency — that slot is non-compliant. [Scroll to Jerome\'s Saturday] Amber ring: a constraint flag — Jerome\'s 40-hour cap, showing up here before you publish.\n\n[Point to a blacked-out PTO cell] Anyone off shows blacked out as PTO — and that\'s true for time off months from now, before this week is even built. A scheduler can mark someone off right here, or it flows in when you approve a request.\n\n[Point to a tinted holiday column] Holidays tint the column — a visual cue, never a block.\n\nTwo ways to build fast: \'Copy last week\'s pattern\' repeats the whole prior period in one click. And on any single shift you can copy it to the following days — enter Monday once, repeat it through Friday in one move."',
+        v: '"This is Build Schedule — managers only. There\'s a separate read-only View Schedule everyone can see; building lives here. It\'s locked to your build cadence — Optum schedules a month at a time, so the header says \'Building: June 2026\' and the steppers move a month at a time. No fiddling with week vs month while you build.\n\nRows are role-banded — pharmacists on top, technicians below — which mirrors how ratio math works.\n\nTwo ring types, completely separate channels. Red ring with ⚠: a hard conflict — a ratio deficiency, or someone scheduled on their day off. [Scroll to Jerome\'s Saturday] Amber ring: a constraint flag — Jerome\'s 40-hour cap, showing up before you publish.\n\n[Point to a blacked-out PTO cell] Anyone off shows blacked out as PTO — true for time off months out, before the period is even built. [Point to Ashley\'s PTO day with a shift on it] And if someone\'s scheduled on a day they\'re off, that shift gets the red flag.\n\n[Point to a tinted holiday column] Holidays tint the column — a cue, never a block.\n\nTwo ways to build fast: \'Copy last month\'s pattern\' repeats the whole prior period in one click. And on any single shift you can copy it across the following days in one move."',
       },
       {
         t: "d",
-        v: "Click Build mode (next to the view pills). The page chrome collapses into ONE command strip and the grid fills the screen.",
+        v: "Click Build mode (next to the 'Building: <period>' label). The page chrome collapses into ONE command strip and the grid fills the screen.",
       },
       {
         t: "s",
-        v: '"On a normal laptop you want to see as many people as possible at once. Build mode strips everything down to one bar — date nav, view, location, publish, Ask AI, all in a single strip — so the grid shows far more rows. Everything you need is still right there; nothing is buried."',
+        v: '"On a normal laptop you want to see as many people as possible at once. Build mode strips everything down to one bar — date nav, the period, location, publish, Ask AI — so the grid shows far more rows. Everything you need is still right there; nothing is buried."',
       },
       {
         t: "n",
-        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots. Click ⤢ Exit in the strip (far right) to bring the chrome back before the next beat.",
+        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots (ratio) and Ashley's PTO-day shift. Click ⤢ Exit in the strip (far right) to bring the chrome back before the next beat.",
       },
     ],
   },
