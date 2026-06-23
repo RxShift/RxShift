@@ -170,6 +170,16 @@ export default async function SchedulePage({
   const validation = validateRangeBundle(allBundle, tenant);
   const avatarUrls = await signedAvatarUrls(supabase, allBundle.staff);
 
+  // Holidays for the window — tenant-wide, purely visual (column tint + label).
+  const { data: holidayRows } = await supabase
+    .from("holiday")
+    .select("date, name")
+    .gte("date", start)
+    .lte("date", end);
+  const holidaysByDate: Record<string, string> = {};
+  for (const h of (holidayRows ?? []) as { date: string; name: string }[])
+    holidaysByDate[h.date] = h.name;
+
   const stepLen = view === "2week" ? 14 : 7;
   const prevAnchor =
     view === "month" ? addDaysStr(start, -1) : addDaysStr(start, -stepLen);
@@ -250,6 +260,7 @@ export default async function SchedulePage({
           departments={depts}
           approvedTimeOff={allBundle.approvedTimeOff}
           ptoDays={allBundle.ptoDays}
+          holidaysByDate={holidaysByDate}
           validation={validation}
           locationFilter={locationFilter}
           avatarUrls={avatarUrls}

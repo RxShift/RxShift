@@ -10,6 +10,7 @@ const TABS = [
   { label: "Work Types", href: "/app/settings/work-types" },
   { label: "Statuses", href: "/app/settings/statuses" },
   { label: "Constraint Rules", href: "/app/settings/constraints" },
+  { label: "Holidays", href: "/app/settings/holidays" },
   { label: "Import Staff", href: "/app/settings/import" },
 ];
 

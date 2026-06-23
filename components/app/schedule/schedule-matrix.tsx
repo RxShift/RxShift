@@ -48,6 +48,7 @@ export default function ScheduleMatrix({
   departments,
   approvedTimeOff,
   ptoDays,
+  holidaysByDate,
   validation,
   avatarUrls,
   /** When set, show only this location (rows with a shift there); null = all. */
@@ -65,6 +66,8 @@ export default function ScheduleMatrix({
   departments: Department[];
   approvedTimeOff: TimeOffRequest[];
   ptoDays: PtoDay[];
+  /** Date (yyyy-mm-dd) → holiday name, for the column tint/label. */
+  holidaysByDate: Record<string, string>;
   validation: ValidationOut;
   avatarUrls: Record<string, string>;
   locationFilter: string | null;
@@ -301,6 +304,11 @@ export default function ScheduleMatrix({
     [ptoDays]
   );
 
+  const holidayMap = useMemo(
+    () => new Map(Object.entries(holidaysByDate)),
+    [holidaysByDate]
+  );
+
   const deficientShiftIds = useMemo(() => {
     const out = new Set<string>();
     for (const s of visibleShifts)
@@ -499,6 +507,7 @@ export default function ScheduleMatrix({
           constraintShiftIds={constraintShiftIds}
           workTypeById={workTypeById}
           dateStatus={dateStatus}
+          holidaysByDate={holidayMap}
           locationNameById={locationNameById}
           expectedRxByDate={expectedRxByDate}
           avatarUrlById={avatarUrls}

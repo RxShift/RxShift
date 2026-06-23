@@ -42,6 +42,7 @@ export default function ScheduleGrid({
   constraintShiftIds,
   workTypeById,
   dateStatus,
+  holidaysByDate,
   locationNameById,
   expectedRxByDate,
   avatarUrlById,
@@ -57,6 +58,8 @@ export default function ScheduleGrid({
   workTypeById: Map<string, WorkType>;
   /** Optional per-date publish state — when set, columns are tinted/labeled. */
   dateStatus?: Map<string, DateStatus>;
+  /** Date → holiday name. Tints + labels the column; never blocks staffing. */
+  holidaysByDate?: Map<string, string>;
   /** When set (all-locations view), each shift shows a location tag. */
   locationNameById?: Map<string, string>;
   /** Informational expected Rx volume per date (Decision 4 — display only). */
@@ -102,10 +105,13 @@ export default function ScheduleGrid({
               const isWeekend = day.dow === "Sat" || day.dow === "Sun";
               const status = dateStatus?.get(d);
               const isToday = d === today;
+              const holiday = holidaysByDate?.get(d);
               return (
                 <th
                   key={d}
-                  className={`sticky top-0 z-20 min-w-[116px] border-b border-line bg-cloud px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
+                  className={`sticky top-0 z-20 min-w-[116px] border-b border-line px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
+                    holiday ? "bg-[#EEF1FB]" : "bg-cloud"
+                  } ${
                     status === "draft"
                       ? "border-b-2 border-b-alert"
                       : status === "published"
@@ -132,6 +138,14 @@ export default function ScheduleGrid({
                   {status === "none" && (
                     <span className="mt-0.5 block font-body text-[8px] font-medium normal-case tracking-normal text-steel/60">
                       No period
+                    </span>
+                  )}
+                  {holiday && (
+                    <span
+                      className="mt-0.5 block truncate font-body text-[8px] font-semibold normal-case tracking-normal text-navy/70"
+                      title={holiday}
+                    >
+                      Holiday
                     </span>
                   )}
                   {expectedRxByDate?.get(d) != null && (
@@ -184,6 +198,7 @@ export default function ScheduleGrid({
                     const hasPto = timeOffByCell.has(key);
                     const noPeriod = dateStatus?.get(d) === "none";
                     const isDraft = dateStatus?.get(d) === "draft";
+                    const isHoliday = holidaysByDate?.has(d) ?? false;
 
                     return (
                       <td
@@ -196,7 +211,9 @@ export default function ScheduleGrid({
                               ? "bg-alert-bg hover:bg-navy/[0.04]"
                               : noPeriod
                                 ? "bg-cloud/40 hover:bg-navy/[0.04]"
-                                : "hover:bg-navy/[0.04]"
+                                : isHoliday
+                                  ? "bg-[#EEF1FB] hover:bg-navy/[0.04]"
+                                  : "hover:bg-navy/[0.04]"
                         }`}
                         title={
                           hasPto
