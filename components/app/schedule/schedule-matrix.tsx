@@ -384,8 +384,18 @@ export default function ScheduleMatrix({
     const base = staff.filter((s) => s.active);
     if (!anyFilter) return base;
     const scheduledIds = new Set(visibleShifts.map((s) => s.staff_id));
-    return base.filter((s) => scheduledIds.has(s.id));
-  }, [staff, anyFilter, visibleShifts]);
+    // A plain location filter (no dept/work-type filter) is also a BUILD surface:
+    // show that location's HOME team even with no shifts yet, so an empty or
+    // not-yet-built week is still buildable. Without this, a filtered empty week
+    // has zero rows and there's nothing to click to add anyone.
+    const showHomeTeam =
+      !!locationFilter && !deptFilter && workTypeFilter.size === 0;
+    return base.filter(
+      (s) =>
+        scheduledIds.has(s.id) ||
+        (showHomeTeam && s.home_location_id === locationFilter)
+    );
+  }, [staff, anyFilter, visibleShifts, locationFilter, deptFilter, workTypeFilter]);
 
   // For editing, the shift carries its own location + period.
   const periodById = useMemo(

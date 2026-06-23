@@ -157,7 +157,10 @@ export default function HolidaysManager({ initial }: { initial: Holiday[] }) {
                   type="button"
                   disabled={busy}
                   className="font-body text-xs font-medium text-deficiency hover:underline"
-                  onClick={() => run(() => deleteHoliday(h.id))}
+                  onClick={() => {
+                    if (confirm(`Remove "${h.name}" from the holiday list?`))
+                      run(() => deleteHoliday(h.id));
+                  }}
                 >
                   Remove
                 </button>

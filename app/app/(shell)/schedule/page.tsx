@@ -53,13 +53,15 @@ function LocationNav({
   locations,
   activeLocationId,
   view,
+  anchor,
 }: {
   locations: Location[];
   activeLocationId: string | null;
   view: ViewMode;
+  anchor: string;
 }) {
   const href = (loc?: string) =>
-    `/app/schedule?view=${view}${loc ? `&location=${loc}` : ""}`;
+    `/app/schedule?view=${view}${loc ? `&location=${loc}` : ""}&anchor=${anchor}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {locations.length > 1 && (
@@ -83,9 +85,11 @@ function LocationNav({
 function WindowNav({
   activeView,
   locationId,
+  anchor,
 }: {
   activeView: ViewMode;
   locationId: string | null;
+  anchor: string;
 }) {
   const modes: { key: ViewMode; label: string }[] = [
     { key: "week", label: "Week" },
@@ -93,7 +97,7 @@ function WindowNav({
     { key: "month", label: "Month" },
   ];
   const href = (v: ViewMode) =>
-    `/app/schedule?view=${v}${locationId ? `&location=${locationId}` : ""}`;
+    `/app/schedule?view=${v}${locationId ? `&location=${locationId}` : ""}&anchor=${anchor}`;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {modes.map((m) => (
@@ -219,11 +223,16 @@ export default async function SchedulePage({
             locations={locs}
             activeLocationId={locationFilter}
             view={view}
+            anchor={anchor}
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <WindowNav activeView={view} locationId={locationFilter} />
+            <WindowNav
+              activeView={view}
+              locationId={locationFilter}
+              anchor={anchor}
+            />
             <BuildModeToggle />
           </div>
           <div className="flex items-center gap-3">

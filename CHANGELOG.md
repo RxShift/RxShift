@@ -7,6 +7,30 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Demo QA round 1: fixes from CoWork's run-through
+
+Triaged CoWork's first run-through (`docs/qa/2026-06-23-demo-qa.md`) and verified each failed item live
+via Claude-in-Chrome before coding. `tsc` clean; 74 tests pass; build clean.
+
+### Shipped
+- **Location-filtered empty week is now buildable.** A plain location filter shows that location's HOME
+  team even with no shifts, so an empty/unbuilt week has rows to click (it showed zero rows before — the
+  one genuine bug in the run). All-Locations was already fine. (`schedule-matrix.tsx` `activeStaff`.)
+- **Switching location/view preserves your week position** — the nav links now carry `anchor` (it reset
+  to today before). (`schedule/page.tsx`.)
+- **Holiday Remove now confirms** before deleting (avoids accidental removal mid-demo).
+- **No change (working as specified):** generic "Holiday" column label; Ask AI collapsed to a "✨ Ask AI"
+  button. Both match the original spec.
+
+### Demo data
+- The seed now leaves **next week (offset 1) built-but-draft** (carries Jerome's recurring overtime flag),
+  so the publish-reason gate AND the partial "N/M days published" status are reachable/demoable (every
+  week was published before, so neither could be reached — the features were correct but invisible).
+
+### Open
+- Redeploy (CLI) + demo reset, then CoWork round-2 run-through.
+- Ask AI "Ashley Din" name-resolution: code-verified; retest in the OptumRx tenant.
+
 ## 2026-06-22 — Scheduling overhaul: bugs, PTO, holidays, build mode, in-app prompter
 
 Demo-critical batch after Susie's schedule-builder walkthrough — make building a schedule strong,

@@ -670,6 +670,12 @@ export async function seedMesaVista(
     const weekStart = addDaysStr(anchor, offset * 7);
     const weekEnd = addDaysStr(weekStart, 6);
     const dates = eachDate(weekStart, weekEnd);
+    // Leave NEXT week (offset 1) as a built-but-DRAFT week so the demo can show
+    // Publish (it carries Jerome's recurring 43h overtime flag → reason required)
+    // and the honest partial "N/M days published" status in a 2-week view.
+    // Everything else stays published; the current week keeps its finalized
+    // deficiency stories.
+    const draftWeek = offset === 1;
 
     for (const loc of LOCS) {
       const { data: period, error: pErr } = await service
@@ -680,8 +686,8 @@ export async function seedMesaVista(
           cycle: "weekly",
           start_date: weekStart,
           end_date: weekEnd,
-          status: "published",
-          published_at: new Date().toISOString(),
+          status: draftWeek ? "draft" : "published",
+          published_at: draftWeek ? null : new Date().toISOString(),
         })
         .select("id")
         .single();
@@ -747,7 +753,7 @@ export async function seedMesaVista(
             staff_id: staffIds.get(s.staff)!,
             date: s.date,
             schedule_period_id: period.id,
-            status: "published",
+            status: draftWeek ? "draft" : "published",
             break_minutes: s.breakMin,
             department_id: deptFor(s.staff),
           }))
