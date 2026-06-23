@@ -9,7 +9,12 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
-import { deleteShift, upsertShift } from "@/lib/actions/schedule";
+import { addDaysStr, eachDate } from "@/lib/dates";
+import {
+  copyShiftForward,
+  deleteShift,
+  upsertShift,
+} from "@/lib/actions/schedule";
 import { clearPtoDay, setPtoDay } from "@/lib/actions/pto";
 import type {
   Department,
@@ -50,6 +55,7 @@ export default function ShiftModal({
   periods,
   existingPto = null,
   ptoReasonRequired = false,
+  viewEnd,
 }: {
   open: boolean;
   onClose: () => void;
@@ -73,6 +79,8 @@ export default function ShiftModal({
   existingPto?: PtoDay | null;
   /** When true, a reason is required to save PTO (tenant setting). */
   ptoReasonRequired?: boolean;
+  /** The current view's last date — bounds the "copy to following days" range. */
+  viewEnd?: string;
 }) {
   const router = useRouter();
   const [selectedLocationId, setSelectedLocationId] = useState(
@@ -104,6 +112,11 @@ export default function ShiftModal({
   // pto_day. Checking it on a shift cell converts the day to PTO on save.
   const [isPto, setIsPto] = useState(!!existingPto);
   const [ptoReason, setPtoReason] = useState(existingPto?.reason ?? "");
+  // Carry-forward: copy this shift to following days through a chosen date.
+  const copyFrom = addDaysStr(date, 1);
+  const canCopyForward = !!shift && !isPto && !!viewEnd && copyFrom <= viewEnd;
+  const [copyThrough, setCopyThrough] = useState(viewEnd ?? "");
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
 
   function updateSegment(i: number, patch: Partial<SegmentDraft>) {
     setSegments((prev) =>
@@ -143,6 +156,27 @@ export default function ShiftModal({
       setError(result.error);
     }
     setBusy(false);
+  }
+
+  async function handleCopyForward() {
+    if (!shift) return;
+    if (!copyThrough || copyThrough < copyFrom) {
+      setCopyMsg("Pick a date after this shift.");
+      return;
+    }
+    setBusy(true);
+    setCopyMsg(null);
+    const result = await copyShiftForward({
+      shiftId: shift.id,
+      targetDates: eachDate(copyFrom, copyThrough),
+    });
+    setBusy(false);
+    if (result.ok) {
+      onClose();
+      router.refresh();
+    } else {
+      setCopyMsg(result.error);
+    }
   }
 
   async function handleSave() {
@@ -439,6 +473,40 @@ export default function ShiftModal({
             </button>
           )}
         </div>
+
+        {canCopyForward && (
+          <div className="border-t border-line pt-4">
+            <Label htmlFor="copy-through">
+              Copy this shift to following days
+            </Label>
+            <div className="mt-1.5 flex flex-wrap items-end gap-2">
+              <Input
+                id="copy-through"
+                type="date"
+                value={copyThrough}
+                min={copyFrom}
+                max={viewEnd}
+                onChange={(e) => setCopyThrough(e.target.value)}
+                className="w-40"
+              />
+              <Button
+                variant="secondary"
+                onClick={handleCopyForward}
+                disabled={busy}
+              >
+                Copy through this date
+              </Button>
+            </div>
+            <HelpText>
+              Repeats this shift on every day from the next day through the date
+              you pick (within the current view). Days the person already works or
+              has off are skipped.
+            </HelpText>
+            {copyMsg && (
+              <p className="mt-1 font-body text-sm text-deficiency">{copyMsg}</p>
+            )}
+          </div>
+        )}
           </>
         )}
 

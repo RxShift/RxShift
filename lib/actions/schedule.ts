@@ -604,3 +604,144 @@ export async function copyForwardWindow(
     return { copied };
   });
 }
+
+// ─── Carry one shift forward across days ─────────────────────────────────────
+
+const copyShiftSchema = z.object({
+  shiftId: z.string().uuid(),
+  targetDates: z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .min(1)
+    .max(60),
+});
+
+/**
+ * Clone one shift (its segments, break, department, location) onto a set of
+ * following dates in ONE action — so entering Monday's shift and repeating it
+ * through Friday is a single move, not re-entry each day. Skips any target day
+ * where the person already has a shift or is out (approved time off OR a pto_day),
+ * mirroring the AI create_shifts skip logic.
+ */
+export async function copyShiftForward(
+  input: unknown
+): Promise<ActionResult<{ copied: number; skipped: number }>> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const { shiftId, targetDates } = copyShiftSchema.parse(input);
+    const supabase = await createClient();
+
+    const { data: src } = await supabase
+      .from("shift")
+      .select("*")
+      .eq("id", shiftId)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (!src) throw new ActionError("Shift not found.");
+
+    const { data: srcSegs } = await supabase
+      .from("shift_segment")
+      .select("*")
+      .eq("shift_id", shiftId);
+    const segments = (srcSegs ?? []) as ShiftSegment[];
+
+    const dates = [...new Set(targetDates)]
+      .filter((d) => d !== src.date)
+      .sort();
+    if (dates.length === 0) throw new ActionError("No days to copy to.");
+    const minD = dates[0];
+    const maxD = dates[dates.length - 1];
+
+    // Which of those days is the person already busy or off?
+    const [{ data: existing }, { data: tor }, { data: pto }] =
+      await Promise.all([
+        supabase
+          .from("shift")
+          .select("date")
+          .eq("tenant_id", ctx.tenantId)
+          .eq("staff_id", src.staff_id)
+          .gte("date", minD)
+          .lte("date", maxD),
+        supabase
+          .from("time_off_request")
+          .select("start_date, end_date")
+          .eq("tenant_id", ctx.tenantId)
+          .eq("staff_id", src.staff_id)
+          .eq("status", "approved")
+          .lte("start_date", maxD)
+          .gte("end_date", minD),
+        supabase
+          .from("pto_day")
+          .select("date")
+          .eq("tenant_id", ctx.tenantId)
+          .eq("staff_id", src.staff_id)
+          .gte("date", minD)
+          .lte("date", maxD),
+      ]);
+    const hasShift = new Set((existing ?? []).map((s) => s.date as string));
+    const ptoDates = new Set((pto ?? []).map((p) => p.date as string));
+    const torRanges = (tor ?? []) as { start_date: string; end_date: string }[];
+    const isOut = (d: string) =>
+      ptoDates.has(d) ||
+      torRanges.some((t) => t.start_date <= d && d <= t.end_date);
+
+    const periodCache = new Map<string, string>();
+    let copied = 0;
+    let skipped = 0;
+    for (const d of dates) {
+      if (hasShift.has(d) || isOut(d)) {
+        skipped += 1;
+        continue;
+      }
+      let periodId = periodCache.get(d);
+      if (!periodId) {
+        periodId = await ensurePeriodForDate(
+          supabase,
+          ctx.tenantId,
+          ctx.tenant.schedule_cycle,
+          src.location_id,
+          d
+        );
+        periodCache.set(d, periodId);
+      }
+      const { data: row, error } = await supabase
+        .from("shift")
+        .insert({
+          tenant_id: ctx.tenantId,
+          location_id: src.location_id,
+          department_id: src.department_id,
+          staff_id: src.staff_id,
+          date: d,
+          schedule_period_id: periodId,
+          status: "draft",
+          break_minutes: src.break_minutes ?? 0,
+          created_by: ctx.userId,
+        })
+        .select("id")
+        .single();
+      if (error || !row) {
+        skipped += 1;
+        continue;
+      }
+      if (segments.length) {
+        await supabase.from("shift_segment").insert(
+          segments.map((s) => ({
+            shift_id: row.id,
+            tenant_id: ctx.tenantId,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            work_type_id: s.work_type_id,
+            counts_toward_ratio: s.counts_toward_ratio,
+          }))
+        );
+      }
+      copied += 1;
+    }
+
+    await logActivity(ctx, "copy_shift_forward", "shift", shiftId, {
+      copied,
+      skipped,
+    });
+    revalidateScheduleViews();
+    return { copied, skipped };
+  });
+}

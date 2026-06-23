@@ -541,6 +541,7 @@ export default function ScheduleMatrix({
             ptoByCell.get(`${editing.staff.id}|${editing.date}`) ?? null
           }
           ptoReasonRequired={tenant.pto_reason_required}
+          viewEnd={viewEnd}
         />
       )}
 

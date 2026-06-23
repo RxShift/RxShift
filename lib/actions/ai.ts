@@ -176,11 +176,15 @@ function expandCreateDates(
     bundle.shifts.filter((s) => s.staff_id === op.staff_id).map((s) => s.date)
   );
   const pto = bundle.approvedTimeOff.filter((t) => t.staff_id === op.staff_id);
+  const ptoDates = new Set(
+    bundle.ptoDays.filter((p) => p.staff_id === op.staff_id).map((p) => p.date)
+  );
 
   return eachDate(from, to).filter((date) => {
     const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
     if (!wanted.has(dow)) return false;
     if (existing.has(date)) return false;
+    if (ptoDates.has(date)) return false;
     if (pto.some((t) => t.start_date <= date && date <= t.end_date)) return false;
     return true;
   });
