@@ -4,7 +4,7 @@
 // engine's validation is shown, the manager confirms before anything
 // commits.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import {
@@ -33,6 +33,14 @@ export default function AiCommandBar({
   const [result, setResult] = useState<AiCommandResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
+  // Default collapsed to a small button so it doesn't eat the grid's vertical
+  // space (the two-row bar was a real-estate problem in build mode).
+  const [collapsed, setCollapsed] = useState(true);
+
+  // When our height changes, tell the schedule grid below to refit its frame.
+  useEffect(() => {
+    window.dispatchEvent(new Event("resize"));
+  }, [collapsed, result, error]);
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault();
@@ -67,13 +75,43 @@ export default function AiCommandBar({
     setBusy(false);
   }
 
+  // Collapsed: a single small button (expand on demand) — keeps Ask AI reachable
+  // while giving the grid back its rows.
+  if (collapsed) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          className="inline-flex items-center gap-1.5 rounded-md border-[1.5px] border-line bg-surface px-3 py-1.5 font-brand text-[13px] font-semibold text-navy transition-colors hover:border-navy"
+        >
+          <span aria-hidden>✨</span> Ask AI
+        </button>
+        {contextNote && (
+          <span className="font-body text-[12px] text-steel">{contextNote}</span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-[10px] border border-line bg-surface p-4 shadow-[0_1px_3px_rgba(28,47,94,0.08)]">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 className="font-brand text-sm font-bold text-navy">Ask AI</h2>
-        {contextNote && (
-          <span className="font-body text-[12px] text-steel">{contextNote}</span>
-        )}
+        <div className="flex items-baseline gap-3">
+          {contextNote && (
+            <span className="font-body text-[12px] text-steel">
+              {contextNote}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="font-body text-[12px] text-steel underline-offset-2 hover:text-navy hover:underline"
+          >
+            Hide
+          </button>
+        </div>
       </div>
       <form onSubmit={handleAsk} className="flex gap-2">
         <input

@@ -146,6 +146,19 @@ html.sidebar-collapsed .app-content {
   }
 }
 
+/* ─── Build mode (schedule) ───────────────────────────────────────────────── */
+/* Maximize the schedule grid: hide the page chrome and tighten padding so the
+   grid frame (window.innerHeight − top) grows to fill the viewport. The
+   `.schedule-*` hooks exist ONLY on the schedule page, so this never affects
+   other screens even though the class lives on <html>. */
+html.schedule-build .schedule-chrome {
+  display: none;
+}
+html.schedule-build .schedule-content {
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
 /* ─── About page — founder photos ─────────────────────────────────────────── */
 /* One shared, identical treatment for both photos: a 120px circle with a slight
    desaturation + contrast boost and a subtle navy multiply overlay, for a

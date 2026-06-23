@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import ScheduleMatrix from "@/components/app/schedule/schedule-matrix";
 import AiCommandBar from "@/components/app/schedule/ai-command-bar";
+import BuildModeToggle from "@/components/app/schedule/build-mode-toggle";
 import {
   loadAllLocationsBundle,
   validateRangeBundle,
@@ -212,14 +213,19 @@ export default async function SchedulePage({
   return (
     <>
       <PageHeader title={title} />
-      <div className="flex-1 min-w-0 space-y-4 p-8">
-        <LocationNav
-          locations={locs}
-          activeLocationId={locationFilter}
-          view={view}
-        />
+      <div className="schedule-content flex-1 min-w-0 space-y-4 p-8">
+        <div className="schedule-chrome">
+          <LocationNav
+            locations={locs}
+            activeLocationId={locationFilter}
+            view={view}
+          />
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <WindowNav activeView={view} locationId={locationFilter} />
+          <div className="flex flex-wrap items-center gap-3">
+            <WindowNav activeView={view} locationId={locationFilter} />
+            <BuildModeToggle />
+          </div>
           <div className="flex items-center gap-3">
             <Link href={stepHref(prevAnchor)} className={stepLink}>
               ← Prev
