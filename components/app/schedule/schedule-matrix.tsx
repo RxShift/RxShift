@@ -342,18 +342,33 @@ export default function ScheduleMatrix({
     [holidaysByDate]
   );
 
+  // PTO conflicts get the RED deficiency treatment (a hard conflict — someone
+  // scheduled while off), not the amber constraint ring.
+  const ptoConflictShiftIds = useMemo(
+    () =>
+      new Set(
+        validation.constraintFlags
+          .filter((f) => f.rule_type === "pto_conflict")
+          .map((f) => f.shift_id)
+          .filter((x): x is string => x !== null)
+      ),
+    [validation.constraintFlags]
+  );
+
   const deficientShiftIds = useMemo(() => {
     const out = new Set<string>();
     for (const s of visibleShifts)
       if (validation.deficientCells[s.location_id]?.includes(s.date))
         out.add(s.id);
+    for (const id of ptoConflictShiftIds) out.add(id); // PTO conflict → red
     return out;
-  }, [visibleShifts, validation.deficientCells]);
+  }, [visibleShifts, validation.deficientCells, ptoConflictShiftIds]);
 
   const constraintShiftIds = useMemo(
     () =>
       new Set(
         validation.constraintFlags
+          .filter((f) => f.rule_type !== "pto_conflict") // those render red, above
           .map((f) => f.shift_id)
           .filter((x): x is string => x !== null)
       ),

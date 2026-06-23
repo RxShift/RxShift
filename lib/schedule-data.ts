@@ -563,9 +563,43 @@ export function validateBundle(
     }
   }
 
+  // PTO conflict: a shift on a day the person is off — a direct PTO day OR an
+  // approved time-off range. The engine treats PTO as the ABSENCE of a shift and
+  // never reads it, so we surface the overlap HERE (validation layer) as a flag;
+  // it doesn't touch ratio math. Joining constraintFlags means it shows in Open
+  // Flags and gates publish for free; the matrix renders the shift in the red
+  // deficiency treatment (this is a hard conflict, not a soft constraint).
+  const staffNameById = new Map(bundle.staff.map((s) => [s.id, s.full_name]));
+  const ptoDateKeys = new Set(
+    bundle.ptoDays.map((p) => `${p.staff_id}|${p.date}`)
+  );
+  const ptoConflicts: ConstraintFlag[] = [];
+  for (const shift of bundle.shifts) {
+    if (shift.segments.length === 0) continue; // ignore empty-shell artifacts
+    const onPtoDay = ptoDateKeys.has(`${shift.staff_id}|${shift.date}`);
+    const onApprovedTimeOff = bundle.approvedTimeOff.some(
+      (t) =>
+        t.staff_id === shift.staff_id &&
+        t.start_date <= shift.date &&
+        t.end_date >= shift.date
+    );
+    if (!onPtoDay && !onApprovedTimeOff) continue;
+    const name = staffNameById.get(shift.staff_id) ?? "This person";
+    ptoConflicts.push({
+      rule_id: "pto_conflict",
+      rule_type: "pto_conflict",
+      staff_id: shift.staff_id,
+      staff_name: name,
+      shift_id: shift.id,
+      date: shift.date,
+      message: `${name} is scheduled on ${shift.date} but is marked off that day (${onApprovedTimeOff ? "approved time off" : "PTO"}). Remove the time off or the shift.`,
+    });
+  }
+
   const constraintFlags = [
     ...evaluateConstraints(bundle.constraints, segments),
     ...detectDoubleBookings(segments),
+    ...ptoConflicts,
   ];
 
   return { ratioFlags, constraintFlags, deficientCells };

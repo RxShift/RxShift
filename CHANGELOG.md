@@ -7,6 +7,19 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — PTO + scheduled-shift overlap is now a flag (Option B) + Optum data cleanup
+
+- **PTO conflict flag (Option B — flag it, don't hard-block).** A shift scheduled on a day the person
+  is off (a direct `pto_day` OR an approved time-off range) is now a flag: red ring + ⚠ on the grid
+  (the hard-conflict treatment, same as a ratio deficiency), listed in **Open Flags**, and it **gates
+  publish** (publishing over it requires a logged reason — for free, since it joins `constraintFlags`).
+  Detected in `validateBundle` (the engine stays PTO-agnostic — PTO = absence of a shift; this is a
+  validation-layer overlay that never touches ratio math). The matrix routes `pto_conflict` flags to the
+  red channel, not the amber constraint ring. Demo: Ashley Dinh (Optum) is scheduled Fri Jun 26 on her
+  PTO day — now flagged red.
+- **Optum cleanup:** deleted the 808 empty-shell shifts (Jul 2–31) from the bad month copy. Ashley's 3
+  real July shifts kept; 0 segment-less shifts remain.
+
 ## 2026-06-23 — Fix: copy-forward dropped shift segments past 1000 rows (phantom "SMRX" cells)
 
 Susie hit empty cells showing only a tiny "SMRX" tag and no shift. Root cause: she ran **"Copy last
