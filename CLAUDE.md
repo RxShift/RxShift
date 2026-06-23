@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 19, 2026
+# Last updated: June 22, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -147,6 +147,7 @@ Documentation that goes stale is worse than no documentation: it creates false c
 |------|-------------|
 | **`CHANGELOG.md`** | Every session without exception. One H2 entry: date + summary heading, then Shipped / Schema / Infrastructure / Open sections. Bullets, not prose. This is what a future agent reads first to understand current state — keep it honest. |
 | **`docs/DEMO-GUIDE.md`** + **`docs/FEATURE-MAP.md`** | When a change alters what a screen does, adds/removes a route, or changes the demo flow or demo data. These are the source of truth for running a demo (the demo script kept drifting from reality) — keep them accurate so a script can be generated from them. |
+| **`lib/demo/prompter-steps.ts`** (the in-app demo prompter) | When a change alters the demo flow, a screen the demo touches, or the demo data. This is the LIVING presenter script shown at `/app/demo-prompter` (and what CoWork QA follows). Bump `PROMPTER_VERSION` on a meaningful pass. Keep it in lockstep with DEMO-GUIDE/FEATURE-MAP. |
 | **`CLAUDE.md`** (this file) | A feature ships, a route is added, the stack changes, TODOs are completed or discovered, architecture decisions are made, or any section becomes inaccurate. Update the `Last updated` date at the top. |
 | **`INFRASTRUCTURE.md`** | Any account, credential, DNS record, Vercel config, Supabase project, email routing, or hosting change. If Jamison makes an infra change outside Claude Code, he should tell you and you update this file. |
 | **`docs/decisions.md`** | A durable scope or architecture decision is made — something that explains WHY the code is the way it is, or rules out a future direction. Especially: deferred features, blocked items, and deliberate design choices. |
@@ -167,6 +168,19 @@ Almost everything qualifies. When in doubt, update. Skip only for:
 4. Then and only then ask Jamison to approve a push
 
 **If you realize mid-session that a previous session left docs stale, fix them now.** Don't leave it for later.
+
+### Demo QA handoff — MANDATORY after any demo-affecting change
+
+The demo is QA'd in a recursive loop: Claude Code ships → hands Jamison a **CoWork QA prompt** →
+CoWork runs the full demo in Chrome against the in-app prompter (`/app/demo-prompter`) → writes a
+dated report to `docs/qa/` → Claude Code validates + fixes → repeat until a run-through is clean.
+
+**So: at the END of any change that could affect the demo** (a schedule/board/compliance/requests/
+settings surface, the demo data/seed, a route, the ratio engine's visible output, or the prompter
+script), after updating the prompter + docs, **give Jamison a ready-to-paste CoWork QA prompt** —
+use the template in `docs/qa/README.md` and fill in the "areas you touched" line with what changed
+this session. This is part of "done," not optional. Skip only for pure infra, copy-only tweaks, or
+non-demo internal screens.
 
 ---
 
@@ -574,6 +588,28 @@ holidays, carry-forward, build mode, and a living in-app demo prompter. See `CHA
   typo-tolerant) and override the id, asking to confirm on ambiguity — it can't schedule the wrong person.
 - **Grid legibility:** column min-width 92→116px so month view shows the same legible time + work type + color
   as week/2-week (week stretched to fit, month sat at the 92px floor and read as "just the location").
+- **PTO is a first-class record** (`pto_day`, migration 0034). One row per person per date, independent of
+  publish state (future PTO shows immediately). Written by time-off approval (`decideTimeOff` also inserts
+  pto_day) AND by a scheduler directly (the "PTO" checkbox on the shift editor → `lib/actions/pto.ts`
+  `setPtoDay`/`clearPtoDay`, which deletes any shift that day). The engine never reads it — PTO = absence of a
+  shift. Reason on `pto_day.reason` (never override_log); `tenant.pto_reason_required` (Settings → Organization)
+  gates it. Grid renders PTO **blacked out**; `timeOffByCell` is the union of pto_day + approved TOR.
+- **Holidays** (`holiday`, migration 0035). Settings → Holidays generates US federal holidays for a year
+  (pure `lib/holidays.ts`, observed Sat→Fri / Sun→Mon), then add/edit/remove. Tenant-wide; grid tints + labels
+  the column ("Holiday"). Visual only — never blocks staffing.
+- **Carry-forward** (`copyShiftForward` in `lib/actions/schedule.ts`): clone one shift to following days through
+  a chosen date in one move, from the shift editor; skips days the person already works or is off (TOR/pto_day).
+- **Build mode + collapsible Ask AI:** Ask AI defaults to a small button (`ai-command-bar.tsx`); a "Build mode"
+  toggle (`build-mode-toggle.tsx` + `html.schedule-build` CSS) collapses the sidebar + page chrome so the grid
+  fills the viewport. Transient; clears on leaving the schedule page.
+- **Demo prompter is now in-app** (`/app/demo-prompter`, platform-admin only, route group `(prompter)`).
+  Steps live as data in `lib/demo/prompter-steps.ts` (single source of truth, `PROMPTER_VERSION` v4.0);
+  `components/app/demo-prompter.tsx` renders it; launch via Admin Console "Open demo prompter" (popout). The
+  standalone `docs/rxshift-demo-prompter.html` is retired to a pointer. **Demo QA is a recursive Claude-Code ↔
+  CoWork loop — see `docs/qa/README.md` + the "Demo QA handoff" rule above.**
+- **Seed:** Mesa Vista now seeds `pto_day` (Ashley Morales approved next week + a scheduler-entered Dana Holt
+  current-week example) and federal holidays (current + next year); both added to the reset clear-list
+  (`pto_day` before `staff`). Migrations 0034 + 0035 applied to the live Supabase.
 
 ## Pending TODOs (as of June 13, 2026)
 

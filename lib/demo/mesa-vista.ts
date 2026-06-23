@@ -32,6 +32,7 @@ import { evaluateZone } from "../engine/ratio";
 import { buildEngineRule } from "../engine/rule";
 import { generateComplianceRecord } from "../engine/compliance";
 import { brandedEmailHtml, emailLines } from "../email-template";
+import { usFederalHolidays } from "../holidays";
 import { finalizeComplianceForTenant } from "../compliance-record";
 import type { EngineSegment } from "../engine/types";
 import type { Tenant } from "../types";
@@ -215,6 +216,7 @@ export async function clearMesaVistaData(
     "swap_request",
     "callout",
     "time_off_request",
+    "pto_day",
     "shift",
     "schedule_period",
     "constraint_rule",
@@ -224,6 +226,7 @@ export async function clearMesaVistaData(
     "location",
     "ratio_rule",
     "work_type",
+    "holiday",
   ];
   for (const table of tables) {
     const { error } = await service.from(table).delete().eq("tenant_id", tenantId);
@@ -601,7 +604,45 @@ export async function seedMesaVista(
       status: "pending",
     },
   ]);
-  const morExcluded = new Set([ptoStart, ptoEnd]); // PTO days get no shifts
+  // Approved PTO → durable pto_day records (so it shows blacked out on the grid,
+  // the same record a scheduler enters directly). Plus one scheduler-entered PTO
+  // with a reason on the current week (Spring Valley has headroom, so it doesn't
+  // disturb the two deficiency stories) to show direct entry. Days with PTO get
+  // no shift — keyed staffName|date so the shift loop below skips them.
+  const danaPtoDay = addDaysStr(anchor, 2); // current-week Wednesday at SV
+  const ptoExcluded = new Set<string>([
+    `Ashley Morales|${ptoStart}`,
+    `Ashley Morales|${ptoEnd}`,
+    `Dana Holt|${danaPtoDay}`,
+  ]);
+  await service.from("pto_day").insert([
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Ashley Morales")!,
+      date: ptoStart,
+      reason: "Long weekend in Utah — back Wednesday.",
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Ashley Morales")!,
+      date: ptoEnd,
+      reason: "Long weekend in Utah — back Wednesday.",
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Dana Holt")!,
+      date: danaPtoDay,
+      reason: "Dentist appointment (entered by the scheduler).",
+    },
+  ]);
+
+  // Federal holidays for the current + next year — purely visual column tint.
+  const seedYear = parseInt(anchor.slice(0, 4), 10);
+  await service.from("holiday").insert(
+    [...usFederalHolidays(seedYear), ...usFederalHolidays(seedYear + 1)].map(
+      (hh) => ({ tenant_id: tenantId, date: hh.date, name: hh.name })
+    )
+  );
 
   // The deficiency day: Thursday of the CURRENT week at Henderson
   const gapThursday = addDaysStr(anchor, 3);
@@ -661,7 +702,7 @@ export async function seedMesaVista(
         const day = weekday(date);
         for (const line of LOC_LINES[loc.key]) {
           if (!line.days.includes(day)) continue;
-          if (line.staff === "Ashley Morales" && morExcluded.has(date)) continue;
+          if (ptoExcluded.has(`${line.staff}|${date}`)) continue;
 
           let { start, end } = line;
           // The Henderson story: Patel leaves at 2 PM, the float lands at 4

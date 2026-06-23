@@ -7,6 +7,54 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-22 — Scheduling overhaul: bugs, PTO, holidays, build mode, in-app prompter
+
+Demo-critical batch after Susie's schedule-builder walkthrough — make building a schedule strong,
+fix three confirmed bugs, add PTO/holidays/carry-forward/build mode, and turn the demo prompter into
+a living in-app feature. `tsc` clean; 74 vitest tests pass (engine unchanged).
+
+### Shipped
+- **Bug — publish bypassed the required flag reason:** the publish dialog button is now gated until a
+  reason is entered, AND `publishWindow` re-validates the whole window (all locations) server-side so
+  window-only flags (cross-location double-bookings, window-spanning caps) can't publish unreasoned.
+  The reason always lands in the override log.
+- **Bug — nav reopen toggle scrolled out of reach:** it's now a FIXED left-edge tab mounted at the
+  shell (`sidebar-reopen-button.tsx`), reachable at any scroll position; removed from the page header.
+- **Bug — Ask AI matched the wrong staff:** deterministic name resolution (`resolveStaffName` in
+  `lib/actions/ai.ts`) — the model echoes the name, we match (exact → containment → typo-tolerant) and
+  override the id, asking to confirm when ambiguous. Can't schedule the wrong person.
+- **Cadence = Model B (locked), honest status:** one build cadence per tenant (relabeled "Build cadence");
+  the period stays the publish unit (no per-day publish). Wired the grid's dormant per-day `dateStatus`
+  (worst-wins for All Locations) → truthful column tint/labels + an honest "N/M days published" pill. A
+  not-yet-built future week is now clickable (ShiftModal sends a null period; `upsertShift` auto-creates).
+- **Month-view parity:** column min-width 92→116px so month cells show the same time + work type + color
+  as week/2-week (month had collapsed to the 92px floor, reading as "just the location").
+- **PTO** is a first-class `pto_day` record — blacked out on the grid, independent of publish state,
+  written by approval or directly (PTO checkbox on the shift editor; deletes the shift that day). Engine
+  never reads it. Optional reason on the record; `tenant.pto_reason_required` gates it.
+- **Holidays:** Settings → Holidays generates US federal holidays (deterministic, observed-day aware) +
+  add/edit/remove; grid tints + labels the column. Visual only.
+- **Carry-forward:** copy one shift across following days in one action (skips existing shifts / PTO).
+- **Build mode + collapsible Ask AI:** Ask AI defaults to a small button; "Build mode" collapses the
+  sidebar + page chrome so the grid fills the viewport.
+- **Demo prompter in-app:** `/app/demo-prompter` (platform-admin popout from the Admin Console), driven
+  by `lib/demo/prompter-steps.ts` (v4.0). Static `docs/rxshift-demo-prompter.html` retired to a pointer.
+- **Demo QA loop:** documented the recursive Claude-Code ↔ CoWork run-through process in
+  `docs/qa/README.md` + a mandatory "Demo QA handoff" rule in `CLAUDE.md`.
+
+### Schema
+- **Migration 0034** — `pto_day` (+ RLS) + `tenant.pto_reason_required`. Applied to the live Supabase.
+- **Migration 0035** — `holiday` (+ RLS). Applied to the live Supabase.
+
+### Demo data
+- Mesa Vista seeds `pto_day` (Ashley Morales approved next week + a scheduler-entered Dana Holt
+  current-week example) and federal holidays (current + next year). Both new tables added to the reset
+  clear-list (`pto_day` before `staff`; `holiday` with the tenant-scoped tables).
+
+### Open
+- Run the CoWork QA pass against the live demo (prompter v4.0) and address findings.
+- `pto_day` reversal on a denied/un-approved request is out of scope for v1 (see decisions.md).
+
 ## 2026-06-19 — Pre-QA cleanup: QA-found bugs, copy, attribution, screenshots
 
 Applied the fixes from the CoWork full product + demo + website QA pass (report archived at

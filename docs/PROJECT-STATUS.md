@@ -1,5 +1,5 @@
 # RxShift — Project Status
-**Last updated:** June 19, 2026
+**Last updated:** June 22, 2026
 **Entity:** JWC LLC (Jamison West Consulting)
 **Managed in:** Cowork (codebase) + Claude.ai RxShift project (strategy/chat)
 
@@ -19,9 +19,11 @@ B2B SaaS scheduling platform for retail pharmacies (1–25 locations). Embeds st
 
 ---
 
-## Build Status: COMPLETE (v1 + Phase 2 + retail-ready + June 13 UX pass + June 15 schedule rebuild + June 16 platform email/feedback)
+## Build Status: COMPLETE (v1 → June 22 scheduling overhaul)
 
-Full product built June 11–16, 2026. All features are live in the repo (`tsc` clean, 45 vitest tests, `next build` clean); migrations 0001–0021 applied to Supabase. **The June 16 platform-email/feedback build is deployed to production and verified end-to-end** (live demo-form submission produced a CRM lead + a logged email with rendered body; the Resend delivery webhook updated it to `delivered`).
+Full product built June 11–16, 2026; extended through the R072-25/Tennessee build (June 19) and the **June 22 scheduling overhaul**. Repo is `tsc` clean with 74 vitest tests; migrations 0001–0035 applied to Supabase.
+
+**June 22 scheduling overhaul (demo-critical, pre-Brandy):** three bug fixes (publish reason-gate, fixed nav reopen tab, Ask-AI name resolution), Cadence **Model B** (locked build cadence) + honest per-day publish status, month-view cell parity, **PTO** as a first-class blacked-out record (`pto_day`, migration 0034), **Holidays** (migration 0035) with a deterministic federal generator + column tint, **carry-forward** (copy a shift across days), **Build mode** + collapsible Ask AI to maximize grid real estate, and the **demo prompter moved in-app** (`/app/demo-prompter`, v4.0). Demo QA is now a recursive Claude-Code ↔ CoWork loop (`docs/qa/README.md`). Committed to `main`; **not yet pushed**; **pending the CoWork QA run** against the live demo.
 
 ### What Exists in the App
 

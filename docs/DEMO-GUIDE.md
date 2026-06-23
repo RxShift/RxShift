@@ -81,15 +81,29 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
   cap, availability, double-booking) is an **amber ring**. On **Henderson, current week**: Jerome Williams
   (43h) shows an **amber** ring on **Saturday** (the shift that tips him over 40h), while his **Thursday**
   shows the **red ⚠** ratio-gap — both visible at once, a clean "these are different things" moment.
-- Publish / Copy last week / Export CSV.
-- **Ask AI** (top): type "is anything non-compliant coming up?", "who's short Thursday?",
+- **PTO** shows **blacked out** ("PTO") on a person's row — including time off months out, before that
+  week is built. **Holiday** columns are lightly tinted and labeled "Holiday." Both are visual; holidays
+  never block staffing.
+- Publish / Copy last week / Export CSV. **Publish status is honest per day** — a window that's part
+  published, part draft reads e.g. **"5/7 days published,"** not "Published ✓." Publishing with open flags
+  **requires a reason** (it won't go through blank). Build cadence is fixed per tenant (Settings →
+  Organization); you can still *view* any span.
+- **Build mode** (button by the view pills): collapses the nav + chrome so the grid fills the screen —
+  many staff rows at once. The date control stays. Exit to bring the chrome back. (Designed for a normal
+  laptop, not a big external monitor.)
+- **Carry-forward:** open a shift → "Copy this shift to following days" → pick a through-date → it repeats
+  the shift across those days in one move (skipping days the person already works or is off).
+- Clicking an **unbuilt future week** just works — the period is created when you save (no "create period"
+  step).
+- **Ask AI** (collapsed to a small ✨ button — click to expand): type "is anything non-compliant coming up?", "who's short Thursday?",
   "schedule Dr. Fitzgerald 9–5 Mon–Fri this week," or "extend Dr. Patel's Thursday shift to 4pm." It answers
   from the live schedule or proposes a change; each proposed edit shows a **before → after line**
   (e.g. "Dr. Sunita Patel · Thu: 09:00–14:00 → 09:00–16:00") plus the engine check ("✓ removes 4 deficient
   slots"), and you **confirm** before anything applies. If a change would *add* a deficiency you must tick an
-  acknowledgment box first (warn, never block). **Works on empty weeks too** — "schedule … on a blank week"
-  proposes the shifts and creates the period when you confirm. (Scoped to the selected location's current
-  week — switch the location pill to re-scope.)
+  acknowledgment box first (warn, never block). It resolves the staff member **by name** — confirming the
+  exact person, and asking if a name is ambiguous, so it never schedules the wrong staffer. **Works on empty
+  weeks too** — "schedule … on a blank week" proposes the shifts and creates the period when you confirm.
+  (Scoped to the selected location's current week — switch the location pill to re-scope.)
 
 **My Schedule (`/app/me`)** — the staff/pharmacist view (great on a phone). Emulate Patricia or Jerome.
 - **My Status Now**: set your live status when on shift. A pharmacist who is **currently counting** sees
@@ -107,6 +121,10 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
   the seed. Approving Jerome's PTO (he's Henderson's lone tech) leaves a solo pharmacist with no support →
   R072-25 floor deficiency → reason required; Patricia's flags ratio slots too. Demo the **reason-required
   gate** itself (the point), not a frictionless approval.
+- Once approved, the days show **blacked out as PTO** across the schedule. A scheduler can also enter PTO
+  **directly** from the grid (the "PTO" checkbox on the shift editor) — identical record, identical look.
+  The optional reason lives with the PTO record (never the override log); Settings → Organization can make it
+  required.
 
 **Compliance Record (`/app/log`)** — the **as-worked** audit: the immutable, hour-by-hour record of what
 **actually happened** at each location (who was on + counting, ratio met/not). RxShift finalizes each hour
@@ -161,6 +179,11 @@ Both are isolated incidents — **not** a sustained deficiency. RxShift never co
 - **4 departments:** Retail Counter, Compounding, Specialty, Drive-Thru (area tags for the schedule filter;
   they don't affect the ratio).
 - **Requests seeded:** an approved PTO + a pending PTO; a logged callout + override tied to the Henderson story.
+- **PTO seeded (blacked out on the grid):** Ashley Morales is off next Mon–Tue (the approved request, now also
+  durable `pto_day` rows), and Dana Holt has a **scheduler-entered** PTO this Wednesday at Spring Valley (which
+  has headroom, so it doesn't disturb the two deficiency stories) — shows the direct-entry path.
+- **Holidays seeded:** the US federal holidays for the current + next year (tinted/labeled columns on the
+  schedule).
 - **Compliance Record (as-worked):** the seed finalizes the elapsed week (~294 immutable hourly rows across
   the 3 locations); Henderson **Thursday 14:00 + 15:00 are recorded DEFICIENT** ("3 technicians counting with
   no pharmacist on duty", **flag_type = ceiling**) and North Las Vegas **Tuesday 09:00 DEFICIENT** ("solo
@@ -231,3 +254,33 @@ extend/shorten with before→after; step-away line hides once non-counting; seed
   law (NAC 639.250) vs proposed **R072-25** (hearing June 2026, not adopted), are *accurate to the real
   record* — have Susie / the attorney confirm before it goes live. Only current law is claimed; R072-25 is
   forward context.
+
+---
+
+## 7. What changed June 22 — scheduling overhaul
+
+The schedule builder got a lot stronger, and the demo prompter is now part of the app.
+
+**Run the prompter from the app.** The presenter script lives at **`/app/demo-prompter`** (platform-admin
+only). Open it from the **Admin Console → "Open demo prompter"** — it pops out into a small window you can
+park on a second monitor. It's always current (v4.0). The old standalone HTML file is retired.
+
+**New on the schedule (work these into the build beat):**
+- **Build mode** — a button by the view pills that hides the chrome so the grid fills the screen (many staff
+  rows). Designed for a normal laptop. Exit to bring the chrome back.
+- **PTO is blacked out** on the grid — including future time off, before that week is built. Approve a request
+  *or* mark someone off directly with the **PTO checkbox** on the shift editor. The seed shows both (Ashley
+  next week, Dana this Wednesday).
+- **Holidays** tint + label the column (Settings → Holidays generates the US federal set, observed-day aware —
+  July 4, 2026 → observed Friday July 3). Visual only.
+- **Carry-forward** — on a shift, "Copy this shift to following days" repeats it through a date in one move.
+- **Honest publish status** — a part-published window reads "N/M days published," and publishing with open
+  flags now truly **requires a reason** (the old bypass is fixed).
+- **Clicking an unbuilt future week** just works (the period is created on save).
+
+**Three bug fixes from Susie's walkthrough:** publish can't skip the flag reason; the nav reopen toggle is a
+fixed left-edge tab (never scrolls away); Ask AI confirms the exact person and won't schedule the wrong one.
+
+**Demo QA is now a loop** (see `docs/qa/README.md`): after a demo-affecting change, Claude Code hands Jamison
+a CoWork QA prompt; CoWork runs the full demo against this guide + the in-app prompter and files a report in
+`docs/qa/`; Claude Code fixes and repeats until clean.
