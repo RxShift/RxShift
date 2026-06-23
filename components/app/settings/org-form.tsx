@@ -48,7 +48,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="schedule_cycle">Schedule cycle</Label>
+          <Label htmlFor="schedule_cycle">Build cadence</Label>
           <Select
             id="schedule_cycle"
             name="schedule_cycle"
@@ -59,7 +59,15 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
             <option value="monthly">Monthly</option>
           </Select>
           <HelpText>
-            Biweekly cycles tend to reduce unplanned callouts.
+            You build and publish in this cadence — each published period is one{" "}
+            {tenant.schedule_cycle === "monthly"
+              ? "month"
+              : tenant.schedule_cycle === "biweekly"
+                ? "two weeks"
+                : "week"}
+            . You can still view the schedule by week, two weeks, or month at any
+            time; this only sets how you build. Biweekly cadences tend to reduce
+            unplanned callouts.
           </HelpText>
         </div>
         <div>

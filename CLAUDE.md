@@ -550,6 +550,31 @@ Fixes from the CoWork QA pass (report archived at `docs/qa/2026-06-19-full-produ
 - **Marketing screenshots are current-law:** recapture with the demo tenant's `nevada_r072_25` toggled **off**
   (see DEMO-GUIDE §6); the capture script targets the Compliance Record by `?date=`.
 
+## Scheduling overhaul (June 22, 2026) — Susie/Brandy readiness
+
+Post-walkthrough batch after Susie tried to build a schedule. Demo-critical UX + three bug fixes + PTO,
+holidays, carry-forward, build mode, and a living in-app demo prompter. See `CHANGELOG.md` for the full list.
+
+- **Cadence = Model B (locked), Jamison signed off.** One build cadence per tenant (`tenant.schedule_cycle`,
+  relabeled "Build cadence" in Settings → Organization). The period stays the publish/override/compliance
+  unit — NO per-day publish tracking. Viewing in any span stays available; quick click-to-edit works in any
+  view. The straddle dishonesty was a *display* gap: the grid already had a per-day `DateStatus` channel that
+  the matrix never fed. The matrix now computes `dateStatus` (worst-wins across location-periods for All
+  Locations) → truthful per-column tint/labels + an honest "N/M days published" status pill (never a
+  misleading single "Published ✓"). Rationale + the Model-A-rejected reasoning in `docs/decisions.md`.
+- **Build any future week by clicking it.** A no-period cell is now clickable; `ShiftModal` sends a null
+  `schedule_period_id` and `upsertShift` auto-creates the covering period on save (it always could — the modal
+  used to hard-error instead). Header still honestly reads "No period" until built.
+- **Bug fixes:** (1) Publish can't bypass the required flag reason — the dialog button is gated AND
+  `publishWindow` re-validates the whole window (all locations) server-side, so window-only flags
+  (cross-location double-bookings, window-spanning caps) can't publish unreasoned. (2) The nav reopen control
+  is a FIXED left-edge tab (`sidebar-reopen-button.tsx`, mounted in the shell, not the page header) so it never
+  scrolls out of reach — build mode relies on it. (3) Ask AI resolves staff by NAME deterministically
+  (`resolveStaffName` in `lib/actions/ai.ts`): the model echoes the name, we match (exact → containment →
+  typo-tolerant) and override the id, asking to confirm on ambiguity — it can't schedule the wrong person.
+- **Grid legibility:** column min-width 92→116px so month view shows the same legible time + work type + color
+  as week/2-week (week stretched to fit, month sat at the 92px floor and read as "just the location").
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.

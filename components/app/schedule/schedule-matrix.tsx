@@ -16,7 +16,7 @@ import { eachDate } from "@/lib/dates";
 import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
 import ShiftModal from "./shift-modal";
 import { WorkTypeLegend } from "./shift-block";
-import ScheduleGrid from "./schedule-grid";
+import ScheduleGrid, { type DateStatus } from "./schedule-grid";
 import type { ValidationOut } from "@/lib/schedule-data";
 import type {
   Department,
@@ -93,46 +93,6 @@ export default function ScheduleMatrix({
 
   const flagCount =
     validation.ratioFlags.length + validation.constraintFlags.length;
-
-  // Published vs draft status for the current window (and filter scope), so it's
-  // always obvious whether you're looking at an active schedule or a draft.
-  const { hasDraft, statusLabel, statusTone } = useMemo(() => {
-    const relevant = locationFilter
-      ? periods.filter((p) => p.location_id === locationFilter)
-      : periods;
-    const draft = relevant.some((p) => p.status === "draft");
-    const published = relevant.some((p) => p.status === "published");
-    if (relevant.length === 0)
-      return {
-        hasDraft: false,
-        statusLabel: "Nothing scheduled here yet",
-        statusTone: "neutral" as const,
-      };
-    if (!draft)
-      return {
-        hasDraft: false,
-        statusLabel: "Published — visible to staff",
-        statusTone: "published" as const,
-      };
-    if (published)
-      return {
-        hasDraft: true,
-        statusLabel: "Draft changes pending publish",
-        statusTone: "draft" as const,
-      };
-    return {
-      hasDraft: true,
-      statusLabel: "Draft — not visible to staff yet",
-      statusTone: "draft" as const,
-    };
-  }, [periods, locationFilter]);
-
-  const statusCls =
-    statusTone === "published"
-      ? "bg-compliant-bg text-compliant"
-      : statusTone === "draft"
-        ? "bg-alert-bg text-alert"
-        : "bg-cloud text-steel";
 
   async function runPublish(overrideReason: string | null) {
     setBusy(true);
@@ -211,6 +171,72 @@ export default function ScheduleMatrix({
   }, []);
 
   const dates = useMemo(() => eachDate(viewStart, viewEnd), [viewStart, viewEnd]);
+
+  // Per-day publish state across the window. For All Locations it's "worst-wins":
+  // if ANY location-period covering a day is still draft, that whole column reads
+  // draft — so a week that straddles a published/draft (or month) boundary shows
+  // the truth per day instead of being collapsed into one "Published ✓".
+  const dateStatus = useMemo<Map<string, DateStatus>>(() => {
+    const relevant = locationFilter
+      ? periods.filter((p) => p.location_id === locationFilter)
+      : periods;
+    const map = new Map<string, DateStatus>();
+    for (const d of dates) {
+      const covering = relevant.filter(
+        (p) => p.start_date <= d && p.end_date >= d
+      );
+      if (covering.length === 0) map.set(d, "none");
+      else if (covering.some((p) => p.status === "draft")) map.set(d, "draft");
+      else map.set(d, "published");
+    }
+    return map;
+  }, [dates, periods, locationFilter]);
+
+  // Honest status pill derived from the per-day map — a partly published window
+  // shows "N/M days published", never a misleading single "Published ✓".
+  const { hasDraft, statusLabel, statusTone } = useMemo(() => {
+    let published = 0;
+    let draft = 0;
+    let none = 0;
+    for (const d of dates) {
+      const s = dateStatus.get(d);
+      if (s === "published") published++;
+      else if (s === "draft") draft++;
+      else none++;
+    }
+    const total = dates.length;
+    const hasDraft = draft > 0;
+    if (published + draft === 0)
+      return {
+        hasDraft,
+        statusLabel: "Nothing scheduled here yet",
+        statusTone: "neutral" as const,
+      };
+    if (published === total)
+      return {
+        hasDraft,
+        statusLabel: "Published — visible to staff",
+        statusTone: "published" as const,
+      };
+    if (draft > 0 && published === 0 && none === 0)
+      return {
+        hasDraft,
+        statusLabel: "Draft — not visible to staff yet",
+        statusTone: "draft" as const,
+      };
+    return {
+      hasDraft,
+      statusLabel: `${published}/${total} days published`,
+      statusTone: "draft" as const,
+    };
+  }, [dates, dateStatus]);
+
+  const statusCls =
+    statusTone === "published"
+      ? "bg-compliant-bg text-compliant"
+      : statusTone === "draft"
+        ? "bg-alert-bg text-alert"
+        : "bg-cloud text-steel";
 
   // Location-scoped shifts (drives the work-type chips so they stay stable).
   const locShifts = useMemo(
@@ -460,6 +486,7 @@ export default function ScheduleMatrix({
           deficientShiftIds={deficientShiftIds}
           constraintShiftIds={constraintShiftIds}
           workTypeById={workTypeById}
+          dateStatus={dateStatus}
           locationNameById={locationNameById}
           expectedRxByDate={expectedRxByDate}
           avatarUrlById={avatarUrls}

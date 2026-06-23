@@ -109,7 +109,9 @@ export default function ShiftModal({
       return;
     }
     // Editing uses the shift's own period; creating resolves the period that
-    // covers this date at the chosen location.
+    // covers this date at the chosen location. If none exists yet (a future
+    // week that hasn't been built), send null — upsertShift auto-creates the
+    // cycle-aligned period on the server (periods are invisible plumbing).
     const resolvedPeriod =
       period ??
       periods?.find(
@@ -119,16 +121,10 @@ export default function ShiftModal({
           p.end_date >= date
       ) ??
       null;
-    if (!resolvedPeriod) {
-      setError(
-        "No schedule period covers this date at that location yet — open that location to create the period first."
-      );
-      return;
-    }
     setBusy(true);
     setError(null);
     const result = await upsertShift(shift?.id ?? null, {
-      schedule_period_id: resolvedPeriod.id,
+      schedule_period_id: resolvedPeriod?.id ?? null,
       location_id: loc,
       staff_id: staff.id,
       date,

@@ -3,6 +3,35 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 22, 2026 — Cadence: Model B (locked build cadence), NOT per-day publish
+
+**Decision (Jamison signed off):** keep ONE build cadence per tenant (`tenant.schedule_cycle`).
+You build and publish in that cadence; the period stays the unit of publish/override/compliance
+snapshot. Viewing in any span (week / 2-week / month) stays available, and quick click-to-edit of a
+single cell works in any view (it resolves/creates its own covering period — no straddle). We did **not**
+adopt Model A (free building in any cadence with per-day publish tracking).
+
+**Why Model B over Model A:**
+- The app *already* decouples viewing from cadence (the week/2-week/month selector is a date-range view,
+  not a publish unit), so Model A's main benefit was largely already available for *reading*.
+- Keeping the period as the publish unit preserves publish/override-log/compliance-snapshot integrity —
+  RxShift's core value. Per-day publish would fragment that audit trail for little gain.
+- Lowest risk before the Brandy demo: no heavy schema change, no rework of the publish/validation core.
+
+**The honesty fix (the real work):** the "partly published, shown as fully published" dishonesty was a
+*display* gap, not a data-model gap. The grid already supported a per-day status (`DateStatus`) but the
+matrix never computed/passed it. We now compute a per-day `dateStatus` (worst-wins across location-periods
+for All Locations) and (a) tint/label each column truthfully, and (b) show an honest status pill
+("N/M days published") instead of collapsing the window into one "Published ✓".
+
+**Also fixed (Model B prerequisite):** clicking a cell in a not-yet-built future week used to hard-error
+("create the period first"). It now opens the editor and `upsertShift` auto-creates the covering period on
+save (periods are invisible plumbing). No-period cells are clickable; the header still honestly reads
+"No period" until built.
+
+**Open / deferred:** Model A remains possible later (it'd need per-day publish state) if a customer truly
+needs to mix cadences. Not planned.
+
 ## June 19, 2026 — R072-25 supersedes R113-24; toggle-gated, floor enforced, volume NOT
 
 **Finding:** the Nevada rule we'd been referencing changed. The current proposal is **R072-25** (LCB File No.

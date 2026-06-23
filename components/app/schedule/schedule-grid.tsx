@@ -105,7 +105,7 @@ export default function ScheduleGrid({
               return (
                 <th
                   key={d}
-                  className={`sticky top-0 z-20 min-w-[92px] border-b border-line bg-cloud px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
+                  className={`sticky top-0 z-20 min-w-[116px] border-b border-line bg-cloud px-2 py-2 text-center font-brand text-[9.5px] font-bold uppercase tracking-[0.5px] ${
                     status === "draft"
                       ? "border-b-2 border-b-alert"
                       : status === "published"
@@ -188,17 +188,19 @@ export default function ScheduleGrid({
                     return (
                       <td
                         key={d}
-                        onClick={
-                          noPeriod ? undefined : () => onCellClick(person, d, null)
-                        }
-                        className={`border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
-                          noPeriod
-                            ? "cursor-not-allowed bg-cloud/40"
-                            : "cursor-pointer hover:bg-navy/[0.04]"
-                        } ${hasPto ? "bg-cloud" : isDraft ? "bg-alert-bg" : ""}`}
+                        onClick={() => onCellClick(person, d, null)}
+                        className={`min-w-[116px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors hover:bg-navy/[0.04] ${
+                          hasPto
+                            ? "bg-cloud"
+                            : isDraft
+                              ? "bg-alert-bg"
+                              : noPeriod
+                                ? "bg-cloud/40"
+                                : ""
+                        }`}
                         title={
                           noPeriod
-                            ? "No schedule period covers this date — create the next period to schedule here."
+                            ? "Not built yet — scheduling here creates this period."
                             : undefined
                         }
                       >
