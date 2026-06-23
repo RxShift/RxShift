@@ -136,6 +136,32 @@ export default function AdminConsole({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-brand text-base font-bold text-navy">
+              Demo prompter
+            </h2>
+            <p className="font-body text-xs text-steel">
+              Pop out the live presenter script in a small window for a second
+              monitor — it always reflects the current app.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              window.open(
+                "/app/demo-prompter",
+                "RxShiftDemoPrompter",
+                "width=920,height=900,resizable=yes,scrollbars=yes"
+              )
+            }
+          >
+            Open demo prompter ↗
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-brand text-base font-bold text-navy">
               Tenants ({tenants.length})
             </h2>
             <p className="font-body text-xs text-steel">
