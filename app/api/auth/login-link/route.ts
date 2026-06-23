@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendLoginLinkEmail } from "@/lib/email";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit-db";
 
 // Login-alias delivery: when the typed email is a registered alias, generate
 // a magic link for the account's PRIMARY auth identity and deliver it to the
@@ -9,12 +10,10 @@ import { sendLoginLinkEmail } from "@/lib/email";
 //
 // Unknown emails return { handled: false } and the login form falls back to
 // the standard Supabase signInWithOtp flow — today's exact behavior.
-
-// Per-instance cooldown so an alias can't be spammed from one runtime.
-// (Serverless instances don't share this map — acceptable v1; real rate
-// limiting needs a shared store before public launch.)
-const lastSent = new Map<string, number>();
-const COOLDOWN_MS = 60_000;
+//
+// Rate limiting is shared across serverless instances via the Postgres
+// rate_limit table (lib/rate-limit-db): per-IP blunts probing/enumeration,
+// per-email stops a single inbox being flooded with sign-in links.
 
 export async function POST(request: NextRequest) {
   let email = "";
@@ -26,6 +25,20 @@ export async function POST(request: NextRequest) {
   }
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "Invalid email." }, { status: 400 });
+  }
+
+  // Shared rate limits (replace the old per-instance Map). 429 stops the client
+  // here — the login form shows the message and does NOT fall through to a
+  // second send (see app/app/login/page.tsx).
+  const ip = clientIp(request);
+  const allowed =
+    (await checkRateLimit("login-link:ip", ip, 20, 900)) &&
+    (await checkRateLimit("login-link:email", email, 5, 900));
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many sign-in attempts. Check your inbox, or try again in a few minutes." },
+      { status: 429 }
+    );
   }
 
   const service = createServiceClient();
@@ -56,34 +69,15 @@ export async function POST(request: NextRequest) {
       primaryEmail = userData?.user?.email ?? null;
     }
   } else {
-    // Exact-match lookup against existing auth users (paginated scan is
-    // fine at this scale; revisit with a lookup table at real volume)
-    let page = 1;
-    for (;;) {
-      const { data, error } = await service.auth.admin.listUsers({
-        page,
-        perPage: 1000,
-      });
-      if (error || !data) break;
-      const hit = data.users.find((u) => u.email?.toLowerCase() === email);
-      if (hit) {
-        primaryEmail = hit.email ?? null;
-        break;
-      }
-      if (data.users.length < 1000) break;
-      page++;
-    }
+    // Indexed existence check (migration 0036) — replaces an O(users) page
+    // scan that was both slow and a timing oracle for account enumeration.
+    const { data: exists } = await service.rpc("auth_user_email_exists", {
+      p_email: email,
+    });
+    if (exists) primaryEmail = email;
   }
 
   if (!primaryEmail) return NextResponse.json({ handled: false });
-
-  const last = lastSent.get(email);
-  if (last && Date.now() - last < COOLDOWN_MS) {
-    return NextResponse.json(
-      { error: "A sign-in link was just sent. Check your inbox, or try again in a minute." },
-      { status: 429 }
-    );
-  }
 
   const { data: linkData, error: linkErr } =
     await service.auth.admin.generateLink({
@@ -114,6 +108,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  lastSent.set(email, Date.now());
   return NextResponse.json({ handled: true });
 }

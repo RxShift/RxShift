@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
-
-// Per-instance submission throttle (60s per email address)
-const lastContact = new Map<string, number>();
+import { checkRateLimit, clientIp } from "@/lib/rate-limit-db";
 
 /**
  * Best-effort CRM capture — a failed database write must never block the email
@@ -87,13 +85,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Per-address throttle (per server instance — same pattern as login)
-    const norm = String(email).toLowerCase();
-    const last = lastContact.get(norm);
-    if (last && Date.now() - last < 60_000) {
-      return NextResponse.json({ success: true }); // already handled moments ago
+    // Shared rate limits (replace the per-instance Map). Silently "succeed" on
+    // limit so a spammer gets no signal. Per-IP is the primary control; per-email
+    // catches one address hammered from many IPs.
+    const ip = clientIp(request);
+    const withinLimits =
+      (await checkRateLimit("contact:ip", ip, 8, 3600)) &&
+      (await checkRateLimit("contact:email", String(email).toLowerCase(), 3, 3600));
+    if (!withinLimits) {
+      return NextResponse.json({ success: true });
     }
-    lastContact.set(norm, Date.now());
 
     const src = typeof source === "string" && source ? source : "unknown";
     const leadId = await captureLead({
