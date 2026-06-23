@@ -7,6 +7,31 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Build vs View split: cadence-locked builder + read-only schedule for everyone
+
+The big scheduling-UX decision realized. Building and viewing are now two distinct surfaces, so the
+build experience is focused on the org's cadence and "see it or build it" maps cleanly to permissions.
+
+### Shipped
+- **Build Schedule** (`/app/schedule`, managers/schedulers only): now **cadence-locked**. The window
+  *is* one build-cadence period (week / 2-week / month per `tenant.schedule_cycle`) — no span picker.
+  Header reads **"Building: July 2026"** (period label) with **◀ Prev / Today / Next ▶ stepping by
+  period**, and the copy button is cadence-aware (**"Copy last month's pattern"** for Optum). A
+  read-only/staff user who hits this URL is redirected to View Schedule.
+- **View Schedule** (`/app/view-schedule`, **all roles**, new nav item): read-only, **published-only**,
+  with the week / 2-week / month **zoom** for looking + the dept/work-type chip filters. No edit
+  affordance (cells aren't clickable), no build toolbar, no compliance rings — viewers just see who
+  works when. New component `schedule-view.tsx`.
+- **Shared grid, no drift:** both surfaces render the same `schedule-grid.tsx`. Added a `readOnly` prop
+  (no cursor/hover, cells inert) used by View.
+- **Nav:** sidebar + mobile "More" sheet now show **Build Schedule** (managers) and **View Schedule**
+  (everyone) in place of the single "Schedule" item.
+
+### Notes
+- Phase 2 (multi-manager submit → review → publish workflow) is **designed, not built** — see the
+  Susie feedback paragraph. Today: shared draft, anyone with build rights edits, one publish.
+- `tsc` clean, 74 tests pass, build clean.
+
 ## 2026-06-23 — PTO + scheduled-shift overlap is now a flag (Option B) + Optum data cleanup
 
 - **PTO conflict flag (Option B — flag it, don't hard-block).** A shift scheduled on a day the person

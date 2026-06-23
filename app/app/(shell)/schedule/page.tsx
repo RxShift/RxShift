@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
@@ -18,31 +19,39 @@ import {
   nowInTimeZone,
   periodEnd,
 } from "@/lib/dates";
-import type { Department, Location } from "@/lib/types";
+import type { Department, Location, ScheduleCycle } from "@/lib/types";
 
-// The schedule is ONE person-centric matrix. You build under All Locations
-// (a person, a day, pick the location); selecting a location is just a view
-// filter. The window selector (week / 2-week / month) sets the span; periods
-// are created/published behind the scenes.
-const VIEW_MODES = ["week", "2week", "month"] as const;
-type ViewMode = (typeof VIEW_MODES)[number];
-
-function viewWindow(
-  view: ViewMode,
+// Build Schedule = the manager/scheduler surface, LOCKED to the org's build
+// cadence. The window IS one cadence period (week / 2-week / month per
+// tenant.schedule_cycle) — there's no span picker here, because building is
+// always one period at a time. (Reviewing in any span lives on View Schedule.)
+function cadenceWindow(
+  cycle: ScheduleCycle,
   anchor: string
 ): { start: string; end: string } {
-  if (view === "month") {
+  if (cycle === "monthly") {
     const start = monthStart(anchor);
     return { start, end: periodEnd(start, "monthly") };
   }
   const start = mondayOf(anchor);
-  return { start, end: addDaysStr(start, view === "2week" ? 13 : 6) };
+  return { start, end: periodEnd(start, cycle) };
+}
+
+function periodLabel(cycle: ScheduleCycle, start: string, end: string): string {
+  if (cycle === "monthly") {
+    return new Date(`${start}T00:00:00Z`).toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  return fmtRange(start, end);
 }
 
 const pillBase =
   "whitespace-nowrap rounded-full border font-brand font-semibold transition-colors";
-function pillCls(active: boolean, small = false) {
-  return `${pillBase} ${small ? "px-3 py-1 text-[12px]" : "px-3.5 py-1.5 text-[13px]"} ${
+function pillCls(active: boolean) {
+  return `${pillBase} px-3.5 py-1.5 text-[13px] ${
     active
       ? "border-[#1C2F5E] bg-[#1C2F5E] text-white"
       : "border-line bg-surface text-steel hover:text-navy"
@@ -52,16 +61,14 @@ function pillCls(active: boolean, small = false) {
 function LocationNav({
   locations,
   activeLocationId,
-  view,
   anchor,
 }: {
   locations: Location[];
   activeLocationId: string | null;
-  view: ViewMode;
   anchor: string;
 }) {
   const href = (loc?: string) =>
-    `/app/schedule?view=${view}${loc ? `&location=${loc}` : ""}&anchor=${anchor}`;
+    `/app/schedule?${loc ? `location=${loc}&` : ""}anchor=${anchor}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {locations.length > 1 && (
@@ -82,49 +89,22 @@ function LocationNav({
   );
 }
 
-function WindowNav({
-  activeView,
-  locationId,
-  anchor,
-}: {
-  activeView: ViewMode;
-  locationId: string | null;
-  anchor: string;
-}) {
-  const modes: { key: ViewMode; label: string }[] = [
-    { key: "week", label: "Week" },
-    { key: "2week", label: "2 weeks" },
-    { key: "month", label: "Month" },
-  ];
-  const href = (v: ViewMode) =>
-    `/app/schedule?view=${v}${locationId ? `&location=${locationId}` : ""}&anchor=${anchor}`;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {modes.map((m) => (
-        <Link
-          key={m.key}
-          href={href(m.key)}
-          className={pillCls(activeView === m.key, true)}
-        >
-          {m.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    location?: string;
-    view?: string;
-    anchor?: string;
-  }>;
+  searchParams: Promise<{ location?: string; anchor?: string }>;
 }) {
   const params = await searchParams;
   const session = await getSession();
   const tenant = session!.tenant!;
+
+  // Build is for managers/schedulers. A read-only or staff user who lands here
+  // (e.g. an old link) goes to the read-only View Schedule instead.
+  const role = session?.appUser?.role ?? null;
+  const canBuild =
+    role === "owner_admin" || role === "scheduler" || role === "supervisor";
+  if (role && !canBuild) redirect("/app/view-schedule");
+
   const supabase = await createClient();
 
   const [{ data: locations }, { data: departments }] = await Promise.all([
@@ -137,7 +117,7 @@ export default async function SchedulePage({
   if (locs.length === 0) {
     return (
       <>
-        <PageHeader title="Schedule" />
+        <PageHeader title="Build Schedule" />
         <div className="flex-1 p-8">
           <EmptyState
             message="Add a location before building a schedule — every shift belongs to one, and the ratio is calculated per location."
@@ -155,17 +135,14 @@ export default async function SchedulePage({
     );
   }
 
+  const cycle = tenant.schedule_cycle;
   const today = nowInTimeZone(tenant.timezone).date;
-  const view: ViewMode = (VIEW_MODES as readonly string[]).includes(
-    params.view ?? ""
-  )
-    ? (params.view as ViewMode)
-    : "week";
   const anchor =
     params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
       ? params.anchor
       : today;
-  const { start, end } = viewWindow(view, anchor);
+  const { start, end } = cadenceWindow(cycle, anchor);
+  const label = periodLabel(cycle, start, end);
   const locationFilter =
     params.location && locs.some((l) => l.id === params.location)
       ? params.location
@@ -185,23 +162,21 @@ export default async function SchedulePage({
   for (const h of (holidayRows ?? []) as { date: string; name: string }[])
     holidaysByDate[h.date] = h.name;
 
-  const stepLen = view === "2week" ? 14 : 7;
-  const prevAnchor =
-    view === "month" ? addDaysStr(start, -1) : addDaysStr(start, -stepLen);
-  const nextAnchor =
-    view === "month" ? addDaysStr(end, 1) : addDaysStr(start, stepLen);
+  // Steppers move one cadence PERIOD at a time (the day just outside the window
+  // lands in the neighbouring period).
+  const prevAnchor = addDaysStr(start, -1);
+  const nextAnchor = addDaysStr(end, 1);
   const stepHref = (a: string) =>
-    `/app/schedule?view=${view}${locationFilter ? `&location=${locationFilter}` : ""}&anchor=${a}`;
+    `/app/schedule?${locationFilter ? `location=${locationFilter}&` : ""}anchor=${a}`;
   const stepLink =
     "rounded-md border border-line bg-surface px-3 py-1.5 font-body text-sm text-navy hover:border-steel/40";
 
   const title = locationFilter
-    ? `Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
-    : "Schedule — All locations";
+    ? `Build Schedule — ${locs.find((l) => l.id === locationFilter)?.name ?? ""}`
+    : "Build Schedule — All locations";
 
-  // Ask AI works on the period covering the current week for the WORKING
-  // location (the selected one, or the first). Resolved from the data already
-  // loaded — switching the location pill changes the AI's scope.
+  // Ask AI works on the cadence period for the WORKING location (selected, or
+  // the first). Switching the location pill changes the AI's scope.
   const workingLocationId = locationFilter ?? locs[0]?.id ?? null;
   const refDate = today >= start && today <= end ? today : start;
   const aiPeriod = workingLocationId
@@ -225,17 +200,14 @@ export default async function SchedulePage({
           <LocationNav
             locations={locs}
             activeLocationId={locationFilter}
-            view={view}
             anchor={anchor}
           />
         </div>
         <div className="schedule-chrome flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <WindowNav
-              activeView={view}
-              locationId={locationFilter}
-              anchor={anchor}
-            />
+            <span className="font-brand text-[14px] font-bold text-navy">
+              Building: <span className="text-amber">{label}</span>
+            </span>
             <BuildModeToggle />
           </div>
           <div className="flex items-center gap-3">
@@ -280,8 +252,8 @@ export default async function SchedulePage({
           validation={validation}
           locationFilter={locationFilter}
           avatarUrls={avatarUrls}
-          view={view}
           anchor={anchor}
+          periodLabel={label}
           aiPeriodId={aiPeriod?.id ?? null}
           aiLocationId={workingLocationId}
           aiRefDate={refDate}

@@ -59,6 +59,7 @@ export default function ScheduleGrid({
   expectedRxByDate,
   avatarUrlById,
   onCellClick,
+  readOnly = false,
 }: {
   dates: string[];
   today: string;
@@ -79,6 +80,8 @@ export default function ScheduleGrid({
   /** When set, an avatar (photo or initials) shows before each staff name. */
   avatarUrlById?: Record<string, string>;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
+  /** Read-only (View Schedule): no cursor/hover affordance, cells aren't clickable. */
+  readOnly?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLSpanElement>(null);
@@ -215,18 +218,23 @@ export default function ScheduleGrid({
                     const isDraft = dateStatus?.get(d) === "draft";
                     const isHoliday = holidaysByDate?.has(d) ?? false;
 
+                    const hover = readOnly ? "" : "hover:bg-navy/[0.04]";
                     return (
                       <td
                         key={d}
-                        onClick={() => onCellClick(person, d, null)}
-                        className={`w-[120px] cursor-pointer border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
+                        onClick={
+                          readOnly ? undefined : () => onCellClick(person, d, null)
+                        }
+                        className={`w-[120px] border-b border-line px-1.5 py-1.5 text-center align-top transition-colors ${
+                          readOnly ? "cursor-default" : "cursor-pointer"
+                        } ${
                           hasPto
                             ? "bg-[#222a38]"
                             : isDraft
-                              ? "bg-alert-bg hover:bg-navy/[0.04]"
+                              ? `bg-alert-bg ${hover}`
                               : noPeriod
-                                ? "bg-cloud/40 hover:bg-navy/[0.04]"
-                                : "hover:bg-navy/[0.04]"
+                                ? `bg-cloud/40 ${hover}`
+                                : hover
                         }`}
                         style={isHoliday ? HOLIDAY_CELL_STYLE : undefined}
                         title={
@@ -247,10 +255,14 @@ export default function ScheduleGrid({
                             {cellShifts.map((sh) => (
                               <div
                                 key={sh.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onCellClick(person, d, sh);
-                                }}
+                                onClick={
+                                  readOnly
+                                    ? undefined
+                                    : (e) => {
+                                        e.stopPropagation();
+                                        onCellClick(person, d, sh);
+                                      }
+                                }
                               >
                                 {locationNameById && (
                                   <span className="mb-0.5 block truncate font-brand text-[8px] font-bold uppercase tracking-[0.5px] text-steel">

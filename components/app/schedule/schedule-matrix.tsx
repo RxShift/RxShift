@@ -55,9 +55,9 @@ export default function ScheduleMatrix({
   avatarUrls,
   /** When set, show only this location (rows with a shift there); null = all. */
   locationFilter,
-  /** Current view + anchor, so build mode's command strip can build nav links. */
-  view,
+  /** Anchor + the cadence-period label, so the strip can build nav + show it. */
   anchor,
+  periodLabel,
   aiPeriodId,
   aiLocationId,
   aiRefDate,
@@ -79,8 +79,8 @@ export default function ScheduleMatrix({
   validation: ValidationOut;
   avatarUrls: Record<string, string>;
   locationFilter: string | null;
-  view: string;
   anchor: string;
+  periodLabel: string;
   aiPeriodId: string | null;
   aiLocationId: string | null;
   aiRefDate: string;
@@ -458,21 +458,22 @@ export default function ScheduleMatrix({
     : null;
   const editingLocationId = editing?.shift?.location_id ?? locationFilter ?? "";
 
-  // Command-strip nav (build mode). The day just before the window lands in the
-  // previous window; the day just after lands in the next — works uniformly for
-  // week / 2-week / month without per-view math.
+  // Build is cadence-locked, so the strip steps one PERIOD at a time: the day
+  // just before the window lands in the previous period; the day just after, the
+  // next. No span pills — the period label says what you're building.
   const prevAnchor = addDaysStr(viewStart, -1);
   const nextAnchor = addDaysStr(viewEnd, 1);
-  const schedHref = (v: string, loc: string | null, a: string) =>
-    `/app/schedule?view=${v}${loc ? `&location=${loc}` : ""}&anchor=${a}`;
+  const schedHref = (loc: string | null, a: string) =>
+    `/app/schedule?${loc ? `location=${loc}&` : ""}anchor=${a}`;
   const stripNavCls =
     "rounded-md border border-line bg-surface px-2.5 py-1 font-body text-[13px] font-medium text-navy transition-colors hover:border-navy";
-  const pillCls = (active: boolean) =>
-    `rounded-md px-2.5 py-1 font-brand text-[12px] font-semibold transition-colors ${
-      active
-        ? "bg-navy text-white"
-        : "border border-line bg-surface text-steel hover:text-navy"
-    }`;
+  // Cadence-aware copy label/title (week / 2 weeks / month).
+  const copyLabel =
+    tenant.schedule_cycle === "monthly"
+      ? "Copy last month's pattern"
+      : tenant.schedule_cycle === "biweekly"
+        ? "Copy last 2 weeks' pattern"
+        : "Copy last week's pattern";
 
   return (
     <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
@@ -482,46 +483,38 @@ export default function ScheduleMatrix({
         <div className="flex flex-none flex-wrap items-center gap-2 pb-2">
           <div className="flex items-center gap-1">
             <Link
-              href={schedHref(view, locationFilter, prevAnchor)}
+              href={schedHref(locationFilter, prevAnchor)}
               className={stripNavCls}
-              title="Previous window"
-              aria-label="Previous window"
+              title="Previous period"
+              aria-label="Previous period"
             >
               ◀
             </Link>
             <Link
-              href={schedHref(view, locationFilter, today)}
+              href={schedHref(locationFilter, today)}
               className={stripNavCls}
             >
               Today
             </Link>
             <Link
-              href={schedHref(view, locationFilter, nextAnchor)}
+              href={schedHref(locationFilter, nextAnchor)}
               className={stripNavCls}
-              title="Next window"
-              aria-label="Next window"
+              title="Next period"
+              aria-label="Next period"
             >
               ▶
             </Link>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Link href={schedHref("week", locationFilter, anchor)} className={pillCls(view === "week")}>
-              Wk
-            </Link>
-            <Link href={schedHref("2week", locationFilter, anchor)} className={pillCls(view === "2week")}>
-              2wk
-            </Link>
-            <Link href={schedHref("month", locationFilter, anchor)} className={pillCls(view === "month")}>
-              Mo
-            </Link>
-          </div>
+          <span className="whitespace-nowrap font-brand text-[13px] font-bold text-navy">
+            Building: <span className="text-amber">{periodLabel}</span>
+          </span>
 
           {locations.length > 1 && (
             <select
               value={locationFilter ?? ""}
               onChange={(e) =>
-                router.push(schedHref(view, e.target.value || null, anchor))
+                router.push(schedHref(e.target.value || null, anchor))
               }
               className="rounded-md border-[1.5px] border-line bg-surface px-2 py-1 font-body text-[13px] text-navy"
               title="Filter to a location (All locations is the build surface)"
@@ -567,7 +560,7 @@ export default function ScheduleMatrix({
               variant="secondary"
               onClick={() => setConfirmCopy(true)}
               disabled={busy}
-              title="Copy last week's weekday pattern into this window"
+              title={`${copyLabel} into this period`}
             >
               Copy
             </Button>
@@ -619,7 +612,7 @@ export default function ScheduleMatrix({
               onClick={() => setConfirmCopy(true)}
               disabled={busy}
             >
-              Copy last week&rsquo;s pattern
+              {copyLabel}
             </Button>
             <Button variant="secondary" onClick={exportCsv}>
               Export CSV
@@ -859,7 +852,7 @@ export default function ScheduleMatrix({
       <Modal
         open={confirmCopy}
         onClose={() => setConfirmCopy(false)}
-        title="Copy last week's pattern?"
+        title={`${copyLabel}?`}
         footer={
           <>
             <Button variant="secondary" onClick={() => setConfirmCopy(false)}>
@@ -872,7 +865,7 @@ export default function ScheduleMatrix({
         }
       >
         <p>
-          This copies the previous window&rsquo;s shifts into this one for{" "}
+          This copies the previous period&rsquo;s shifts into this one for{" "}
           {locationFilter ? "this location" : "every location"}, skipping any
           cell that already has a shift.
         </p>
@@ -882,7 +875,7 @@ export default function ScheduleMatrix({
 }
 
 /** "SMRX — Southwest Medical Pharmacy" → "SMRX" for a compact cell tag. */
-function shortLocationName(name: string): string {
+export function shortLocationName(name: string): string {
   const dash = name.split(/[—–-]/)[0]?.trim();
   return dash && dash.length <= 12 ? dash : name.slice(0, 12);
 }

@@ -49,7 +49,10 @@ export function sections(
       label: tenantName,
       items: [
         { label: "Dashboard", href: "/app/dashboard", roles: MANAGE },
-        { label: "Schedule", href: "/app/schedule", roles: MANAGE },
+        // Build = construct the schedule (managers/schedulers, cadence-locked).
+        // View = read-only, published-only, for everyone.
+        { label: "Build Schedule", href: "/app/schedule", roles: CONFIG },
+        { label: "View Schedule", href: "/app/view-schedule" },
         ...(hasRatio
           ? [{ label: "Live Board", href: "/app/board", roles: MANAGE }]
           : []),
