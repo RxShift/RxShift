@@ -640,7 +640,33 @@ Pre-Brandy scheduling-UX pass. No migration.
   over the state background; can't be lost to Tailwind border-class ordering). Header shows ★ + the holiday
   name. Settings → Holidays list shows the year per row.
 - **Prompter → v4.1** (beat 6 reworded for the strip + ⤢ Exit). DEMO-GUIDE / FEATURE-MAP updated.
-- **Next:** flag PTO + scheduled-shift overlap as a constraint (Option B) — not yet built.
+
+## Build ⇄ View split + PTO conflict flag + published-edit fix (June 23, 2026)
+
+The big scheduling-UX decision, shipped + verified live (Optum monthly, Mesa Vista weekly). No migration.
+
+- **Two surfaces, one shared grid.** **Build Schedule** (`/app/schedule`, managers/schedulers — CONFIG
+  roles; others redirect to View) is **cadence-locked**: the window IS one `tenant.schedule_cycle` period.
+  `schedule/page.tsx` uses `cadenceWindow()` + `periodLabel()`, drops the week/2-week/month pills, shows
+  "Building: <period>" + period steppers, and the copy button is cadence-aware ("Copy last month's
+  pattern"). **View Schedule** (`/app/view-schedule`, ALL roles, new nav item) is read-only,
+  **published-only**, week/2-week/month zoom + the chip filters — new `schedule-view.tsx`. Both render
+  `schedule-grid.tsx` (added a `readOnly` prop) so they can't drift. The old "Build mode" toggle is now
+  the **"⤢ Maximize"** chrome-collapse (still on Build). Nav split in `sidebar.tsx`.
+- **PTO conflict = a flag (Option B).** A shift on a day the person is off (pto_day or approved TOR) is
+  detected in `validateBundle` (engine stays PTO-agnostic), joins `constraintFlags` (→ Open Flags +
+  publish gate), and the matrix routes `rule_type === "pto_conflict"` to the **red** deficiency
+  treatment. Demo: Optum = Ashley Dinh Fri Jun 26; Mesa Vista = Keisha Brown Fri (seeded, NOT in
+  `ptoExcluded`).
+- **Published-edit fix.** `upsertShift` sets the shift's `status` to its covering period's status —
+  saving into a published period is live immediately; building a draft stays hidden until publish.
+  (Previously new shifts defaulted to `draft` and never reached staff on a published schedule.)
+- **1000-row cap fix.** `fetchAllRows()` (paginates) + `fetchSegmentsByShiftIds()` (chunks the
+  `shift_id=in.(…)` list by 100 to dodge the URI-too-long 400) in `schedule-data.ts`, used by both
+  loaders + `copyForwardWindow`. Fixed copy-forward dropping segments + month view loading no shifts.
+- **Filters:** departments is now a chip row (was a dropdown); the bottom color legend is gone.
+- **Prompter → v4.2.** Phase 2 (multi-manager submit → review → publish) is designed, NOT built — see
+  `docs/decisions.md` / the Susie feedback paragraph.
 
 ## Pending TODOs (as of June 13, 2026)
 
