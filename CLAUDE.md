@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 22, 2026
+# Last updated: June 23, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -609,7 +609,7 @@ holidays, carry-forward, build mode, and a living in-app demo prompter. See `CHA
   a chosen date in one move, from the shift editor; skips days the person already works or is off (TOR/pto_day).
 - **Build mode + collapsible Ask AI:** Ask AI defaults to a small button (`ai-command-bar.tsx`); a "Build mode"
   toggle (`build-mode-toggle.tsx` + `html.schedule-build` CSS) collapses the sidebar + page chrome so the grid
-  fills the viewport. Transient; clears on leaving the schedule page.
+  fills the viewport. Transient; clears on leaving the schedule page. **(v2, June 23 — see below.)**
 - **Demo prompter is now in-app** (`/app/demo-prompter`, platform-admin only, route group `(prompter)`).
   Steps live as data in `lib/demo/prompter-steps.ts` (single source of truth, `PROMPTER_VERSION` v4.0);
   `components/app/demo-prompter.tsx` renders it; launch via Admin Console "Open demo prompter" (popout). The
@@ -618,6 +618,29 @@ holidays, carry-forward, build mode, and a living in-app demo prompter. See `CHA
 - **Seed:** Mesa Vista now seeds `pto_day` (Ashley Morales approved next week + a scheduler-entered Dana Holt
   current-week example) and federal holidays (current + next year); both added to the reset clear-list
   (`pto_day` before `staff`). Migrations 0034 + 0035 applied to the live Supabase.
+
+## Build mode v2 + grid uniformity + holiday polish (June 23, 2026)
+
+Pre-Brandy scheduling-UX pass. No migration.
+
+- **Build mode is now ONE command strip.** The shared state moved to `lib/build-mode.ts`
+  (`setBuildMode`/`isBuildMode` + a `rx-build-mode` window event); `build-mode-toggle.tsx` and the matrix
+  both subscribe so the toggle label and the strip's **⤢ Exit** button stay in sync. In build mode
+  `schedule-matrix.tsx` renders a single ~44px bar — **date nav (◀ Today ▶) · view pills (Wk/2wk/Mo) ·
+  location select · honest status pill (`statusShort`) · flags · Ask AI · Copy · Export · Publish · ⤢ Exit** —
+  and hides the normal toolbar, the filters row, and the work-type legend. `schedule/page.tsx` passes
+  `view`/`anchor` + the Ask-AI props (`aiPeriodId`/`aiLocationId`/`aiRefDate`/`aiContextNote`) into the matrix
+  and wraps its own LocationNav / window-nav row / Ask-AI bar in the `schedule-chrome` class so they hide
+  under `html.schedule-build`. Result: ~16–17 staff rows on a 1366×768 laptop (was ~11). The strip's nav
+  Links derive prev/next from the day just outside the window (uniform across week/2-week/month).
+- **Grid uses `table-fixed`** with fixed staff (180px) + day (120px) widths so a long work-type label can't
+  widen its column (Susie's "Thursday is wider" finding). Verified live on OptumRx.
+- **Holiday column** is one tinted, framed unit (header + body) in light AND dark mode regardless of cell
+  state, via the inline `HOLIDAY_CELL_STYLE` overlay + inset accent lines in `schedule-grid.tsx` (composes
+  over the state background; can't be lost to Tailwind border-class ordering). Header shows ★ + the holiday
+  name. Settings → Holidays list shows the year per row.
+- **Prompter → v4.1** (beat 6 reworded for the strip + ⤢ Exit). DEMO-GUIDE / FEATURE-MAP updated.
+- **Next:** flag PTO + scheduled-shift overlap as a constraint (Option B) — not yet built.
 
 ## Pending TODOs (as of June 13, 2026)
 

@@ -6,8 +6,10 @@
 // v4.0 (June 22, 2026): Scheduling overhaul — Build mode, carry-forward, PTO
 // (blacked-out cells), holidays, locked build cadence + honest publish status,
 // and the publish reason-gate fix.
+// v4.1 (June 23, 2026): Build mode is now ONE command strip (date nav · view ·
+// location · status · Ask AI · publish · ⤢ Exit) — beat 6 reworded to match.
 
-export const PROMPTER_VERSION = "v4.0";
+export const PROMPTER_VERSION = "v4.1";
 
 export interface Beat {
   /** d=direction, s=script, pv=pivot, pause, p=Ask-AI prompt, n=note, cond=condition */
@@ -188,15 +190,15 @@ export const STEPS: PrompterStep[] = [
       },
       {
         t: "d",
-        v: "Click Build mode (next to the view pills). The nav and chrome collapse and the grid fills the screen.",
+        v: "Click Build mode (next to the view pills). The page chrome collapses into ONE command strip and the grid fills the screen.",
       },
       {
         t: "s",
-        v: '"On a normal laptop you want to see as many people as possible at once. Build mode strips everything but the grid — many rows, free scroll, the date control stays. Exit when you\'re done."',
+        v: '"On a normal laptop you want to see as many people as possible at once. Build mode strips everything down to one bar — date nav, view, location, publish, Ask AI, all in a single strip — so the grid shows far more rows. Everything you need is still right there; nothing is buried."',
       },
       {
         t: "n",
-        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots. Toggle Build mode back off before the next beat so the chrome is back.",
+        v: "Jerome's amber ring is on Saturday — scroll right. Red ⚠ rings are on Thursday slots. Click ⤢ Exit in the strip (far right) to bring the chrome back before the next beat.",
       },
     ],
   },

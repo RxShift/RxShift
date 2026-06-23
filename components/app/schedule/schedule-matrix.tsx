@@ -8,13 +8,16 @@
 // (open a single location to publish it).
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/form";
-import { eachDate } from "@/lib/dates";
+import { addDaysStr, eachDate } from "@/lib/dates";
 import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
+import { BUILD_MODE_EVENT, isBuildMode, setBuildMode } from "@/lib/build-mode";
 import ShiftModal from "./shift-modal";
+import AiCommandBar from "./ai-command-bar";
 import { WorkTypeLegend } from "./shift-block";
 import ScheduleGrid, { type DateStatus } from "./schedule-grid";
 import type { ValidationOut } from "@/lib/schedule-data";
@@ -53,6 +56,13 @@ export default function ScheduleMatrix({
   avatarUrls,
   /** When set, show only this location (rows with a shift there); null = all. */
   locationFilter,
+  /** Current view + anchor, so build mode's command strip can build nav links. */
+  view,
+  anchor,
+  aiPeriodId,
+  aiLocationId,
+  aiRefDate,
+  aiContextNote,
 }: {
   tenant: Tenant;
   today: string;
@@ -71,6 +81,12 @@ export default function ScheduleMatrix({
   validation: ValidationOut;
   avatarUrls: Record<string, string>;
   locationFilter: string | null;
+  view: string;
+  anchor: string;
+  aiPeriodId: string | null;
+  aiLocationId: string | null;
+  aiRefDate: string;
+  aiContextNote: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<{
@@ -87,6 +103,18 @@ export default function ScheduleMatrix({
   // Pure view filters (what do I want to look at) — no scheduling effect.
   const [deptFilter, setDeptFilter] = useState(""); // "" = all departments
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
+
+  // Build mode = the focused, chrome-free surface. When on, the four stacked
+  // control rows collapse into one command strip (below) and the page chrome
+  // hides via CSS, so the grid fills the screen. Driven by the shared helper so
+  // the sidebar toggle and the strip's Exit button stay in sync.
+  const [buildMode, setBuildModeState] = useState(false);
+  useEffect(() => {
+    const sync = () => setBuildModeState(isBuildMode());
+    sync();
+    window.addEventListener(BUILD_MODE_EVENT, sync);
+    return () => window.removeEventListener(BUILD_MODE_EVENT, sync);
+  }, []);
 
   function toggleWorkType(id: string) {
     setWorkTypeFilter((prev) => {
@@ -200,7 +228,7 @@ export default function ScheduleMatrix({
 
   // Honest status pill derived from the per-day map — a partly published window
   // shows "N/M days published", never a misleading single "Published ✓".
-  const { hasDraft, statusLabel, statusTone } = useMemo(() => {
+  const { hasDraft, statusLabel, statusShort, statusTone } = useMemo(() => {
     let published = 0;
     let draft = 0;
     let none = 0;
@@ -216,23 +244,27 @@ export default function ScheduleMatrix({
       return {
         hasDraft,
         statusLabel: "Nothing scheduled here yet",
+        statusShort: "Empty",
         statusTone: "neutral" as const,
       };
     if (published === total)
       return {
         hasDraft,
         statusLabel: "Published — visible to staff",
+        statusShort: "Published ✓",
         statusTone: "published" as const,
       };
     if (draft > 0 && published === 0 && none === 0)
       return {
         hasDraft,
         statusLabel: "Draft — not visible to staff yet",
+        statusShort: "Draft",
         statusTone: "draft" as const,
       };
     return {
       hasDraft,
       statusLabel: `${published}/${total} days published`,
+      statusShort: `${published}/${total} published`,
       statusTone: "draft" as const,
     };
   }, [dates, dateStatus]);
@@ -408,51 +440,188 @@ export default function ScheduleMatrix({
     : null;
   const editingLocationId = editing?.shift?.location_id ?? locationFilter ?? "";
 
+  // Command-strip nav (build mode). The day just before the window lands in the
+  // previous window; the day just after lands in the next — works uniformly for
+  // week / 2-week / month without per-view math.
+  const prevAnchor = addDaysStr(viewStart, -1);
+  const nextAnchor = addDaysStr(viewEnd, 1);
+  const schedHref = (v: string, loc: string | null, a: string) =>
+    `/app/schedule?view=${v}${loc ? `&location=${loc}` : ""}&anchor=${a}`;
+  const stripNavCls =
+    "rounded-md border border-line bg-surface px-2.5 py-1 font-body text-[13px] font-medium text-navy transition-colors hover:border-navy";
+  const pillCls = (active: boolean) =>
+    `rounded-md px-2.5 py-1 font-brand text-[12px] font-semibold transition-colors ${
+      active
+        ? "bg-navy text-white"
+        : "border border-line bg-surface text-steel hover:text-navy"
+    }`;
+
   return (
     <div ref={frameRef} className="flex h-[calc(100dvh-180px)] flex-col">
-      <div className="flex flex-none flex-wrap items-center gap-3 pb-3">
-        <span
-          className={`rounded-full px-2.5 py-1 font-brand text-[11px] font-bold uppercase tracking-[0.5px] ${statusCls}`}
-        >
-          {statusLabel}
-        </span>
-        {flagCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setFlagsOpen(true)}
-            className="font-body text-[13px] font-semibold text-deficiency underline-offset-2 hover:underline"
+      {buildMode ? (
+        // ONE command strip: everything you need to build, in a single ~44px bar.
+        // Date nav · view · location · status · flags · Ask AI · actions · Exit.
+        <div className="flex flex-none flex-wrap items-center gap-2 pb-2">
+          <div className="flex items-center gap-1">
+            <Link
+              href={schedHref(view, locationFilter, prevAnchor)}
+              className={stripNavCls}
+              title="Previous window"
+              aria-label="Previous window"
+            >
+              ◀
+            </Link>
+            <Link
+              href={schedHref(view, locationFilter, today)}
+              className={stripNavCls}
+            >
+              Today
+            </Link>
+            <Link
+              href={schedHref(view, locationFilter, nextAnchor)}
+              className={stripNavCls}
+              title="Next window"
+              aria-label="Next window"
+            >
+              ▶
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Link href={schedHref("week", locationFilter, anchor)} className={pillCls(view === "week")}>
+              Wk
+            </Link>
+            <Link href={schedHref("2week", locationFilter, anchor)} className={pillCls(view === "2week")}>
+              2wk
+            </Link>
+            <Link href={schedHref("month", locationFilter, anchor)} className={pillCls(view === "month")}>
+              Mo
+            </Link>
+          </div>
+
+          {locations.length > 1 && (
+            <select
+              value={locationFilter ?? ""}
+              onChange={(e) =>
+                router.push(schedHref(view, e.target.value || null, anchor))
+              }
+              className="rounded-md border-[1.5px] border-line bg-surface px-2 py-1 font-body text-[13px] text-navy"
+              title="Filter to a location (All locations is the build surface)"
+            >
+              <option value="">All locations</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {shortLocationName(l.name)}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <span
+            className={`rounded-full px-2.5 py-1 font-brand text-[11px] font-bold uppercase tracking-[0.5px] ${statusCls}`}
+            title={statusLabel}
           >
-            ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"} ▸
-          </button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setConfirmCopy(true)}
-            disabled={busy}
-          >
-            Copy last week&rsquo;s pattern
-          </Button>
-          <Button variant="secondary" onClick={exportCsv}>
-            Export CSV
-          </Button>
-          <Button
-            onClick={() => (flagCount > 0 ? setPublishOpen(true) : runPublish(null))}
-            disabled={busy || !hasDraft}
-          >
-            {busy
-              ? "Working…"
-              : hasDraft
-                ? "Publish"
-                : statusTone === "published"
-                  ? "Published ✓"
-                  : "Publish"}
-          </Button>
+            {statusShort}
+          </span>
+          {flagCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setFlagsOpen(true)}
+              className="font-body text-[13px] font-semibold text-deficiency underline-offset-2 hover:underline"
+              title="Open flags"
+            >
+              ⚠ {flagCount} ▸
+            </button>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            {aiLocationId && (
+              <AiCommandBar
+                periodId={aiPeriodId}
+                locationId={aiLocationId}
+                refDate={aiRefDate}
+                contextNote={aiContextNote}
+              />
+            )}
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmCopy(true)}
+              disabled={busy}
+              title="Copy last week's weekday pattern into this window"
+            >
+              Copy
+            </Button>
+            <Button variant="secondary" onClick={exportCsv} title="Export CSV">
+              Export
+            </Button>
+            <Button
+              onClick={() =>
+                flagCount > 0 ? setPublishOpen(true) : runPublish(null)
+              }
+              disabled={busy || !hasDraft}
+            >
+              {busy
+                ? "Working…"
+                : hasDraft
+                  ? "Publish"
+                  : statusTone === "published"
+                    ? "Published ✓"
+                    : "Publish"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setBuildMode(false)}
+              title="Exit build mode"
+            >
+              ⤢ Exit
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-none flex-wrap items-center gap-3 pb-3">
+          <span
+            className={`rounded-full px-2.5 py-1 font-brand text-[11px] font-bold uppercase tracking-[0.5px] ${statusCls}`}
+          >
+            {statusLabel}
+          </span>
+          {flagCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setFlagsOpen(true)}
+              className="font-body text-[13px] font-semibold text-deficiency underline-offset-2 hover:underline"
+            >
+              ⚠ {flagCount} open flag{flagCount === 1 ? "" : "s"} ▸
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmCopy(true)}
+              disabled={busy}
+            >
+              Copy last week&rsquo;s pattern
+            </Button>
+            <Button variant="secondary" onClick={exportCsv}>
+              Export CSV
+            </Button>
+            <Button
+              onClick={() => (flagCount > 0 ? setPublishOpen(true) : runPublish(null))}
+              disabled={busy || !hasDraft}
+            >
+              {busy
+                ? "Working…"
+                : hasDraft
+                  ? "Publish"
+                  : statusTone === "published"
+                    ? "Published ✓"
+                    : "Publish"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* View filters — what do I want to look at (no scheduling effect). */}
-      {(departments.length > 0 || windowWorkTypes.length > 0) && (
+      {!buildMode && (departments.length > 0 || windowWorkTypes.length > 0) && (
         <div className="flex flex-none flex-wrap items-center gap-2 pb-3 font-body text-[12px]">
           {departments.length > 0 && (
             <select
@@ -527,9 +696,11 @@ export default function ScheduleMatrix({
         />
       </div>
 
-      <div className="flex-none pt-3">
-        <WorkTypeLegend workTypes={workTypes} usedIds={usedWorkTypeIds} />
-      </div>
+      {!buildMode && (
+        <div className="flex-none pt-3">
+          <WorkTypeLegend workTypes={workTypes} usedIds={usedWorkTypeIds} />
+        </div>
+      )}
 
       {editing && (
         <ShiftModal

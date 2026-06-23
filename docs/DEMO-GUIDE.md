@@ -88,9 +88,10 @@ record of what *actually happened* (2-year, annotatable) — the board-defensibl
   published, part draft reads e.g. **"5/7 days published,"** not "Published ✓." Publishing with open flags
   **requires a reason** (it won't go through blank). Build cadence is fixed per tenant (Settings →
   Organization); you can still *view* any span.
-- **Build mode** (button by the view pills): collapses the nav + chrome so the grid fills the screen —
-  many staff rows at once. The date control stays. Exit to bring the chrome back. (Designed for a normal
-  laptop, not a big external monitor.)
+- **Build mode** (button by the view pills): collapses everything into ONE command strip — date nav,
+  view, location, status, Ask AI, Copy/Export/Publish, and a ⤢ Exit button — so the grid fills the screen
+  with many staff rows at once (~16–17 on a laptop vs ~11 normally). Nothing is buried; it's all on the
+  one bar. Click ⤢ Exit to bring the chrome back. (Designed for a normal laptop, not a big external monitor.)
 - **Carry-forward:** open a shift → "Copy this shift to following days" → pick a through-date → it repeats
   the shift across those days in one move (skipping days the person already works or is off).
 - Clicking an **unbuilt future week** just works — the period is created when you save (no "create period"
@@ -266,11 +267,12 @@ The schedule builder got a lot stronger, and the demo prompter is now part of th
 
 **Run the prompter from the app.** The presenter script lives at **`/app/demo-prompter`** (platform-admin
 only). Open it from the **Admin Console → "Open demo prompter"** — it pops out into a small window you can
-park on a second monitor. It's always current (v4.0). The old standalone HTML file is retired.
+park on a second monitor. It's always current (v4.1). The old standalone HTML file is retired.
 
 **New on the schedule (work these into the build beat):**
-- **Build mode** — a button by the view pills that hides the chrome so the grid fills the screen (many staff
-  rows). Designed for a normal laptop. Exit to bring the chrome back.
+- **Build mode** — a button by the view pills that collapses the chrome into one command strip (date nav,
+  view, location, status, Ask AI, publish, ⤢ Exit) so the grid fills the screen with many staff rows.
+  Designed for a normal laptop. Click ⤢ Exit (far right of the strip) to bring the chrome back.
 - **PTO is blacked out** on the grid — including future time off, before that week is built. Approve a request
   *or* mark someone off directly with the **PTO checkbox** on the shift editor. The seed shows both (Ashley
   next week, Dana this Wednesday).

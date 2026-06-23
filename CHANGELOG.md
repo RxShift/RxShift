@@ -7,6 +7,40 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Build mode v2 (one command strip) + grid uniform columns + holiday polish
+
+The scheduling surface Susie/Brandy will judge. `tsc` clean; 74 tests pass; build clean.
+
+### Shipped
+- **Build mode v2 — ONE command strip.** Build mode used to just collapse the chrome and leave the
+  four stacked control rows (status, toolbar, window nav, filters) in place. Now those consolidate into
+  a single ~44px bar: **date nav (◀ Today ▶) · view (Wk/2wk/Mo) · location · honest status pill · flags ·
+  Ask AI · Copy · Export · Publish · ⤢ Exit**. The filters row and the work-type legend are hidden in
+  build mode; the page's own LocationNav / window-nav row / Ask-AI bar hide via the `schedule-chrome`
+  class. Net: ~16–17 staff rows visible on a 1366×768 laptop (was ~11). New shared helper
+  `lib/build-mode.ts` (`setBuildMode`/`isBuildMode` + a `rx-build-mode` event) keeps the sidebar toggle
+  and the strip's Exit button in sync. The matrix renders the strip reactively from that event.
+- **Grid columns are uniform width (Susie's "Thursday is wider" finding).** Switched the grid table to
+  `table-fixed` with fixed staff (180px) + day (120px) column widths, so a long work-type label
+  (e.g. "CCC (Clinical Call Center)") truncates instead of stretching its column. Verified live on the
+  OptumRx tenant — columns now read evenly.
+- **Holiday column polish.** The whole holiday column (header + body) now reads as one tinted, framed
+  unit in BOTH light and dark mode, regardless of cell state (draft amber / PTO / empty), via an
+  inline-style overlay + inset accent lines (`HOLIDAY_CELL_STYLE`) that compose over the cell background
+  and can't be lost to Tailwind border-class ordering. Header shows ★ + the holiday name. Settings →
+  Holidays list now shows the year on each row (the unsorted-looking complaint was a year ambiguity).
+
+### Demo / docs
+- Prompter bumped **v4.0 → v4.1**: beat 6 (Build mode) reworded for the command strip + the ⤢ Exit button.
+- **Round-2 QA report ingested** (`docs/qa/2026-06-23-round2-demo-qa.md`) — all six targeted round-1 fixes
+  verified live (buildable empty week, publish reason-gate, partial status, anchor preservation, holiday
+  remove-confirm, OptumRx "Ashley Dinh" match). F-R2-01 (holiday column) resolved by the polish above;
+  F-R2-02 (Ask-AI monthly proposal-text nuance) still deferred.
+
+### Open
+- Chrome-validate the command strip at 1366×768, then hand CoWork a round-3 prompt.
+- PTO + scheduled-shift overlap: flag it as a constraint (Option B) — next change.
+
 ## 2026-06-23 — Demo QA round 1: fixes from CoWork's run-through
 
 Triaged CoWork's first run-through (`docs/qa/2026-06-23-demo-qa.md`) and verified each failed item live

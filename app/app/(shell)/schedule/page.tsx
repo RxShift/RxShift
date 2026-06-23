@@ -213,6 +213,9 @@ export default async function SchedulePage({
       )
     : undefined;
   const aiLocName = locs.find((l) => l.id === workingLocationId)?.name ?? "";
+  const aiContextNote = aiPeriod
+    ? `Working in ${aiLocName} · ${fmtRange(aiPeriod.start_date, aiPeriod.end_date)}`
+    : `Working in ${aiLocName} · ${fmtRange(start, end)} (no shifts yet)`;
 
   return (
     <>
@@ -226,7 +229,7 @@ export default async function SchedulePage({
             anchor={anchor}
           />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="schedule-chrome flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <WindowNav
               activeView={view}
@@ -251,16 +254,14 @@ export default async function SchedulePage({
           </div>
         </div>
         {workingLocationId && (
-          <AiCommandBar
-            periodId={aiPeriod?.id ?? null}
-            locationId={workingLocationId}
-            refDate={refDate}
-            contextNote={
-              aiPeriod
-                ? `Working in ${aiLocName} · ${fmtRange(aiPeriod.start_date, aiPeriod.end_date)}`
-                : `Working in ${aiLocName} · ${fmtRange(start, end)} (no shifts yet)`
-            }
-          />
+          <div className="schedule-chrome">
+            <AiCommandBar
+              periodId={aiPeriod?.id ?? null}
+              locationId={workingLocationId}
+              refDate={refDate}
+              contextNote={aiContextNote}
+            />
+          </div>
         )}
         <ScheduleMatrix
           tenant={tenant}
@@ -279,6 +280,12 @@ export default async function SchedulePage({
           validation={validation}
           locationFilter={locationFilter}
           avatarUrls={avatarUrls}
+          view={view}
+          anchor={anchor}
+          aiPeriodId={aiPeriod?.id ?? null}
+          aiLocationId={workingLocationId}
+          aiRefDate={refDate}
+          aiContextNote={aiContextNote}
         />
       </div>
     </>
