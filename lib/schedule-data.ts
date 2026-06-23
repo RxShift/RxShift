@@ -66,17 +66,58 @@ export interface ValidationOut {
  * page comes back. Give the query a stable `.order()` so pages don't overlap.
  */
 export async function fetchAllRows<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+  page: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error?: unknown }>
 ): Promise<T[]> {
   const SIZE = 1000;
   const out: T[] = [];
   for (let from = 0; ; from += SIZE) {
-    const { data } = await page(from, from + SIZE - 1);
+    const { data, error } = await page(from, from + SIZE - 1);
+    // Don't fail silently: a page error (e.g. a too-long URL) used to return []
+    // and quietly drop rows — which is exactly how the grid lost shifts.
+    if (error) {
+      console.error("[fetchAllRows] page error:", error);
+      throw error;
+    }
     const rows = data ?? [];
     out.push(...rows);
     if (rows.length < SIZE) break;
   }
   return out;
+}
+
+/**
+ * Fetch the segments for a set of shifts, CHUNKING the id list so the
+ * `shift_id=in.(…)` URL never grows past PostgREST's request limit. A month /
+ * all-locations window can reference 750+ shifts; one giant `.in(…)` returns a
+ * 400 (URI too long) — which used to leave every shift with no segments, so the
+ * grid showed only their location tag (or, with the empty-shift guard, nothing).
+ * Small chunks keep each URL short; we run them in parallel and flatten.
+ */
+export async function fetchSegmentsByShiftIds(
+  supabase: SupabaseClient,
+  shiftIds: string[]
+): Promise<ShiftSegment[]> {
+  if (shiftIds.length === 0) return [];
+  const CHUNK = 100; // ~100 uuids per URL stays well under the limit
+  const batches: string[][] = [];
+  for (let i = 0; i < shiftIds.length; i += CHUNK)
+    batches.push(shiftIds.slice(i, i + CHUNK));
+  const perBatch = await Promise.all(
+    batches.map((ids) =>
+      fetchAllRows<ShiftSegment>((from, to) =>
+        supabase
+          .from("shift_segment")
+          .select("*")
+          .in("shift_id", ids)
+          .order("id")
+          .range(from, to)
+      )
+    )
+  );
+  return perBatch.flat();
 }
 
 export async function loadPeriodBundle(
@@ -225,16 +266,7 @@ export async function loadRangeBundle(
     { data: ptoDays },
     { data: periods },
   ] = await Promise.all([
-    shiftIds.length
-      ? fetchAllRows<ShiftSegment>((from, to) =>
-          supabase
-            .from("shift_segment")
-            .select("*")
-            .in("shift_id", shiftIds)
-            .order("id")
-            .range(from, to)
-        )
-      : Promise.resolve([] as ShiftSegment[]),
+    fetchSegmentsByShiftIds(supabase, shiftIds),
     supabase.from("staff").select("*").order("full_name"),
     supabase.from("work_type").select("*").order("name"),
     supabase.from("location").select("*").eq("id", locationId),
@@ -329,16 +361,7 @@ export async function loadAllLocationsBundle(
     { data: ptoDays },
     { data: periods },
   ] = await Promise.all([
-    shiftIds.length
-      ? fetchAllRows<ShiftSegment>((from, to) =>
-          supabase
-            .from("shift_segment")
-            .select("*")
-            .in("shift_id", shiftIds)
-            .order("id")
-            .range(from, to)
-        )
-      : Promise.resolve([] as ShiftSegment[]),
+    fetchSegmentsByShiftIds(supabase, shiftIds),
     supabase.from("staff").select("*").order("full_name"),
     supabase.from("work_type").select("*").order("name"),
     supabase.from("location").select("*").order("name"),

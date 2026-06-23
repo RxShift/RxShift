@@ -16,6 +16,7 @@ import type { ScheduleCycle, Shift, ShiftSegment } from "@/lib/types";
 import {
   buildComplianceRecords,
   fetchAllRows,
+  fetchSegmentsByShiftIds,
   loadAllLocationsBundle,
   loadPeriodBundle,
   validateRangeBundle,
@@ -544,14 +545,9 @@ export async function copyForwardWindow(
       existing.map((s) => `${s.staff_id}|${s.location_id}|${s.date}`)
     );
 
-    const priorIds = priorShifts.map((s) => s.id);
-    const segs = await fetchAllRows<ShiftSegment>((from, to) =>
-      supabase
-        .from("shift_segment")
-        .select("*")
-        .in("shift_id", priorIds)
-        .order("id")
-        .range(from, to)
+    const segs = await fetchSegmentsByShiftIds(
+      supabase,
+      priorShifts.map((s) => s.id)
     );
     const segByShift = new Map<string, ShiftSegment[]>();
     for (const sg of segs) {

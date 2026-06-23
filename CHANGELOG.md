@@ -25,6 +25,13 @@ shifts landed in the Optum demo tenant (Jul 2–31); no other tenant affected.
   (shifts/segments past row 1000 just vanished). Fixed before it bit anyone.
 - **Display guard:** the matrix ignores any shift with zero segments, so a broken artifact can never
   render a phantom location tag again (real shifts always have ≥1 segment, enforced on save).
+- **Month view was loading NO shifts (follow-up, same root family).** A busy month references ~750
+  shifts, so the segment fetch put ~750 UUIDs in one `shift_id=in.(…)` URL — PostgREST returned **400
+  (URI too long)**, segments came back empty, and the new display guard then hid every shift (only PTO
+  showed). New `fetchSegmentsByShiftIds()` chunks the id list (100/req, run in parallel) so the URL
+  stays short; used by both loaders and copy-forward. Also: `fetchAllRows` now **throws on a page
+  error** instead of silently returning `[]` — that silent failure is what made this invisible.
+  (Confirmed via Supabase API logs: month segment fetch 400 → now chunked 200s.)
 
 ### Data
 - Pending: delete the 808 segment-less artifact shifts from the Optum demo tenant (Jul 2–31).
