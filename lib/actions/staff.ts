@@ -13,6 +13,75 @@ import {
   runAction,
   type ActionResult,
 } from "./helpers";
+import type {
+  AppUser,
+  ConstraintRule,
+  Location,
+  Staff,
+  StaffSchedulingRule,
+  WorkType,
+} from "@/lib/types";
+
+export interface StaffRecordData {
+  staff: Staff;
+  account: AppUser | null;
+  locations: Location[];
+  workTypes: WorkType[];
+  constraints: ConstraintRule[];
+  rules: StaffSchedulingRule[];
+  canEditRoles: boolean;
+}
+
+/**
+ * Everything the staff-record slide-over needs for one person — loaded on open so
+ * both call sites (the staff list and the schedule builder) stay simple. Managers
+ * can view/edit; only owner/admins can change roles (canEditRoles).
+ */
+export async function getStaffRecord(
+  staffId: string
+): Promise<ActionResult<StaffRecordData>> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+    const [staffRes, accountRes, locRes, wtRes, conRes, ruleRes] =
+      await Promise.all([
+        supabase
+          .from("staff")
+          .select("*")
+          .eq("id", staffId)
+          .eq("tenant_id", ctx.tenantId)
+          .maybeSingle(),
+        supabase
+          .from("app_user")
+          .select("*")
+          .eq("staff_id", staffId)
+          .eq("tenant_id", ctx.tenantId)
+          .maybeSingle(),
+        supabase.from("location").select("*").order("name"),
+        supabase.from("work_type").select("*").order("name"),
+        supabase
+          .from("constraint_rule")
+          .select("*")
+          .eq("scope_type", "staff")
+          .eq("scope_id", staffId),
+        supabase
+          .from("staff_scheduling_rule")
+          .select("*")
+          .eq("staff_id", staffId)
+          .order("created_at"),
+      ]);
+    if (!staffRes.data) throw new ActionError("Staff member not found.");
+    return {
+      staff: staffRes.data as Staff,
+      account: (accountRes.data as AppUser) ?? null,
+      locations: (locRes.data ?? []) as Location[],
+      workTypes: (wtRes.data ?? []) as WorkType[],
+      constraints: (conRes.data ?? []) as ConstraintRule[],
+      rules: (ruleRes.data ?? []) as StaffSchedulingRule[],
+      canEditRoles: ctx.appUser.role === "owner_admin",
+    };
+  });
+}
 
 const staffSchema = z.object({
   full_name: z.string().min(1).max(160),

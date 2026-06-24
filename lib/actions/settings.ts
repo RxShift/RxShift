@@ -252,7 +252,8 @@ type EntityName =
   | "location"
   | "department"
   | "work_type"
-  | "constraint_rule";
+  | "constraint_rule"
+  | "staff_scheduling_rule";
 
 const SCHEMAS: Record<EntityName, z.ZodType> = {
   location: z.object({
@@ -304,6 +305,40 @@ const SCHEMAS: Record<EntityName, z.ZodType> = {
     effective_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     effective_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
     active: z.coerce.boolean(),
+  }),
+  // Positive scheduling instructions (the opposite of constraints). rule_type +
+  // params jsonb mirror constraint_rule; the resolver expands these into proposals.
+  staff_scheduling_rule: z.object({
+    staff_id: z.string().uuid(),
+    rule_type: z.enum([
+      "recurring_shift",
+      "preferred_shift_length",
+      "preferred_days",
+      "preferred_work_type_by_day",
+      "recurring_work_type_assignment",
+      "monthly_quota",
+      "nth_weekday_assignment",
+      "quarterly_project_days",
+      "float_location",
+      "per_diem_availability",
+      "preferred_not_assigned",
+    ]),
+    work_type_id: z.string().uuid().nullish(),
+    location_id: z.string().uuid().nullish(),
+    frequency: z
+      .enum([
+        "weekly",
+        "every_other_week",
+        "every_other_month",
+        "monthly_by_date",
+        "monthly_by_occurrence",
+        "quarterly",
+        "annually",
+      ])
+      .nullish(),
+    params: z.record(z.string(), z.unknown()).default({}),
+    notes: z.string().max(2000).nullish(),
+    is_active: z.coerce.boolean().default(true),
   }),
 };
 
