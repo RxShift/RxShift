@@ -80,6 +80,8 @@ const ROSTER: Person[] = [
   { name: "Ashley Morales", title: "Certified Tech (CPhT)", ratio: "technician", location: "SV" },
   { name: "Dana Holt", title: "Certified Tech (CPhT)", ratio: "technician", location: "SV" },
   { name: "Tyler Brooks", title: "Pharmacy Trainee", ratio: "technician", location: "SV" },
+  // On the floor daily but excluded from the ratio (procurement) — shows the flag.
+  { name: "Amanda Cole", title: "Procurement Supervisor", ratio: "technician", location: "SV" },
   // Henderson — the deficiency-story location
   { name: "Dr. Sunita Patel", title: "Staff Pharmacist", ratio: "pharmacist", location: "HD" },
   { name: "Dr. Owen Fitzgerald", title: "Float Pharmacist (SV / Henderson)", ratio: "pharmacist", location: "HD" },
@@ -100,6 +102,19 @@ function staffTypeFor(p: Person): "pharmacist" | "tech" | "tech_in_training" {
   if (/train/i.test(p.title)) return "tech_in_training";
   return "tech";
 }
+
+// Free-text scheduling notes shown on the staff record + the builder name tooltip.
+const SCHEDULING_NOTES: Record<string, string> = {
+  "Dr. Lena Park":
+    "Clinically strong. Prefers morning starts. Not suited for audit or ticket-confirmation work.",
+  "Carlos Rivera":
+    "Lead tech — anchors the Spring Valley counter. Likes consistent weekday shifts.",
+  "Amanda Cole":
+    "Procurement — on the floor daily but does not count toward the ratio.",
+};
+
+// People present on the floor but never counted toward the ratio (keeps their role).
+const EXCLUDED_FROM_RATIO = new Set<string>(["Amanda Cole"]);
 
 function fictionalEmail(name: string): string {
   return (
@@ -219,6 +234,7 @@ export async function clearMesaVistaData(
     "pto_day",
     "shift",
     "schedule_period",
+    "staff_scheduling_rule",
     "constraint_rule",
     "staff_location",
     "staff",
@@ -258,6 +274,7 @@ async function ensureTenant(service: SupabaseClient, log: Log): Promise<string> 
       outbound_email_enabled: true,
       default_break_minutes: 30,
       nevada_r072_25: true, // showcase the proposed Nevada rules
+      week_start_day: 1, // Mesa Vista builds Monday-start weeks
     })
     .select("id")
     .single();
@@ -429,7 +446,7 @@ export async function seedMesaVista(
   // showcase toggle on every seed (matches Frank's display-name pattern).
   await service
     .from("tenant")
-    .update({ nevada_r072_25: true })
+    .update({ nevada_r072_25: true, week_start_day: 1 })
     .eq("id", tenantId);
   const frankAuthId = await ensureFrank(service, tenantId, log);
 
@@ -514,6 +531,10 @@ export async function seedMesaVista(
         expected_rx_fri: loc.rx[4],
         expected_rx_sat: loc.rx[5] || null,
         expected_rx_sun: loc.rx[6] || null,
+        coverage_notes:
+          loc.key === "SV"
+            ? "1 pharmacist on the CCC line every weekday (prefer by 8:30am). Keep ≥2 support staff on the floor at all times; 2.6 is the daily target."
+            : null,
       })
       .select("id")
       .single();
@@ -559,6 +580,8 @@ export async function seedMesaVista(
         staff_type: staffTypeFor(p),
         employment_type: "full_time",
         certified: p.title.includes("CPhT"),
+        scheduling_notes: SCHEDULING_NOTES[p.name] ?? null,
+        excluded_from_ratio: EXCLUDED_FROM_RATIO.has(p.name),
       }))
     )
     .select("id, full_name");
@@ -578,6 +601,68 @@ export async function seedMesaVista(
     effective_start: addDaysStr(anchor, -28),
     active: true,
   });
+
+  // Scheduling rules — mirror Lucy's "regular schedule" + recurring assignments so
+  // the propose-and-accept flow (staff record + the builder's "Apply rules") and the
+  // unmet-rule warnings have real data to show.
+  const svId = locIds.get("SV")!;
+  await service.from("staff_scheduling_rule").insert([
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Carlos Rivera")!,
+      rule_type: "recurring_shift",
+      work_type_id: wtIds.get("Dispensing") ?? null,
+      location_id: svId,
+      frequency: "weekly",
+      params: { days: [1, 2, 3, 4, 5], start_time: "09:00", end_time: "17:00" },
+      notes: "Regular weekday pattern.",
+      is_active: true,
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Dr. Lena Park")!,
+      rule_type: "recurring_work_type_assignment",
+      work_type_id: wtIds.get("Training") ?? null,
+      location_id: svId,
+      frequency: "every_other_week",
+      params: {
+        days: [1],
+        start_time: "08:30",
+        end_time: "16:00",
+        anchor_date: anchor,
+      },
+      notes: "Every other Monday — keep clinical skills sharp.",
+      is_active: true,
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Dr. Lena Park")!,
+      rule_type: "nth_weekday_assignment",
+      work_type_id: wtIds.get("Training") ?? null,
+      location_id: svId,
+      frequency: "monthly_by_occurrence",
+      params: {
+        week_occurrence: 3,
+        day_of_week: 4,
+        start_time: "12:00",
+        duration_hours: 1,
+      },
+      notes: "Third Thursday — one hour of training.",
+      is_active: true,
+    },
+    {
+      tenant_id: tenantId,
+      staff_id: staffIds.get("Ashley Morales")!,
+      rule_type: "monthly_quota",
+      work_type_id: wtIds.get("Inventory") ?? null,
+      location_id: svId,
+      frequency: "monthly_by_date",
+      params: { quota_per_period: 1 },
+      notes: "One inventory day per month.",
+      is_active: true,
+    },
+  ]);
+  log("Seeded scheduling rules (regular pattern + recurring assignments).");
 
   // PTO — one approved (next week), one pending (two weeks out)
   const ptoStart = addDaysStr(anchor, 7); // next Monday
