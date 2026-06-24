@@ -125,10 +125,21 @@ export function nextPeriodStart(prevEnd: string): string {
   return addDaysStr(prevEnd, 1);
 }
 
-/** Monday of the week containing the given date (UTC). */
-export function mondayOf(date: string): string {
+/**
+ * Start of the week containing `date`, given the tenant's first day of week
+ * (0=Sun … 6=Sat). Generalizes mondayOf so weekly/biweekly periods and the grid
+ * align to the tenant's chosen week start. Default 1 = Monday (prior behavior).
+ */
+export function weekStartOf(date: string, weekStartDay = 1): string {
   const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return addDaysStr(date, dow === 0 ? -6 : 1 - dow);
+  const diff = (dow - weekStartDay + 7) % 7;
+  return addDaysStr(date, -diff);
+}
+
+/** Monday of the week containing the given date (UTC). Kept for callers that are
+ *  intentionally Monday-anchored; configurable callers use weekStartOf. */
+export function mondayOf(date: string): string {
+  return weekStartOf(date, 1);
 }
 
 /** First day of the month containing the given date (yyyy-mm-dd). */
@@ -136,15 +147,16 @@ export function monthStart(date: string): string {
   return `${date.slice(0, 7)}-01`;
 }
 
-/** Default first-period start: this week's Monday / first of this month. */
-export function defaultPeriodStart(cycle: "weekly" | "biweekly" | "monthly"): string {
+/** Default first-period start: this week's start day / first of this month. */
+export function defaultPeriodStart(
+  cycle: "weekly" | "biweekly" | "monthly",
+  weekStartDay = 1
+): string {
   const now = new Date();
   if (cycle === "monthly") {
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
       .toISOString()
       .slice(0, 10);
   }
-  const today = todayStr();
-  const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
-  return addDaysStr(today, dow === 0 ? -6 : 1 - dow); // Monday
+  return weekStartOf(todayStr(), weekStartDay);
 }

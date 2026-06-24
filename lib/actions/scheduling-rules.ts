@@ -169,7 +169,8 @@ export async function applyRuleProposals(
         ctx.tenantId,
         ctx.tenant.schedule_cycle,
         p.location_id,
-        p.date
+        p.date,
+        ctx.tenant.week_start_day
       );
       let status = periodStatusById.get(periodId);
       if (!status) {

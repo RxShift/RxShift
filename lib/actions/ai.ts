@@ -19,7 +19,7 @@ import {
   validateBundle,
   type PeriodBundle,
 } from "@/lib/schedule-data";
-import { eachDate, fmtDay, mondayOf, monthStart, periodEnd } from "@/lib/dates";
+import { eachDate, fmtDay, weekStartOf, monthStart, periodEnd } from "@/lib/dates";
 import { timeToMinutes } from "@/lib/engine/ratio";
 import { ensurePeriodForDate } from "./schedule";
 import type { ConstraintRule, Tenant } from "@/lib/types";
@@ -295,7 +295,9 @@ async function resolveAiBundle(
   }
   if (!locationId) return null;
   const start =
-    tenant.schedule_cycle === "monthly" ? monthStart(refDate) : mondayOf(refDate);
+    tenant.schedule_cycle === "monthly"
+      ? monthStart(refDate)
+      : weekStartOf(refDate, tenant.week_start_day);
   const end = periodEnd(start, tenant.schedule_cycle);
   const range = await loadAllLocationsBundle(start, end);
   return {
@@ -693,7 +695,8 @@ export async function applyAiOperations(
         ctx.tenantId,
         ctx.tenant.schedule_cycle,
         locationId,
-        refDate
+        refDate,
+        ctx.tenant.week_start_day
       );
     }
 

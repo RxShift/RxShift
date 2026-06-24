@@ -28,6 +28,8 @@ const tenantSchema = z.object({
   nevada_r072_25: z.coerce.boolean().default(false),
   // When on, a reason is required to save any PTO (request or scheduler-entered).
   pto_reason_required: z.coerce.boolean().default(false),
+  // First day of the week: 0=Sun … 6=Sat. Drives grid columns + period alignment.
+  week_start_day: z.coerce.number().int().min(0).max(6).default(1),
 });
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {

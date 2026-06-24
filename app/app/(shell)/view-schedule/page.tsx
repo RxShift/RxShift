@@ -7,7 +7,7 @@ import { loadAllLocationsBundle } from "@/lib/schedule-data";
 import { signedAvatarUrls } from "@/lib/avatars";
 import {
   addDaysStr,
-  mondayOf,
+  weekStartOf,
   monthStart,
   nowInTimeZone,
   periodEnd,
@@ -22,13 +22,20 @@ type ViewMode = (typeof VIEW_MODES)[number];
 
 function viewWindow(
   view: ViewMode,
-  anchor: string
+  anchor: string,
+  weekStartDay: number
 ): { start: string; end: string } {
   if (view === "month") {
-    const start = monthStart(anchor);
-    return { start, end: periodEnd(start, "monthly") };
+    // Month-straddle (Area 5): extend the visible range to FULL weeks so the
+    // first/last weeks of the month aren't clipped — back to the week start
+    // before the 1st, forward to the week end after the last day.
+    const ms = monthStart(anchor);
+    const me = periodEnd(ms, "monthly");
+    const start = weekStartOf(ms, weekStartDay);
+    const end = addDaysStr(weekStartOf(me, weekStartDay), 6);
+    return { start, end };
   }
-  const start = mondayOf(anchor);
+  const start = weekStartOf(anchor, weekStartDay);
   return { start, end: addDaysStr(start, view === "2week" ? 13 : 6) };
 }
 
@@ -144,7 +151,7 @@ export default async function ViewSchedulePage({
     params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
       ? params.anchor
       : today;
-  const { start, end } = viewWindow(view, anchor);
+  const { start, end } = viewWindow(view, anchor, tenant.week_start_day);
   const locationFilter =
     params.location && locs.some((l) => l.id === params.location)
       ? params.location

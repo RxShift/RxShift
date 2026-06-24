@@ -14,7 +14,7 @@ import { signedAvatarUrls } from "@/lib/avatars";
 import {
   addDaysStr,
   fmtRange,
-  mondayOf,
+  weekStartOf,
   monthStart,
   nowInTimeZone,
   periodEnd,
@@ -32,13 +32,14 @@ import type {
 // always one period at a time. (Reviewing in any span lives on View Schedule.)
 function cadenceWindow(
   cycle: ScheduleCycle,
-  anchor: string
+  anchor: string,
+  weekStartDay: number
 ): { start: string; end: string } {
   if (cycle === "monthly") {
     const start = monthStart(anchor);
     return { start, end: periodEnd(start, "monthly") };
   }
-  const start = mondayOf(anchor);
+  const start = weekStartOf(anchor, weekStartDay);
   return { start, end: periodEnd(start, cycle) };
 }
 
@@ -146,7 +147,7 @@ export default async function SchedulePage({
     params.anchor && /^\d{4}-\d{2}-\d{2}$/.test(params.anchor)
       ? params.anchor
       : today;
-  const { start, end } = cadenceWindow(cycle, anchor);
+  const { start, end } = cadenceWindow(cycle, anchor, tenant.week_start_day);
   const label = periodLabel(cycle, start, end);
   const locationFilter =
     params.location && locs.some((l) => l.id === params.location)

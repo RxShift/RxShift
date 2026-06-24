@@ -26,6 +26,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
       default_break_minutes: data.get("default_break_minutes"),
       nevada_r072_25: data.get("nevada_r072_25") === "on",
       pto_reason_required: data.get("pto_reason_required") === "on",
+      week_start_day: data.get("week_start_day"),
     });
     setMessage(result.ok ? "Saved." : result.error);
     setSaving(false);
@@ -69,6 +70,27 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
             . You can still view the schedule by week, two weeks, or month at any
             time; this only sets how you build. Biweekly cadences tend to reduce
             unplanned callouts.
+          </HelpText>
+        </div>
+        <div>
+          <Label htmlFor="week_start_day">First day of the week</Label>
+          <Select
+            id="week_start_day"
+            name="week_start_day"
+            defaultValue={String(tenant.week_start_day ?? 1)}
+          >
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+          </Select>
+          <HelpText>
+            Sets the schedule grid column order, weekly/biweekly period boundaries,
+            and reporting week grouping. Best chosen once at setup — changing it
+            later only affects periods you build from then on.
           </HelpText>
         </div>
         <div>

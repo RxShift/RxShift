@@ -8,7 +8,7 @@ import {
   nextPeriodStart,
   periodEnd,
   addDaysStr,
-  mondayOf,
+  weekStartOf,
   monthStart,
 } from "@/lib/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -45,7 +45,8 @@ export async function ensurePeriodForDate(
   tenantId: string,
   cycle: ScheduleCycle,
   locationId: string,
-  date: string
+  date: string,
+  weekStartDay = 1
 ): Promise<string> {
   const { data: existing } = await supabase
     .from("schedule_period")
@@ -58,7 +59,8 @@ export async function ensurePeriodForDate(
     .maybeSingle();
   if (existing) return existing.id as string;
 
-  const start = cycle === "monthly" ? monthStart(date) : mondayOf(date);
+  const start =
+    cycle === "monthly" ? monthStart(date) : weekStartOf(date, weekStartDay);
   const end = periodEnd(start, cycle);
   const { data: row, error } = await supabase
     .from("schedule_period")
@@ -156,7 +158,8 @@ export async function upsertShift(
         ctx.tenantId,
         ctx.tenant.schedule_cycle,
         data.location_id,
-        data.date
+        data.date,
+        ctx.tenant.week_start_day
       ));
     // A shift inherits its covering period's status. Saving into an already-
     // PUBLISHED period goes live immediately (what a manager expects for a
@@ -588,7 +591,8 @@ export async function copyForwardWindow(
           ctx.tenantId,
           ctx.tenant.schedule_cycle,
           sh.location_id,
-          newDate
+          newDate,
+          ctx.tenant.week_start_day
         );
         periodCache.set(pcKey, periodId);
       }
@@ -728,7 +732,8 @@ export async function copyShiftForward(
           ctx.tenantId,
           ctx.tenant.schedule_cycle,
           src.location_id,
-          d
+          d,
+          ctx.tenant.week_start_day
         );
         periodCache.set(d, periodId);
       }
