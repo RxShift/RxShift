@@ -29,6 +29,10 @@ Jamison.
 - **Resend webhook** rejects stale events (svix-timestamp freshness ±5 min) — replay protection.
 - **Removed dead `createAdminClient`** from `lib/supabase/server.ts` (a service-role factory with no `server-only`
   guard — latent footgun). The only service-role client is `lib/supabase/admin.ts` (`server-only`).
+- **Cloudflare Turnstile (free CAPTCHA) on the demo form** — `lib/turnstile.ts` + the widget in
+  `contact-form.tsx`, verified server-side in `/api/contact`. Gated on `NEXT_PUBLIC_TURNSTILE_SITE_KEY` /
+  `TURNSTILE_SECRET_KEY`, so it ships **dormant until the keys are added**, then activates automatically. Fails
+  open on a Cloudflare outage so real leads aren't lost; the rate limiter stays as the second layer.
 
 **Schema (migration 0036, applied):**
 - `rate_limit` table (RLS deny-all; service-role + SECURITY DEFINER fn only) + `check_rate_limit()` fn.
@@ -38,8 +42,9 @@ Jamison.
 **Open / deferred (need Jamison):**
 - OpenAI data egress (staff names + schedules → gpt-4o-mini): confirm privacy policy / DPA / zero-retention.
 - Content-Security-Policy: deferred — needs per-page testing; other headers shipped.
-- Optional: CAPTCHA on the demo form; enable Supabase "leaked password protection" (dashboard toggle);
-  add an audit entry when a platform admin emulates/switches into a tenant (observability).
+- Add the Cloudflare Turnstile keys (site + secret) to activate the demo-form CAPTCHA (built this session,
+  dormant until set). Enable Supabase "leaked password protection" (dashboard toggle). Optional: add an audit
+  entry when a platform admin emulates/switches into a tenant (observability).
 
 ## 2026-06-23 — Grid opens on today + website copy = "Demo"
 

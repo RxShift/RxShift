@@ -1,6 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Script from "next/script";
+
+// Cloudflare Turnstile (free CAPTCHA). The widget renders ONLY when a site key
+// is configured, so the form behaves exactly as before until the key is added.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+      reset: (id?: string) => void;
+    };
+  }
+}
 
 const US_STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
@@ -34,11 +48,39 @@ export default function ContactForm({
   id?: string;
 }) {
   const [status, setStatus] = useState<Status>("idle");
+  const [errMsg, setErrMsg] = useState("");
   const [firstName, setFirstName] = useState("");
+
+  // Turnstile (only active when a site key is configured)
+  const [tsToken, setTsToken] = useState("");
+  const [tsScriptReady, setTsScriptReady] = useState(false);
+  const tsRef = useRef<HTMLDivElement>(null);
+  const tsWidgetId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !tsScriptReady || !tsRef.current) return;
+    if (tsWidgetId.current || !window.turnstile) return;
+    tsWidgetId.current = window.turnstile.render(tsRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: "dark",
+      callback: (t: string) => setTsToken(t),
+      "error-callback": () => setTsToken(""),
+      "expired-callback": () => setTsToken(""),
+    });
+  }, [tsScriptReady]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    // If Turnstile is active, require a token before sending.
+    if (TURNSTILE_SITE_KEY && !tsToken) {
+      setErrMsg("Please complete the verification below and try again.");
+      setStatus("error");
+      return;
+    }
+
     setStatus("sending");
+    setErrMsg("");
 
     const form = e.currentTarget;
     const data = new FormData(form);
@@ -58,9 +100,21 @@ export default function ContactForm({
           source,
           // Honeypot — humans never see or fill this field
           website: data.get("website"),
+          // Cloudflare Turnstile token (empty string when disabled)
+          turnstileToken: tsToken,
         }),
       });
-      setStatus(res.ok ? "success" : "error");
+      if (res.ok) {
+        setStatus("success");
+      } else {
+        setErrMsg("");
+        setStatus("error");
+        // Let the visitor try again with a fresh challenge.
+        if (TURNSTILE_SITE_KEY) {
+          window.turnstile?.reset(tsWidgetId.current ?? undefined);
+          setTsToken("");
+        }
+      }
     } catch {
       setStatus("error");
     }
@@ -68,6 +122,13 @@ export default function ContactForm({
 
   return (
     <section id={id} className="scroll-mt-16 bg-navy px-6 py-16 sm:py-24">
+      {TURNSTILE_SITE_KEY && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={() => setTsScriptReady(true)}
+        />
+      )}
       <div className="mx-auto max-w-[560px] text-center">
         <h2 className="font-brand text-[26px] font-bold leading-snug text-white sm:text-[32px]">
           {heading}
@@ -192,6 +253,9 @@ export default function ContactForm({
               </div>
             </div>
 
+            {/* Cloudflare Turnstile — renders only when a site key is set */}
+            {TURNSTILE_SITE_KEY && <div ref={tsRef} className="mt-5" />}
+
             <button
               type="submit"
               disabled={status === "sending"}
@@ -202,10 +266,14 @@ export default function ContactForm({
 
             {status === "error" && (
               <p className="mt-4 text-center font-body text-sm text-white">
-                Something went wrong. Email us directly at{" "}
-                <a href="mailto:info@rxshift.io" className="text-amber">
-                  info@rxshift.io
-                </a>
+                {errMsg || (
+                  <>
+                    Something went wrong. Email us directly at{" "}
+                    <a href="mailto:info@rxshift.io" className="text-amber">
+                      info@rxshift.io
+                    </a>
+                  </>
+                )}
               </p>
             )}
           </form>

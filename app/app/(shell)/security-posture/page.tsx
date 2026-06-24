@@ -25,7 +25,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
   {
     heading: "Authentication & access",
     items: [
-      "Magic-link email sign-in (Supabase Auth) — no passwords stored, phished, or reused. The sign-in and public demo-request endpoints are rate-limited with a shared, cross-instance store (per email and per IP), so a known inbox can't be flooded with sign-in links and accounts can't be enumerated at scale.",
+      "Magic-link email sign-in (Supabase Auth) — no passwords stored, phished, or reused. The sign-in and public demo-request endpoints are rate-limited with a shared, cross-instance store (per email and per IP), so a known inbox can't be flooded with sign-in links and accounts can't be enumerated at scale. The public demo form also carries a bot challenge (Cloudflare Turnstile).",
       "An account may have additional admin-registered sign-in addresses (e.g., a work email for the work desktop); every sign-in still proves control of the inbox via a one-time link.",
       "Roles: Owner/Admin, Scheduler (department-scopable), Approver/Supervisor, Read-only, Staff. Server actions re-check the role on every write. Schedulers and supervisors can edit pharmacy configuration (locations, ratio rules, work types); going live, deleting the workspace, assigning roles, and offboarding remain Owner/Admin-only.",
       "Staff see their own schedule and requests; managers see their tenant; nobody sees another tenant.",

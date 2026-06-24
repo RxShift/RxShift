@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, brandedEmailHtml, emailFields, emailLines } from "@/lib/email";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit-db";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 /**
  * Best-effort CRM capture — a failed database write must never block the email
@@ -70,7 +71,7 @@ async function captureLead(input: {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, pharmacy, state, email, message, source, website } =
+    const { name, pharmacy, state, email, message, source, website, turnstileToken } =
       await request.json();
 
     // Honeypot: bots fill the hidden field; pretend success and do nothing
@@ -94,6 +95,14 @@ export async function POST(request: NextRequest) {
       (await checkRateLimit("contact:email", String(email).toLowerCase(), 3, 3600));
     if (!withinLimits) {
       return NextResponse.json({ success: true });
+    }
+
+    // Cloudflare Turnstile (dormant until keys are configured; see lib/turnstile).
+    if (!(await verifyTurnstile(turnstileToken, ip))) {
+      return NextResponse.json(
+        { error: "Verification failed. Please try again." },
+        { status: 400 }
+      );
     }
 
     const src = typeof source === "string" && source ? source : "unknown";
