@@ -185,6 +185,62 @@ describe("evaluateZone", () => {
   });
 });
 
+describe("excluded_from_ratio — present on the floor but skipped entirely", () => {
+  const exclRph = (name = "Sup RPh"): EngineStaff => ({
+    ...rph(name),
+    excluded_from_ratio: true,
+  });
+  const exclTech = (name: string): EngineStaff => ({
+    ...tech(name),
+    excluded_from_ratio: true,
+  });
+
+  it("an excluded pharmacist does not count as a pharmacist on duty", () => {
+    // An excluded pharmacist + a counting tech → no REAL pharmacist present → deficient
+    const evals = evaluateZone(
+      [seg(exclRph(), "08:00", "12:00", null), seg(tech("Ann"), "08:00", "12:00")],
+      RULE,
+      30
+    );
+    const slot = evals.get("2026-06-15")![0];
+    expect(slot.pharmacists).toEqual([]);
+    expect(slot.status).toBe("deficient");
+    expect(slot.deficiency_reason).toContain("no pharmacist");
+  });
+
+  it("an excluded tech doesn't count toward the ceiling and isn't listed", () => {
+    // 1 RPh + 3 counting techs is compliant; an EXCLUDED 4th tech keeps it compliant
+    const evals = evaluateZone(
+      [
+        seg(rph(), "08:00", "12:00", null),
+        seg(tech("Ann"), "08:00", "12:00"),
+        seg(tech("Bo"), "08:00", "12:00"),
+        seg(tech("Cy"), "08:00", "12:00"),
+        seg(exclTech("Sup"), "08:00", "12:00"),
+      ],
+      RULE,
+      30
+    );
+    const slot = evals.get("2026-06-15")![0];
+    expect(slot.status).toBe("compliant");
+    expect(slot.techs_counting).not.toContain("Sup");
+    expect(slot.techs_present_non_counting.map((t) => t.name)).not.toContain("Sup");
+  });
+
+  it("an excluded tech does not satisfy the solo-pharmacist floor", () => {
+    // floor needs ≥1 support; the only support person here is excluded → floor unmet
+    const FLOOR_RULE = { max_techs_per_pharmacist: 4, floor_min_support: 1 };
+    const evals = evaluateZone(
+      [seg(rph(), "08:00", "12:00", null), seg(exclTech("Sup"), "08:00", "12:00")],
+      FLOOR_RULE,
+      30
+    );
+    const slot = evals.get("2026-06-15")![0];
+    expect(slot.status).toBe("deficient");
+    expect(slot.flag_type).toBe("floor");
+  });
+});
+
 describe("additive formula (California BPC 4115: max techs = 2P − 1)", () => {
   const CA_RULE = {
     max_techs_per_pharmacist: 1, // ignored under additive

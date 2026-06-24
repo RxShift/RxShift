@@ -59,6 +59,7 @@ export async function GET(
     const rows = ((staff ?? []) as Staff[]).map((s) => ({
       Name: s.full_name,
       "Counts as": s.ratio_type.replace("_", " "),
+      "Excluded from ratio": s.excluded_from_ratio ? "Yes" : "",
       "Certified (CPhT)": s.certified ? "Yes" : "",
       "Job title": s.job_title ?? "",
       Employment: EMPLOYMENT[s.employment_type] ?? s.employment_type,

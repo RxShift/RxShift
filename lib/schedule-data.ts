@@ -504,6 +504,7 @@ export function toEngineSegments(bundle: PeriodBundle): EngineSegment[] {
           ratio_type: person.ratio_type,
           is_trainee: person.staff_type === "tech_in_training",
           certified: person.certified,
+          excluded_from_ratio: person.excluded_from_ratio,
         },
         work_type: wt
           ? {

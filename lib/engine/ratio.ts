@@ -101,6 +101,8 @@ export function wouldBreakIfOneLeaves(
  * Does this segment's person count toward ratio while in this segment?
  *
  * COUNTING PRECEDENCE (highest wins):
+ *   0. staff.excluded_from_ratio  → handled in evaluateZone (the person is skipped
+ *      ENTIRELY before this is reached, so they don't count and aren't even listed).
  *   1. staff.ratio_type === "non_counting"  → never counts, full stop.
  *   2. segment counts_override (true/false)  → explicit per-segment decision.
  *   3. work_type.counting_default            → the work type decides.
@@ -182,6 +184,11 @@ export function evaluateZone(
 
       for (const iv of present) {
         const { seg } = iv;
+        // Excluded-from-ratio staff are physically present but skipped entirely:
+        // never count, never hit the ceiling/trainee sublimit, never satisfy the
+        // solo-pharmacist floor, never listed. (Like non_counting, but their RPh/
+        // tech role + grid band are preserved.)
+        if (seg.staff.excluded_from_ratio) continue;
         const counts = segmentCounts(seg);
         if (seg.staff.ratio_type === "pharmacist") {
           if (counts) pharmacists.add(seg.staff.full_name);

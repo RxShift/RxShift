@@ -171,7 +171,7 @@ export async function finalizeComplianceForTenant(
     { data: liveRows },
   ] = await Promise.all([
     service.from("ratio_rule").select("*").eq("tenant_id", tenant.id),
-    service.from("staff").select("id, full_name, ratio_type, staff_type, certified").eq("tenant_id", tenant.id),
+    service.from("staff").select("id, full_name, ratio_type, staff_type, certified, excluded_from_ratio").eq("tenant_id", tenant.id),
     service.from("work_type").select("id, name, counts_as, counting_default").eq("tenant_id", tenant.id),
     service.from("location").select("id, name, location_type, has_drive_through").eq("tenant_id", tenant.id),
     service.from("live_status_config").select("*").eq("tenant_id", tenant.id),
@@ -199,6 +199,7 @@ export async function finalizeComplianceForTenant(
       ratio_type: string;
       staff_type: string;
       certified: boolean;
+      excluded_from_ratio: boolean;
     }[]).map((s) => [s.id, s])
   );
   const wtById = new Map(
@@ -257,6 +258,7 @@ export async function finalizeComplianceForTenant(
           ratio_type: person.ratio_type as RatioType,
           is_trainee: person.staff_type === "tech_in_training",
           certified: person.certified,
+          excluded_from_ratio: person.excluded_from_ratio,
         },
         work_type: wt
           ? {

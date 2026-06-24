@@ -40,7 +40,7 @@ export type ConstraintRuleType =
   | "recurring_unavailable"
   | "always_off"
   | "max_consecutive_days";
-export type WarningType = "ratio" | "cap" | "constraint";
+export type WarningType = "ratio" | "cap" | "constraint" | "rule";
 export type TenantStatus = "setup" | "trial" | "live";
 
 export interface Tenant {
@@ -78,6 +78,9 @@ export interface Tenant {
   /** Nevada R072-25 (proposed, not adopted): when on, retail locations use the
    *  4-tech ceiling + 2-trainee sublimit + the solo-pharmacist staffing floor. */
   nevada_r072_25: boolean;
+  /** First day of the week: 0=Sun … 6=Sat. Default 1 (Monday) preserves the prior
+   *  hardcoded behavior. Drives grid column order, period alignment, reporting weeks. */
+  week_start_day: number;
   // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)
   billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
   billing_provider: "manual" | "stripe" | "chargebee" | null;
@@ -206,6 +209,9 @@ export interface Location {
   expected_rx_fri: number | null;
   expected_rx_sat: number | null;
   expected_rx_sun: number | null;
+  /** Free-text daily coverage targets shown in the builder (e.g. "1 CCC RPh every
+   *  weekday by 8:30am; 2.6 homeside daily"). Informational — never enforced. */
+  coverage_notes: string | null;
   created_at: string;
 }
 
@@ -233,6 +239,12 @@ export interface Staff {
   employment_type: EmploymentType;
   /** CPhT national certification — drives the Tennessee certified-uncapped ceiling */
   certified: boolean;
+  /** Free-text scheduling notes shown on the staff record (preferences, strengths). */
+  scheduling_notes: string | null;
+  /** Present on the floor but NEVER counts toward the ratio, without changing their
+   *  RPh/tech role or grid band (supervisors, procurement, billing). The engine skips
+   *  them entirely. Distinct from ratio_type='non_counting' (which also strips role). */
+  excluded_from_ratio: boolean;
   active: boolean;
   /** Path within the private 'avatars' Storage bucket; null = no photo */
   avatar_path: string | null;
@@ -381,6 +393,52 @@ export interface ConstraintRule {
   created_at: string;
 }
 
+// ─── Scheduling rules (positive scheduling instructions) ─────────────────────
+// Opposite of constraints: things the system should actively schedule FOR a person.
+// rule_type + params jsonb mirror constraint_rule. See migration 0037 and
+// lib/engine/scheduling-rules.ts (the deterministic resolver that turns these into
+// propose-and-accept candidate shifts).
+export type SchedulingRuleType =
+  | "recurring_shift" // base regular pattern: days + times (+ optional work type)
+  | "preferred_shift_length"
+  | "preferred_days"
+  | "preferred_work_type_by_day"
+  | "recurring_work_type_assignment"
+  | "monthly_quota"
+  | "nth_weekday_assignment"
+  | "quarterly_project_days"
+  | "float_location"
+  | "per_diem_availability"
+  | "preferred_not_assigned";
+
+export type SchedulingRuleFrequency =
+  | "weekly"
+  | "every_other_week"
+  | "every_other_month"
+  | "monthly_by_date"
+  | "monthly_by_occurrence"
+  | "quarterly"
+  | "annually";
+
+export interface StaffSchedulingRule {
+  id: string;
+  tenant_id: string;
+  staff_id: string;
+  rule_type: SchedulingRuleType;
+  /** Work type the rule assigns (null = none named). */
+  work_type_id: string | null;
+  /** Location the rule applies to (null = any / home location). */
+  location_id: string | null;
+  frequency: SchedulingRuleFrequency | null;
+  /** day_of_week (0–6) | days (int[]) | week_occurrence | month_occurrence (int[]) |
+   *  preferred_start_time/preferred_end_time | shift_length_hours | quota_per_period |
+   *  anchor_date — see the resolver. */
+  params: Record<string, unknown>;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 export type RatioFormula = "flat" | "additive";
 
 export interface RatioRule {
@@ -455,7 +513,7 @@ export interface OverrideLog {
   id: string;
   tenant_id: string;
   actor_user_id: string;
-  target_type: "shift" | "slot" | "time_off" | "swap" | "callout";
+  target_type: "shift" | "slot" | "time_off" | "swap" | "callout" | "rule";
   target_id: string;
   warning_type: WarningType;
   reason: string;

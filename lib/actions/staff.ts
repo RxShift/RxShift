@@ -26,6 +26,14 @@ const staffSchema = z.object({
   employment_type: z.enum(["full_time", "part_time", "per_diem", "contractor_1099"]),
   home_location_id: z.string().uuid().nullish(),
   certified: z.coerce.boolean().default(false),
+  // Free-text scheduling notes shown on the staff record.
+  scheduling_notes: z
+    .string()
+    .max(4000)
+    .nullish()
+    .or(z.literal("").transform(() => null)),
+  // Present on the floor but never counted toward the ratio (keeps RPh/tech role).
+  excluded_from_ratio: z.coerce.boolean().default(false),
   active: z.coerce.boolean().default(true),
 });
 

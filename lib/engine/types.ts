@@ -12,6 +12,10 @@ export interface EngineStaff {
   is_trainee?: boolean;
   /** CPhT — under Tennessee rules, certified techs are uncapped. */
   certified?: boolean;
+  /** Present on the floor but excluded from ALL ratio math (supervisors, procurement,
+   *  billing). The engine skips them entirely — they never enter the pharmacist count,
+   *  the tech ceiling, the trainee sublimit, or the solo-pharmacist floor. */
+  excluded_from_ratio?: boolean;
 }
 
 export interface EngineWorkType {
