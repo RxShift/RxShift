@@ -58,6 +58,8 @@ export default function ScheduleGrid({
   locationNameById,
   expectedRxByDate,
   avatarUrlById,
+  staffTooltipById,
+  onStaffClick,
   onCellClick,
   readOnly = false,
 }: {
@@ -79,6 +81,10 @@ export default function ScheduleGrid({
   expectedRxByDate?: Map<string, number>;
   /** When set, an avatar (photo or initials) shows before each staff name. */
   avatarUrlById?: Record<string, string>;
+  /** Multi-line hover text per staff (notes + active rules/constraints). Build only. */
+  staffTooltipById?: Record<string, string>;
+  /** Click a staff name → open their record (Build only; ignored when readOnly). */
+  onStaffClick?: (staff: Staff) => void;
   onCellClick: (staff: Staff, date: string, shift: ShiftWithSegments | null) => void;
   /** Read-only (View Schedule): no cursor/hover affordance, cells aren't clickable. */
   readOnly?: boolean;
@@ -208,9 +214,26 @@ export default function ScheduleGrid({
                           size={24}
                         />
                       )}
-                      <span className="font-body text-[13px] font-medium text-navy">
-                        {person.full_name}
-                      </span>
+                      {!readOnly && onStaffClick ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStaffClick(person);
+                          }}
+                          title={staffTooltipById?.[person.id]}
+                          className="text-left font-body text-[13px] font-medium text-navy underline-offset-2 hover:underline"
+                        >
+                          {person.full_name}
+                        </button>
+                      ) : (
+                        <span
+                          title={staffTooltipById?.[person.id]}
+                          className="font-body text-[13px] font-medium text-navy"
+                        >
+                          {person.full_name}
+                        </span>
+                      )}
                       {person.ratio_type === "technician" &&
                         person.certified && (
                           <span className="font-body text-[10px] text-steel">

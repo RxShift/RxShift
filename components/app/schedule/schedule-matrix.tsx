@@ -18,9 +18,18 @@ import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
 import { BUILD_MODE_EVENT, isBuildMode, setBuildMode } from "@/lib/build-mode";
 import ShiftModal from "./shift-modal";
 import AiCommandBar from "./ai-command-bar";
+import RulesApplyModal from "./rules-apply-modal";
+import StaffRecordPanel from "@/components/app/staff/staff-record-panel";
+import SlideOver from "@/components/ui/slide-over";
 import ScheduleGrid, { type DateStatus } from "./schedule-grid";
 import type { ValidationOut } from "@/lib/schedule-data";
+import {
+  CONSTRAINT_RULE_LABELS,
+  describeConstraint,
+} from "@/lib/constraints-display";
+import { describeRule } from "@/lib/scheduling-rules-display";
 import type {
+  ConstraintRule,
   Department,
   Location,
   PtoDay,
@@ -28,6 +37,7 @@ import type {
   Shift,
   ShiftSegment,
   Staff,
+  StaffSchedulingRule,
   Tenant,
   TimeOffRequest,
   WorkType,
@@ -53,6 +63,8 @@ export default function ScheduleMatrix({
   holidaysByDate,
   validation,
   avatarUrls,
+  constraints,
+  schedulingRules,
   /** When set, show only this location (rows with a shift there); null = all. */
   locationFilter,
   /** Anchor + the cadence-period label, so the strip can build nav + show it. */
@@ -78,6 +90,9 @@ export default function ScheduleMatrix({
   holidaysByDate: Record<string, string>;
   validation: ValidationOut;
   avatarUrls: Record<string, string>;
+  /** Active constraints + scheduling rules for the tooltip on each staff name. */
+  constraints: ConstraintRule[];
+  schedulingRules: StaffSchedulingRule[];
   locationFilter: string | null;
   anchor: string;
   periodLabel: string;
@@ -102,6 +117,9 @@ export default function ScheduleMatrix({
   // rows (no dropdown), click to toggle.
   const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set());
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
+  // Rule-driven proposals (period-level) + the staff record slide-over (name click).
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [staffPanelId, setStaffPanelId] = useState<string | null>(null);
 
   // Build mode = the focused, chrome-free surface. When on, the four stacked
   // control rows collapse into one command strip (below) and the page chrome
@@ -389,6 +407,51 @@ export default function ScheduleMatrix({
     [workTypes]
   );
 
+  // Hover text on each staff name (Build only): notes + a couple of active rules +
+  // a couple of active constraints. The full record is one click away (slide-over).
+  const staffTooltipById = useMemo(() => {
+    const wtName = (id: string) => workTypeById.get(id)?.name;
+    const consByStaff = new Map<string, ConstraintRule[]>();
+    for (const c of constraints) {
+      if (!c.active || c.scope_type !== "staff") continue;
+      const list = consByStaff.get(c.scope_id) ?? [];
+      list.push(c);
+      consByStaff.set(c.scope_id, list);
+    }
+    const rulesByStaff = new Map<string, StaffSchedulingRule[]>();
+    for (const r of schedulingRules) {
+      if (!r.is_active) continue;
+      const list = rulesByStaff.get(r.staff_id) ?? [];
+      list.push(r);
+      rulesByStaff.set(r.staff_id, list);
+    }
+    const out: Record<string, string> = {};
+    for (const s of staff) {
+      const lines: string[] = [];
+      if (s.scheduling_notes?.trim()) lines.push(s.scheduling_notes.trim());
+      const rls = (rulesByStaff.get(s.id) ?? []).slice(0, 3);
+      if (rls.length)
+        lines.push(
+          "Rules: " +
+            rls.map((r) => describeRule(r, { workTypeName: wtName })).join("; ")
+        );
+      const cons = (consByStaff.get(s.id) ?? []).slice(0, 3);
+      if (cons.length)
+        lines.push(
+          "Limits: " +
+            cons
+              .map(
+                (c) => `${CONSTRAINT_RULE_LABELS[c.rule_type]} (${describeConstraint(c)})`
+              )
+              .join("; ")
+        );
+      if (s.excluded_from_ratio) lines.push("Excluded from ratio");
+      if (lines.length) lines.push("— click to open record");
+      if (lines.length) out[s.id] = lines.join("\n");
+    }
+    return out;
+  }, [staff, constraints, schedulingRules, workTypeById]);
+
   const locationNameById = useMemo(
     () => new Map(locations.map((l) => [l.id, shortLocationName(l.name)])),
     [locations]
@@ -558,6 +621,13 @@ export default function ScheduleMatrix({
             )}
             <Button
               variant="secondary"
+              onClick={() => setRulesOpen(true)}
+              title="Propose shifts from each person's scheduling rules"
+            >
+              Rules
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => setConfirmCopy(true)}
               disabled={busy}
               title={`${copyLabel} into this period`}
@@ -607,6 +677,13 @@ export default function ScheduleMatrix({
             </button>
           )}
           <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setRulesOpen(true)}
+              title="Propose shifts from each person's scheduling rules"
+            >
+              Apply rules
+            </Button>
             <Button
               variant="secondary"
               onClick={() => setConfirmCopy(true)}
@@ -726,6 +803,8 @@ export default function ScheduleMatrix({
           locationNameById={locationNameById}
           expectedRxByDate={expectedRxByDate}
           avatarUrlById={avatarUrls}
+          staffTooltipById={staffTooltipById}
+          onStaffClick={(person) => setStaffPanelId(person.id)}
           onCellClick={(person, date, shift) =>
             setEditing({ staff: person, date, shift })
           }
@@ -870,6 +949,42 @@ export default function ScheduleMatrix({
           cell that already has a shift.
         </p>
       </Modal>
+
+      <RulesApplyModal
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        windowStart={viewStart}
+        windowEnd={viewEnd}
+        windowLabel={periodLabel}
+        locationFilter={locationFilter}
+        onApplied={() => router.refresh()}
+      />
+
+      <SlideOver
+        open={staffPanelId !== null}
+        onClose={() => setStaffPanelId(null)}
+        title="Staff record"
+        subtitle="Notes, constraints, scheduling rules, and this week's proposals"
+        width="wide"
+        footer={
+          <Button variant="secondary" onClick={() => setStaffPanelId(null)}>
+            Close
+          </Button>
+        }
+      >
+        {staffPanelId && (
+          <StaffRecordPanel
+            staffId={staffPanelId}
+            avatarUrl={avatarUrls[staffPanelId]}
+            proposalWindow={{
+              start: viewStart,
+              end: viewEnd,
+              label: periodLabel,
+            }}
+            onChanged={() => router.refresh()}
+          />
+        )}
+      </SlideOver>
     </div>
   );
 }

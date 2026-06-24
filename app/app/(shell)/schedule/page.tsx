@@ -19,7 +19,12 @@ import {
   nowInTimeZone,
   periodEnd,
 } from "@/lib/dates";
-import type { Department, Location, ScheduleCycle } from "@/lib/types";
+import type {
+  Department,
+  Location,
+  ScheduleCycle,
+  StaffSchedulingRule,
+} from "@/lib/types";
 
 // Build Schedule = the manager/scheduler surface, LOCKED to the org's build
 // cadence. The window IS one cadence period (week / 2-week / month per
@@ -162,6 +167,13 @@ export default async function SchedulePage({
   for (const h of (holidayRows ?? []) as { date: string; name: string }[])
     holidaysByDate[h.date] = h.name;
 
+  // Active scheduling rules (tenant-wide) for the staff-name tooltip in the grid.
+  const { data: ruleRows } = await supabase
+    .from("staff_scheduling_rule")
+    .select("*")
+    .eq("is_active", true);
+  const schedulingRules = (ruleRows ?? []) as StaffSchedulingRule[];
+
   // Steppers move one cadence PERIOD at a time (the day just outside the window
   // lands in the neighbouring period).
   const prevAnchor = addDaysStr(start, -1);
@@ -252,6 +264,8 @@ export default async function SchedulePage({
           validation={validation}
           locationFilter={locationFilter}
           avatarUrls={avatarUrls}
+          constraints={allBundle.constraints}
+          schedulingRules={schedulingRules}
           anchor={anchor}
           periodLabel={label}
           aiPeriodId={aiPeriod?.id ?? null}
