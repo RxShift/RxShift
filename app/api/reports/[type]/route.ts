@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
-import { xlsxResponse } from "@/lib/reports";
-import { loadPeriodBundle } from "@/lib/schedule-data";
+import { xlsxResponse, xlsxMultiSheet } from "@/lib/reports";
+import { loadPeriodBundle, loadAllLocationsBundle, validateRangeBundle } from "@/lib/schedule-data";
+import { fmtDay } from "@/lib/dates";
 import type { ComplianceRecordRow, Location, Staff } from "@/lib/types";
+
+/** "HH:MM" → minutes since midnight. */
+function hm(t: string): number {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return h * 60 + (m || 0);
+}
 
 // Basic, structured exports — not a reporting engine. Each report is a
 // tenant-scoped query (RLS client) turned into a board/audit-ready .xlsx.
@@ -189,6 +196,157 @@ export async function GET(
       out,
       "Compliance Record",
       `rxshift-compliance-record-${from}-to-${to}.xlsx`
+    );
+  }
+
+  // ── Flexible schedule export (date range × locations) ────────────────────
+  if (type === "schedule-range") {
+    const tenant = session.tenant;
+    const locParam = sp.get("locations") ?? "all";
+    const bundle = await loadAllLocationsBundle(from, to);
+    const selected =
+      locParam === "all" || !locParam
+        ? new Set(bundle.locations.map((l) => l.id))
+        : new Set(locParam.split(",").filter(Boolean));
+
+    const validation = validateRangeBundle(bundle, tenant);
+    const flagByShift = new Map<string, string[]>();
+    for (const f of validation.constraintFlags) {
+      if (!f.shift_id) continue;
+      const list = flagByShift.get(f.shift_id) ?? [];
+      list.push(f.rule_type.replace(/_/g, " "));
+      flagByShift.set(f.shift_id, list);
+    }
+
+    // Compliance: simple proxy from the as-worked record — did this shift's day +
+    // location have any deficient hour? (Future days have no record → blank.)
+    const { data: recs } = await supabase
+      .from("compliance_record")
+      .select("date, location_id, ratio_status")
+      .gte("date", from)
+      .lte("date", to);
+    const deficientCell = new Set<string>();
+    const recordedCell = new Set<string>();
+    for (const r of (recs ?? []) as {
+      date: string;
+      location_id: string;
+      ratio_status: string;
+    }[]) {
+      recordedCell.add(`${r.date}|${r.location_id}`);
+      if (r.ratio_status === "deficient")
+        deficientCell.add(`${r.date}|${r.location_id}`);
+    }
+
+    const staffById = new Map(bundle.staff.map((s) => [s.id, s]));
+    const wtById = new Map(bundle.workTypes.map((w) => [w.id, w]));
+    const locById = new Map(bundle.locations.map((l) => [l.id, l]));
+
+    const detail: Record<string, unknown>[] = [];
+    const byStaff = new Map<string, { name: string; role: string; hours: number; shifts: number }>();
+    const byLoc = new Map<string, { name: string; hours: number; shifts: number }>();
+
+    for (const sh of bundle.shifts) {
+      if (!selected.has(sh.location_id)) continue;
+      const segs = sh.segments ?? [];
+      if (segs.length === 0) continue;
+      const person = staffById.get(sh.staff_id);
+
+      let mins = 0;
+      for (const g of segs) {
+        const s = hm(g.start_time);
+        const e = hm(g.end_time);
+        mins += (e <= s ? e + 1440 : e) - s; // overnight-aware
+      }
+      const paidHours = Math.max(0, (mins - (sh.break_minutes ?? 0)) / 60);
+      const starts = segs.map((g) => String(g.start_time).slice(0, 5));
+      const ends = segs.map((g) => String(g.end_time).slice(0, 5));
+      const earliest = starts.reduce((a, b) => (b < a ? b : a));
+      const latest = ends.reduce((a, b) => (b > a ? b : a));
+      const wts = [
+        ...new Set(
+          segs
+            .map((g) => (g.work_type_id ? wtById.get(g.work_type_id)?.name : null))
+            .filter((x): x is string => !!x)
+        ),
+      ].join(", ");
+      const cell = `${sh.date}|${sh.location_id}`;
+      const compliance = deficientCell.has(cell)
+        ? "Deficient hour(s)"
+        : recordedCell.has(cell)
+          ? "OK"
+          : "";
+      const flags = [
+        ...(flagByShift.get(sh.id) ?? []),
+        validation.deficientCells[sh.location_id]?.includes(sh.date)
+          ? "ratio gap"
+          : "",
+      ]
+        .filter(Boolean)
+        .join("; ");
+
+      detail.push({
+        Date: sh.date,
+        Day: fmtDay(sh.date).dow,
+        Staff: person?.full_name ?? sh.staff_id,
+        Role: person?.ratio_type.replace("_", " ") ?? "",
+        Location: locById.get(sh.location_id)?.name ?? "",
+        Start: earliest,
+        End: latest,
+        "Hours": Number(paidHours.toFixed(2)),
+        "Work type(s)": wts,
+        "Break (min)": sh.break_minutes ?? 0,
+        Compliance: compliance,
+        Flags: flags,
+      });
+
+      const hs =
+        byStaff.get(sh.staff_id) ??
+        {
+          name: person?.full_name ?? "?",
+          role: person?.ratio_type.replace("_", " ") ?? "",
+          hours: 0,
+          shifts: 0,
+        };
+      hs.hours += paidHours;
+      hs.shifts += 1;
+      byStaff.set(sh.staff_id, hs);
+
+      const hl =
+        byLoc.get(sh.location_id) ??
+        { name: locById.get(sh.location_id)?.name ?? "?", hours: 0, shifts: 0 };
+      hl.hours += paidHours;
+      hl.shifts += 1;
+      byLoc.set(sh.location_id, hl);
+    }
+
+    detail.sort((a, b) =>
+      `${a.Date}|${a.Location}|${a.Staff}`.localeCompare(
+        `${b.Date}|${b.Location}|${b.Staff}`
+      )
+    );
+    const byStaffRows = [...byStaff.values()]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((v) => ({
+        Staff: v.name,
+        Role: v.role,
+        "Total hours": Number(v.hours.toFixed(2)),
+        Shifts: v.shifts,
+      }));
+    const byLocRows = [...byLoc.values()]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((v) => ({
+        Location: v.name,
+        "Total hours": Number(v.hours.toFixed(2)),
+        Shifts: v.shifts,
+      }));
+
+    return xlsxMultiSheet(
+      [
+        { name: "Schedule", rows: detail },
+        { name: "Hours by staff", rows: byStaffRows },
+        { name: "Hours by location", rows: byLocRows },
+      ],
+      `rxshift-schedule-${from}-to-${to}.xlsx`
     );
   }
 

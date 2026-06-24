@@ -5,10 +5,6 @@ import Button from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { HelpText, Input, Label, Select } from "@/components/ui/form";
 
-interface PeriodOption {
-  id: string;
-  label: string;
-}
 interface LocationOption {
   id: string;
   name: string;
@@ -20,13 +16,11 @@ function download(url: string) {
 
 export default function ReportCards({
   locations,
-  periods,
   isOwner,
   defaultFrom,
   defaultTo,
 }: {
   locations: LocationOption[];
-  periods: PeriodOption[];
   isOwner: boolean;
   defaultFrom: string;
   defaultTo: string;
@@ -34,12 +28,104 @@ export default function ReportCards({
   const [clFrom, setClFrom] = useState(defaultFrom);
   const [clTo, setClTo] = useState(defaultTo);
   const [clLocation, setClLocation] = useState("");
-  const [schedulePeriod, setSchedulePeriod] = useState(periods[0]?.id ?? "");
   const [auFrom, setAuFrom] = useState(defaultFrom);
   const [auTo, setAuTo] = useState(defaultTo);
 
+  // Flexible schedule export
+  const [seFrom, setSeFrom] = useState(defaultFrom);
+  const [seTo, setSeTo] = useState(defaultTo);
+  const [seLocs, setSeLocs] = useState<Set<string>>(new Set());
+
+  const toggleSeLoc = (id: string) =>
+    setSeLocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const seLocParam =
+    seLocs.size === 0 || seLocs.size === locations.length
+      ? "all"
+      : [...seLocs].join(",");
+  const scheduleQuery = `from=${seFrom}&to=${seTo}&locations=${seLocParam}`;
+  const rangeValid = seFrom && seTo && seFrom <= seTo;
+
   return (
     <div className="grid max-w-[1040px] gap-5 lg:grid-cols-2">
+      <Card>
+        <h2 className="font-brand text-base font-bold text-navy">
+          Schedule export
+        </h2>
+        <p className="mt-1 font-body text-sm text-steel">
+          Any date range, one or more locations, as a spreadsheet — staff, role,
+          location, day, times, hours, work type, break, a compliance check, and
+          any flags, plus summary tabs of total hours by staff and by location.
+        </p>
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <Label htmlFor="se-from">From</Label>
+              <Input
+                id="se-from"
+                type="date"
+                value={seFrom}
+                onChange={(e) => setSeFrom(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div>
+              <Label htmlFor="se-to">To</Label>
+              <Input
+                id="se-to"
+                type="date"
+                value={seTo}
+                onChange={(e) => setSeTo(e.target.value)}
+                className="w-40"
+              />
+            </div>
+          </div>
+          {locations.length > 1 && (
+            <div>
+              <Label>Locations</Label>
+              <div className="flex flex-wrap gap-3">
+                {locations.map((l) => (
+                  <label
+                    key={l.id}
+                    className="flex items-center gap-1.5 font-body text-sm text-navy"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={seLocs.has(l.id)}
+                      onChange={() => toggleSeLoc(l.id)}
+                      className="h-4 w-4 accent-amber"
+                    />
+                    {l.name}
+                  </label>
+                ))}
+              </div>
+              <HelpText>Leave all unchecked for every location.</HelpText>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={!rangeValid}
+              onClick={() => download(`/api/reports/schedule-range?${scheduleQuery}`)}
+            >
+              Download .xlsx
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={!rangeValid}
+              onClick={() =>
+                window.open(`/app/reports/print?${scheduleQuery}`, "_blank")
+              }
+            >
+              Print view
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <h2 className="font-brand text-base font-bold text-navy">
           Compliance Record
@@ -86,45 +172,11 @@ export default function ReportCards({
           Staff roster
         </h2>
         <p className="mt-1 font-body text-sm text-steel">
-          Everyone on the roster: role, certification, employment, home
-          location, emails, and active/offboarded status.
+          Everyone on the roster: role, certification, ratio exclusion,
+          employment, home location, emails, and active/offboarded status.
         </p>
         <div className="mt-4">
           <Button onClick={() => download("/api/reports/staff")}>
-            Download .xlsx
-          </Button>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="font-brand text-base font-bold text-navy">
-          Schedule export
-        </h2>
-        <p className="mt-1 font-body text-sm text-steel">
-          One schedule period as a spreadsheet — who works when, with times
-          and unpaid breaks.
-        </p>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="min-w-64">
-            <Label htmlFor="se-period">Period</Label>
-            <Select
-              id="se-period"
-              value={schedulePeriod}
-              onChange={(e) => setSchedulePeriod(e.target.value)}
-            >
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button
-            disabled={!schedulePeriod}
-            onClick={() =>
-              download(`/api/reports/schedule?period_id=${schedulePeriod}`)
-            }
-          >
             Download .xlsx
           </Button>
         </div>

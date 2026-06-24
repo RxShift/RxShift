@@ -176,6 +176,21 @@ html.schedule-build .schedule-content {
   padding-bottom: 0.5rem;
 }
 
+/* ─── Print: clean output ─────────────────────────────────────────────────── */
+/* Drop the app chrome so printed schedules / the Compliance Record fill the
+   page. Page content uses Tailwind `print:` utilities for finer control. */
+@media print {
+  .app-sidebar,
+  .app-sidebar-reopen,
+  .app-page-header,
+  .app-top-banners {
+    display: none !important;
+  }
+  .app-content {
+    margin: 0 !important;
+  }
+}
+
 /* ─── About page — founder photos ─────────────────────────────────────────── */
 /* One shared, identical treatment for both photos: a 120px circle with a slight
    desaturation + contrast boost and a subtle navy multiply overlay, for a
