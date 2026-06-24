@@ -43,8 +43,9 @@ refresh the live demo with them.
 
 **Verified:** `tsc` clean, `next build` clean, 89 vitest tests pass. Browser/demo QA pending (CoWork loop).
 
-**Open:** apply was additive + safe; deploy pending Jamison's go (Vercel CLI). Coverage targets are free-text
-only (enforcement deferred). Rules are advisory/propose-only (no auto-scheduling).
+**Deployed to production June 23, 2026** (Vercel CLI; both remotes pushed). Demo refresh + CoWork browser QA
+run against the live site next. Coverage targets are free-text only (enforcement deferred). Rules are
+advisory/propose-only (no auto-scheduling).
 
 ## 2026-06-23 — Subprocessor audit + legal doc status
 
