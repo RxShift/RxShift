@@ -33,7 +33,7 @@ const SECTIONS: { heading: string; paragraphs: string[] }[] = [
   {
     heading: "4. Subprocessors",
     paragraphs: [
-      "We use a small set of infrastructure providers to run the Service: Supabase (database and authentication, hosted in the United States), Vercel (application hosting), Resend (transactional email), and OpenAI (server-side processing of scheduling-assistant requests; schedule context is sent for processing, never used by us for advertising). Each processes data only to provide its service to us.",
+      "We use a small set of infrastructure providers to run the Service: Supabase (database and authentication, hosted in the United States), Vercel (application hosting), Resend (transactional email), Cloudflare (DNS and email routing), and OpenAI (server-side processing of scheduling-assistant requests; schedule context is sent to OpenAI for processing; OpenAI's API terms of service prohibit using API inputs to train models, and data is processed on our behalf only). Each processes data only to provide its service to us.",
     ],
   },
   {
