@@ -3,9 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import Script from "next/script";
 
-// Cloudflare Turnstile (free CAPTCHA). The widget renders ONLY when a site key
-// is configured, so the form behaves exactly as before until the key is added.
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+// Cloudflare Turnstile (free CAPTCHA). The site key is PUBLIC — it's embedded in
+// the page for every visitor — so it's safe to commit. The env var overrides it;
+// the literal is the activation default so the widget works in production without
+// also depending on a NEXT_PUBLIC build-time var. Server-side verification still
+// requires the secret (TURNSTILE_SECRET_KEY) to be set, or it stays dormant.
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAADp6afU4uDyrw1GU";
 
 declare global {
   interface Window {
