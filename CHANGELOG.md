@@ -7,6 +7,24 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-24 — QA fix: replace native browser dialogs with in-app Modals
+
+From CoWork QA Round 3 (`docs/qa/2026-06-23-staff-scheduling-logic-qa.md`). Two "renderer freeze"
+bugs (B-01 Dismiss rule warning, B-02 Delete constraint) shared one root cause: the buttons called
+the browser's native `confirm()` / `prompt()`, which halt the JS thread and can't be driven by
+CoWork's headless automation (the 30s CDP timeout). They worked for a live human but froze any
+scripted/QA run and were off-brand.
+
+**Shipped (no schema):**
+- Delete rule + Delete constraint (`staff-record-panel.tsx`) → branded confirm `Modal` (Cancel +
+  destructive Delete), naming the item being removed.
+- Dismiss rule warning (`rule-proposals-section.tsx`) → `Modal` with a required **Reason (logged)**
+  textarea; still writes to `override_log` (`warning_type='rule'`). Disabled until a reason is entered.
+- Swept all of `app/` + `components/` — these were the only native dialogs; none remain.
+- `tsc --noEmit` clean; scheduling-rules vitest 12/12. Resolution appended to the QA report.
+
+**Open:** awaiting CoWork re-run of B-01 + B-02 to close them (now driveable via the DOM).
+
 ## 2026-06-23 — Staff scheduling logic: rules, propose-and-accept, ratio exclusion, flexible export
 
 Big build from the Susie working session — captures Lucy's scheduling logic

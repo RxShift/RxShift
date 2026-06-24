@@ -54,5 +54,6 @@ Run by: CoWork · Build: <git short sha or summary>
 
 | Date | Report | Outcome |
 |------|--------|---------|
+| 2026-06-23 | `2026-06-23-staff-scheduling-logic-qa.md` | Round 3 — staff-scheduling-logic build. Nearly all PASS; 2 "renderer freeze" bugs (B-01 Dismiss, B-02 Delete constraint) traced to native `confirm()`/`prompt()` dialogs that block headless automation. Fixed 2026-06-24 → in-app Modals (resolution appended). Awaiting re-run to close B-01/B-02. |
 | 2026-06-23 | `2026-06-23-demo-qa.md` | Scheduling-overhaul run. Round 1: 3 cosmetic (2 working-as-spec), 3 "demo-blocking" that were 1 real gap (location-filtered empty week) + 2 demo-data gaps (no draft week to publish). All triaged + fixed (resolution appended to the report); round-2 run pending redeploy + reseed. |
 | 2026-06-19 | `2026-06-19-full-product-demo-qa.md` | Full product + demo + website pass. Fixes in `CHANGELOG.md` ("Pre-QA cleanup"). |

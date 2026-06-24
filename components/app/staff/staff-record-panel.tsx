@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
 import {
   getStaffRecord,
   type StaffRecordData,
@@ -63,6 +64,13 @@ export default function StaffRecordPanel({
     StaffSchedulingRule | "new" | null
   >(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Confirm-delete dialog target (replaces native confirm() so the action works
+  // under branding + automated QA, which can't drive native dialogs).
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "rule" | "constraint"; id: string; label: string }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     const res = await getStaffRecord(staffId);
@@ -190,11 +198,13 @@ export default function StaffRecordPanel({
                     {r.is_active ? "Pause" : "Resume"}
                   </button>
                   <button
-                    onClick={async () => {
-                      if (!confirm("Delete this rule?")) return;
-                      await deleteEntity("staff_scheduling_rule", r.id);
-                      afterChange();
-                    }}
+                    onClick={() =>
+                      setPendingDelete({
+                        kind: "rule",
+                        id: r.id,
+                        label: describeRule(r, { workTypeName, locationName }),
+                      })
+                    }
                     className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
                   >
                     Delete
@@ -260,11 +270,13 @@ export default function StaffRecordPanel({
                     Edit
                   </button>
                   <button
-                    onClick={async () => {
-                      if (!confirm("Delete this constraint?")) return;
-                      await deleteEntity("constraint_rule", c.id);
-                      afterChange();
-                    }}
+                    onClick={() =>
+                      setPendingDelete({
+                        kind: "constraint",
+                        id: c.id,
+                        label: `${CONSTRAINT_RULE_LABELS[c.rule_type]}: ${describeConstraint(c)}`,
+                      })
+                    }
                     className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"
                   >
                     Delete
@@ -312,6 +324,53 @@ export default function StaffRecordPanel({
           onSaved={afterChange}
         />
       </section>
+
+      {/* Delete confirmation (rules + constraints) */}
+      <Modal
+        open={pendingDelete !== null}
+        onClose={() => !deleting && setPendingDelete(null)}
+        title={
+          pendingDelete?.kind === "constraint"
+            ? "Delete constraint?"
+            : "Delete rule?"
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={deleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                if (!pendingDelete) return;
+                setDeleting(true);
+                await deleteEntity(
+                  pendingDelete.kind === "constraint"
+                    ? "constraint_rule"
+                    : "staff_scheduling_rule",
+                  pendingDelete.id
+                );
+                setDeleting(false);
+                setPendingDelete(null);
+                afterChange();
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This will permanently remove{" "}
+          <span className="font-medium text-navy">{pendingDelete?.label}</span>.
+          This can&rsquo;t be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

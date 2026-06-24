@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
 import { fmtDay } from "@/lib/dates";
 import { fmtTime } from "@/lib/scheduling-rules-display";
 import {
@@ -32,6 +33,10 @@ export default function RuleProposalsSection({
   const [unmet, setUnmet] = useState<UnmetDTO[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Dismiss-reason dialog (replaces native prompt() so it works under branding
+  // + automated QA, which can't drive native dialogs). The reason is logged.
+  const [dismissing, setDismissing] = useState<UnmetDTO | null>(null);
+  const [dismissReason, setDismissReason] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
@@ -77,14 +82,21 @@ export default function RuleProposalsSection({
     }
   }
 
-  async function dismiss(u: UnmetDTO) {
-    const reason = prompt(`Dismiss this rule warning?\n\n${u.message}\n\nReason (logged):`);
-    if (!reason || !reason.trim()) return;
+  function openDismiss(u: UnmetDTO) {
+    setDismissReason("");
+    setError(null);
+    setDismissing(u);
+  }
+
+  async function confirmDismiss() {
+    if (!dismissing || !dismissReason.trim()) return;
+    const target = dismissing;
     setBusy(true);
-    const res = await dismissRuleWarning(u.rule_id, reason);
+    const res = await dismissRuleWarning(target.rule_id, dismissReason.trim());
     setBusy(false);
     if (res.ok) {
-      setUnmet((prev) => prev.filter((x) => x !== u));
+      setUnmet((prev) => prev.filter((x) => x !== target));
+      setDismissing(null);
     } else {
       setError(res.error);
     }
@@ -158,7 +170,7 @@ export default function RuleProposalsSection({
                   <span>⚠ {u.message}</span>
                   <button
                     disabled={busy}
-                    onClick={() => dismiss(u)}
+                    onClick={() => openDismiss(u)}
                     className="shrink-0 font-medium text-steel underline-offset-2 hover:underline"
                   >
                     Dismiss
@@ -173,6 +185,45 @@ export default function RuleProposalsSection({
       {error && (
         <p className="mt-2 font-body text-[12px] text-deficiency">{error}</p>
       )}
+
+      <Modal
+        open={dismissing !== null}
+        onClose={() => !busy && setDismissing(null)}
+        title="Dismiss rule warning?"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setDismissing(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !dismissReason.trim()}
+              onClick={confirmDismiss}
+            >
+              {busy ? "Dismissing…" : "Dismiss warning"}
+            </Button>
+          </>
+        }
+      >
+        {dismissing && (
+          <p className="text-navy">⚠ {dismissing.message}</p>
+        )}
+        <label className="mt-3 block font-body text-[12px] font-medium text-steel">
+          Reason (logged)
+        </label>
+        <textarea
+          autoFocus
+          value={dismissReason}
+          onChange={(e) => setDismissReason(e.target.value)}
+          rows={3}
+          placeholder="Why is this warning being dismissed?"
+          className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 font-body text-[13px] text-navy outline-none focus:border-steel/50"
+        />
+      </Modal>
     </section>
   );
 }
