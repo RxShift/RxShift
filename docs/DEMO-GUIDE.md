@@ -2,7 +2,13 @@
 
 > The single, accurate source for running a demo. Built because the old demo script drifted from reality
 > (it claimed live statuses live on the Dashboard — they don't; they're on the **Live Board** and
-> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 19, 2026.
+> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 23, 2026.
+
+> **New June 23, 2026 — staff scheduling logic.** Build Schedule: click a staff **name** to open their full
+> record (notes, constraints, **scheduling rules**, and this week's rule proposals); the **"Apply rules"** button
+> proposes everyone's regular week to Accept. Mesa Vista seeds sample rules (Carlos's weekday pattern, Dr. Lena
+> Park's every-other-Monday + 3rd-Thursday training, Ashley's monthly inventory quota), an **excluded-from-ratio**
+> supervisor (Amanda Cole), and Spring Valley coverage notes — run **Restore demo data** to show them.
 
 ---
 

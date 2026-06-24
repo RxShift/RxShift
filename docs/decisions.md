@@ -3,6 +3,89 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## June 23, 2026 — Staff scheduling logic: advisory rules, week-start, coverage-as-text
+
+**Context:** Susie/Lucy working session produced Lucy's scheduling-logic doc. Three scope choices Jamison
+made during the build (the interview answers).
+
+**Decision — rules are advisory + propose-and-accept, never auto-scheduling.** Scheduling rules expand into
+candidate shifts the scheduler must Accept (reusing Ask AI's propose → engine-validate → confirm pattern).
+We deliberately did NOT auto-populate the schedule: pharmacy scheduling has too much human judgment
+(coverage, fairness, last-minute changes) to trust a rule engine to commit shifts. The resolver is
+deterministic (no LLM) so proposals are predictable. Unmet rules that can't become one unambiguous shift
+(monthly quota, quarterly project days, day-specific reminders, "don't assign" violations) surface as
+dismissible warnings; a dismiss is logged to `override_log` (`warning_type='rule'`).
+
+**Decision — `excluded_from_ratio` is orthogonal to `ratio_type='non_counting'`.** `non_counting` strips a
+person's RPh/tech role and drops them to the "Other staff" band. The flag instead keeps a supervisor *as a
+pharmacist/technician* (right band, schedulable) while the engine skips them entirely — including the
+R072-25 solo-pharmacist floor count (the spec's "any ratio slot"). Both mechanisms coexist; the work-type
+counting default handles activity-based exclusion (Inventory, Meeting).
+
+**Decision — coverage targets are free-text only (this build).** Lucy's per-day coverage demands ("1 CCC RPh
+every weekday", "2.6 homeside daily") are a different shape from per-staff rules. Captured as
+`location.coverage_notes` (shown in the builder, never enforced). A structured coverage-demand model +
+detection is a deliberate fast-follow once she's using the per-staff rules.
+
+**Decision — `week_start_day` defaults to Monday (1), changeable but discouraged mid-stream.** The app was
+hardcoded Monday; the pasted spec wrongly assumed Sunday. Default Monday = zero behavior change for anyone
+live. Configurable per tenant. **Caveat:** periods are auto-created + cycle-aligned, so changing week-start
+after periods exist only affects periods built from then on — old periods keep their Monday boundaries and a
+back-navigation could create an overlapping period. Best set once at onboarding.
+
+## June 23, 2026 — Subprocessors locked; AI provider interim decision; legal doc status
+
+**Context:** Pre-commercial subprocessor audit ahead of first enterprise customer (Optum/Susie demo active).
+Three decisions locked here; one deferred action per decision.
+
+**Decision 1 — AI provider: OpenAI gpt-4o-mini, interim only**
+
+Current state: `lib/ai.ts` uses OpenAI gpt-4o-mini, server-side only (staff names + schedule context sent for
+processing; never for advertising; model training prohibited by OpenAI's API terms of service). **No formal DPA
+is in place** and no zero-retention add-on has been negotiated — OpenAI's standard API terms are what we rely on.
+
+This is acceptable for the demo phase. It is NOT acceptable before a first enterprise customer hands us real
+staff data.
+
+**Intended direction:** Migrate `lib/ai.ts` to **AWS Bedrock running Claude** before first enterprise customer.
+AWS Bedrock is HIPAA-eligible, FedRAMP High authorized, and already in most enterprise approved-vendor lists.
+Model invocations stay within your AWS account; data is never used for model training and never leaves the
+account. Subprocessor list simplifies to: AWS (AI inference + hosting infrastructure). OpenAI removed entirely.
+
+The code change is ~one session once AWS credentials are in hand. No AWS account is provisioned yet — that is
+the blocking action.
+
+**Blocker (Jamison):** Provision AWS account + enable Bedrock access; hand credentials to Claude Code for a
+one-session migration of `lib/ai.ts`.
+
+---
+
+**Decision 2 — Supabase DPA: execute formally, not by implication**
+
+Supabase holds ALL app data (tenants, staff, rosters, schedules, compliance records) — it is the
+highest-risk subprocessor. A DPA is available from Supabase; clicking through terms acceptance is NOT
+sufficient for enterprise disclosures.
+
+**Blocker (Jamison):** Log in to supabase.com under supabase@rxshift.io → Settings → Legal → Data
+Processing Agreement → sign it. Log the date here once done.
+
+---
+
+**Decision 3 — Legal docs: not finalized; no customer should see them as final**
+
+`/terms` and `/privacy` were attorney-reviewed (Phil, June 12, 2026) and "Draft" banners removed. But
+two items remain unresolved:
+
+1. Terms §14 contains a placeholder: *"[Governing law and venue to be confirmed by counsel.]"* — governing
+   law, jurisdiction, and venue are not set.
+2. The privacy policy subprocessor table reflects the current stack accurately AS OF June 23, 2026 (with
+   the OpenAI interim decision above acknowledged).
+
+**Blocker (Jamison):** Send Terms §14 to Phil for the governing-law / venue clause. The docs should not be
+presented to any customer as final until that placeholder is replaced.
+
+---
+
 ## June 22, 2026 — Cadence: Model B (locked build cadence), NOT per-day publish
 
 **Decision (Jamison signed off):** keep ONE build cadence per tenant (`tenant.schedule_cycle`).

@@ -13,7 +13,7 @@
 // read-only "View Schedule" is for everyone. Copy is "last month's pattern";
 // PTO-day-with-shift now shows the red conflict flag.
 
-export const PROMPTER_VERSION = "v4.2";
+export const PROMPTER_VERSION = "v4.3";
 
 export interface Beat {
   /** d=direction, s=script, pv=pivot, pause, p=Ask-AI prompt, n=note, cond=condition */
@@ -191,6 +191,22 @@ export const STEPS: PrompterStep[] = [
       {
         t: "s",
         v: '"This is Build Schedule — managers only. There\'s a separate read-only View Schedule everyone can see; building lives here. It\'s locked to your build cadence — Optum schedules a month at a time, so the header says \'Building: June 2026\' and the steppers move a month at a time. No fiddling with week vs month while you build.\n\nRows are role-banded — pharmacists on top, technicians below — which mirrors how ratio math works.\n\nTwo ring types, completely separate channels. Red ring with ⚠: a hard conflict — a ratio deficiency, or someone scheduled on their day off. [Scroll to Jerome\'s Saturday] Amber ring: a constraint flag — Jerome\'s 40-hour cap, showing up before you publish.\n\n[Point to a blacked-out PTO cell] Anyone off shows blacked out as PTO — true for time off months out, before the period is even built. [Point to Keisha Brown\'s Friday — blacked out PTO with a shift still on it] And if someone\'s scheduled on a day they\'re off — like Keisha, who requested Friday off but is still on the schedule — that shift gets the red flag.\n\n[Point to a tinted holiday column] Holidays tint the column — a cue, never a block.\n\nTwo ways to build fast: \'Copy last month\'s pattern\' repeats the whole prior period in one click. And on any single shift you can copy it across the following days in one move."',
+      },
+      {
+        t: "d",
+        v: "Click a staff member's NAME in the grid (e.g. Carlos Rivera). A slide-over opens with their full record — don't navigate away.",
+      },
+      {
+        t: "s",
+        v: '"Everything that governs how a person gets scheduled is in one place — notes, what NOT to assign them, their constraints, and their scheduling rules. And at the top: what the rules say should happen THIS week. [Point to the proposals] Accept and it drops straight onto the schedule. Lucy keeps the regular schedule in her head today — here it\'s captured, and one click lays it down. Hover any name for the same notes + rules at a glance."',
+      },
+      {
+        t: "d",
+        v: "Close the slide-over. In the command strip click 'Apply rules' (or 'Rules' in Maximize) — every person's rule-driven shifts for the week, grouped by person: Accept all, or per person. Unmet rules (e.g. a monthly quota) list below with a logged Dismiss.",
+      },
+      {
+        t: "n",
+        v: "Seeded rules: Carlos's weekday pattern, Dr. Lena Park's every-other-Monday + 3rd-Thursday training, Ashley's monthly inventory quota (an unmet warning). Amanda Cole shows the 'Excluded from ratio' flag on her record. Rules only PROPOSE — nothing auto-commits.",
       },
       {
         t: "d",

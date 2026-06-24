@@ -7,6 +7,64 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-23 — Staff scheduling logic: rules, propose-and-accept, ratio exclusion, flexible export
+
+Big build from the Susie working session — captures Lucy's scheduling logic
+(`docs/Lucy SMMS Schedule.docx`) and turns the "regular schedule" into a first-class,
+rule-driven, human-confirmed flow. Built in 7 phases (one commit each).
+
+**Schema (migrations 0037 + 0038 — APPLIED to the RxShift Supabase):**
+- `staff_scheduling_rule` table (rule_type enum + params jsonb, mirrors `constraint_rule`) + RLS.
+- `staff.scheduling_notes`, `staff.excluded_from_ratio`, `tenant.week_start_day` (default 1=Mon),
+  `location.coverage_notes`, `override_log.warning_type` += `'rule'`.
+
+**Shipped:**
+- **Exclude-from-ratio flag** — the engine skips a person entirely (ceiling, trainee sublimit, AND the
+  solo-pharmacist floor) while keeping their RPh/tech role + grid band. Distinct from `non_counting`.
+- **Staff record slide-over** (`StaffRecordPanel`, reused by the staff list + the builder): notes, ratio
+  flag, per-person constraints, scheduling-rules CRUD, availability summary — each section saves on its own.
+- **Scheduling rules** — 11 rule types (recurring shift/work-type, nth-weekday, monthly quota, quarterly
+  project days, float, per-diem, preferences). Plain-language rendering shared across surfaces.
+- **Propose-and-accept** — a pure resolver (`lib/scheduling-rules.ts`, 12 tests) expands rules into concrete
+  shift PROPOSALS + advisory unmet warnings. Surfaced per-person (slide-over) AND period-level ("Apply rules"
+  on the builder, grouped by person, Accept / Accept-all). Applies via the same path as Ask AI; nothing
+  auto-commits. Dismissed warnings → override log (`warning_type='rule'`).
+- **Builder hover + click-through** — staff names hover (notes + rules + limits) and open the record
+  slide-over. Build-only (gated on `!readOnly`); View Schedule unchanged.
+- **Configurable first day of week** (`tenant.week_start_day`, default Monday) threaded through every period
+  boundary + the grid; Settings selector. View month zoom now renders full weeks (no month-edge clipping).
+- **Flexible schedule export** — `schedule-range` report: any date range × one/many/all locations, rich detail
+  columns + a compliance proxy + flags, plus "Hours by staff" / "Hours by location" summary tabs. New
+  **print view** (`/app/reports/print`): weekly grid, one location per page, role-grouped.
+
+**Demo:** Mesa Vista now seeds Monday week-start, an excluded procurement supervisor (Amanda Cole),
+scheduling notes, Spring Valley coverage notes, and 4 sample scheduling rules. Run "Restore demo data" to
+refresh the live demo with them.
+
+**Verified:** `tsc` clean, `next build` clean, 89 vitest tests pass. Browser/demo QA pending (CoWork loop).
+
+**Open:** apply was additive + safe; deploy pending Jamison's go (Vercel CLI). Coverage targets are free-text
+only (enforcement deferred). Rules are advisory/propose-only (no auto-scheduling).
+
+## 2026-06-23 — Subprocessor audit + legal doc status
+
+Pre-commercial subprocessor review ahead of first enterprise customer. No code changes this session — documentation and decision logging only.
+
+**Decisions (see `docs/decisions.md` June 23 entry):**
+- **OpenAI interim decision locked:** OpenAI gpt-4o-mini stays through demo phase; intended migration is AWS Bedrock (Claude) before first enterprise customer. No formal DPA in place — acknowledged gap. Blocker: Jamison provisions AWS account.
+- **Supabase DPA must be formally executed** under supabase@rxshift.io before first customer. Blocker: Jamison signs in Supabase dashboard.
+- **Legal docs not finalized:** Terms §14 has a placeholder for governing law/venue. Blocker: Jamison sends to Phil for the clause.
+
+**Privacy policy updated:**
+- §4 subprocessors: added Cloudflare (was missing); updated OpenAI language to accurately describe what the API terms of service guarantee (no model training) vs. what is NOT yet in place (formal DPA).
+
+**Open (Jamison actions required before first customer):**
+- Provision AWS account → migrate `lib/ai.ts` to Bedrock (one Claude Code session)
+- Execute Supabase DPA at supabase.com under supabase@rxshift.io
+- Send Terms §14 to Phil for governing-law / venue clause
+
+---
+
 ## 2026-06-23 — Security audit + pre-launch hardening
 
 Full read-only security audit (tenant isolation, RLS, privilege escalation, RBAC, service-role usage,

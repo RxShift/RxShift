@@ -668,6 +668,43 @@ The big scheduling-UX decision, shipped + verified live (Optum monthly, Mesa Vis
 - **Prompter → v4.2.** Phase 2 (multi-manager submit → review → publish) is designed, NOT built — see
   `docs/decisions.md` / the Susie feedback paragraph.
 
+## Staff scheduling logic — rules, propose-and-accept, ratio exclusion, export (June 23, 2026)
+
+Captures Lucy's scheduling logic (`docs/Lucy SMMS Schedule.docx`). Migrations **0037 + 0038 applied.**
+
+- **Scheduling RULES are the opposite of constraints.** Constraints (`constraint_rule`) are guards (flagged at
+  schedule time); **rules** (`staff_scheduling_rule`) are positive instructions — the regular pattern + recurring
+  exceptions. Shape mirrors `constraint_rule` (a `scheduling_rule_type` enum + `params` jsonb; first-class
+  `work_type_id` / `location_id` / `frequency`). 11 rule types. Plain-language rendering + param conventions live
+  in `lib/scheduling-rules-display.ts` — the form (`components/app/staff/rule-form.tsx`), the resolver, and every
+  display read params the SAME way; don't drift.
+- **Resolver is pure + tested:** `lib/scheduling-rules.ts` `resolveScheduleRules()` → `{ proposals, unmet }`
+  (`lib/__tests__/scheduling-rules.test.ts`). Server glue: `lib/actions/scheduling-rules.ts`
+  (`resolveProposals` / `applyRuleProposals` / `dismissRuleWarning`). **Rules NEVER auto-commit** — they propose;
+  a human Accepts. Apply uses the same insert path as Ask AI. Dismissed warnings → `override_log`
+  (`warning_type='rule'`, `target_type='rule'`).
+- **One staff record everywhere:** `components/app/staff/staff-record-panel.tsx` (self-loads via
+  `getStaffRecord`) is rendered in a `components/ui/slide-over.tsx` from BOTH the staff list and the builder
+  (click a name). Shared `StaffFieldsForm` / `ConstraintForm`. Builder staff-name hover + click are gated on
+  `!readOnly` (Build only).
+- **`excluded_from_ratio`** (staff): the engine (`evaluateZone`) skips the person ENTIRELY — ceiling, trainee
+  sublimit, and the solo-pharmacist floor — while keeping their RPh/tech role + grid band. Distinct from
+  `ratio_type='non_counting'`. Threaded through `toEngineSegments` + the compliance finalizer.
+- **Flexible export:** `schedule-range` report (`/api/reports/[type]`) — date range × locations, detail +
+  summary tabs (`xlsxMultiSheet`). Print view at `/app/reports/print` (one location per page). Compliance column
+  is a simple proxy (any deficient hour that day+location in the as-worked record).
+
+### ⚠️ Dependencies to know for future sessions
+- **`staff_scheduling_rule` table** is read by: `lib/scheduling-rules.ts` (resolver),
+  `lib/actions/scheduling-rules.ts`, the staff record panel, and the **schedule page** (`page.tsx` loads active
+  rules for the grid tooltip). Adding a rule type = add to the enum (migration), the Zod schema in
+  `settings.ts` (`SCHEMAS.staff_scheduling_rule`), the type union in `lib/types.ts`, `RULE_TYPE_LABELS` +
+  `describeRule`, the `RuleForm` fields, and a resolver branch.
+- **`tenant.week_start_day`** (0=Sun…6=Sat, default 1) drives `weekStartOf()` in `lib/dates.ts` and is threaded
+  through `cadenceWindow` (schedule page), `viewWindow` (view-schedule), `ensurePeriodForDate`
+  (`schedule.ts`, + every caller), and `resolveAiBundle` (`ai.ts`). Any NEW period-boundary code must pass it.
+  Changing it after periods exist only affects newly-created periods (documented in `docs/decisions.md`).
+
 ## Pending TODOs (as of June 13, 2026)
 
 - [ ] **Provision Susie's platform-admin account** — needs her NEW admin email (separate from her customer logins), then: `npx tsx scripts/provision-user.ts --platform-admin --email <addr> --note "Susie - co-founder"`. Also add it to the author map in `lib/actions/crm.ts`.
@@ -675,7 +712,7 @@ The big scheduling-UX decision, shipped + verified live (Optum monthly, Mesa Vis
 - [x] **Compliance engine roadmap** — SHIPPED June 19, 2026 (R072-25 build): certified vs non-certified tech logic (Tennessee), trainee supervision sub-limits (R072-25), and the solo-pharmacist floor are all in the engine behind the `nevada_r072_25` toggle / TN state. Volume thresholds (Sec 2.2) remain **collect-only** by design (Decision 4) — expected Rx is shown, never enforced.
 - [x] **Shared rate limiting on `/api/auth/login-link` and `/api/contact`** — DONE June 23, 2026 (security pass): cross-instance via the `rate_limit` table + `check_rate_limit` RPC (`lib/rate-limit-db.ts`), per email + IP. Closed the email-bomb vector + the login-link enumeration oracle. See CHANGELOG 2026-06-23 security entry.
 - [ ] Owner-facing alias management UI — before public launch.
-- [ ] **Security follow-ups (Jamison's call, from the June 23 audit):** confirm OpenAI DPA/zero-retention for staff-name+schedule egress; add a Content-Security-Policy (other security headers already shipped); add the Cloudflare Turnstile keys to activate the demo-form CAPTCHA (built June 23, dormant until `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` are set); enable Supabase "leaked password protection" (dashboard); audit-log platform-admin emulation/tenant-switch.
+- [ ] **Security follow-ups (Jamison's call, from the June 23 audit):** OpenAI DPA — **decision made June 23, 2026** (see `docs/decisions.md`): OpenAI is **interim only**; migrate to AWS Bedrock (Claude) before first enterprise customer — one session once AWS credentials are in hand; **Supabase DPA must be formally executed** under supabase@rxshift.io before first customer; add a Content-Security-Policy (other security headers already shipped); add the Cloudflare Turnstile keys to activate the demo-form CAPTCHA (built June 23, dormant until `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` are set); enable Supabase "leaked password protection" (dashboard); audit-log platform-admin emulation/tenant-switch.
 - [ ] CRM v2 polish after Susie uses it (no pagination, no stage analytics, client-side filter only — deliberately basic for now).
 - [ ] **Sentry + uptime monitoring — first customer trigger.** Also: Supabase Pro upgrade (backups/PITR), move Vercel hosting off personal account. The Vercel paid plan also **unlocks sub-daily cron cadence** — only then change `/api/cron/live-ratio-check` in `vercel.json` to `* * * * *` for near-real-time live out-of-ratio email alerts (Hobby caps crons at daily and rejects the deploy otherwise).
 - [ ] **Browser/visual walkthrough of the June 13 surfaces before the next demo** — create-next-period, sticky headers, view selector + published/draft cutoff, Settings → Statuses, live alert path, branding (color + logo, both modes), help (tenant vs platform-admin). Build + tests are green; this is the visual pass.

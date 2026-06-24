@@ -2,7 +2,7 @@
 
 > Keep this current whenever a route is added/changed or a feature ships (it pairs with
 > `DEMO-GUIDE.md`). Source of truth for *what exists* is the code + `CLAUDE.md`; this is the
-> at-a-glance index. Last updated June 22, 2026.
+> at-a-glance index. Last updated June 23, 2026.
 
 **Roles:** `owner_admin`, `scheduler`, `supervisor`, `read_only`, `staff`.
 - **MANAGE** = owner_admin + scheduler + supervisor + read_only (the management nav).
@@ -11,6 +11,16 @@
 
 **Two domains:** marketing at `rxshift.io`; the app at `app.rxshift.io` (host rewrite → `/app/*`).
 Local dev: `http://localhost:3200/app/...`.
+
+**New June 23, 2026 — staff scheduling logic (CONFIG/MANAGE):**
+- **Staff record slide-over** (`/app/staff` Edit, and clicking a name on **Build Schedule**) — notes,
+  exclude-from-ratio flag, per-person constraints, **scheduling rules** CRUD, availability, and (from the
+  builder) "rules for this week → Accept" proposals.
+- **Build Schedule** — staff names now hover (notes/rules/limits) + click through; an **"Apply rules"**
+  action proposes everyone's rule-driven week (Accept all / per person; unmet rules dismissible).
+- **Reports** — **Schedule export** is now any date range × one/many/all locations (.xlsx with summary tabs)
+  + a **Print view** (`/app/reports/print`, one location per page).
+- **Settings → Organization** — **First day of the week** selector (`tenant.week_start_day`).
 
 ---
 

@@ -44,6 +44,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
     items: [
       "AI (OpenAI, server-side) drafts, explains, and proposes. The deterministic ratio/constraints engine is the only source of compliance truth.",
       "Every compliance-affecting AI proposal is validated by the engine and requires explicit human confirmation before it commits.",
+      "Scheduling-rule proposals are deterministic (no AI) — a person's saved rules are expanded into candidate shifts that a scheduler must accept; rules never auto-commit a shift.",
       "The help assistant answers only from RxShift's own help articles and does not give regulatory advice. Its source articles are read with the caller's own permissions, so platform-admin documentation is never exposed to a pharmacy user or fed to their assistant.",
     ],
   },
