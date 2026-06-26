@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { eachDate } from "@/lib/dates";
 import ScheduleGrid from "./schedule-grid";
-import { shortLocationName } from "./schedule-matrix";
+import { locationShortLabels } from "./schedule-matrix";
 import type {
   Department,
   Location,
@@ -146,7 +146,7 @@ export default function ScheduleView({
   );
 
   const locationNameById = useMemo(
-    () => new Map(locations.map((l) => [l.id, shortLocationName(l.name)])),
+    () => locationShortLabels(locations),
     [locations]
   );
 

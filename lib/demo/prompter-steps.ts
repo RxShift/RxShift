@@ -12,8 +12,11 @@
 // (managers, cadence-locked — Optum = month, "Building: <period>"); a separate
 // read-only "View Schedule" is for everyone. Copy is "last month's pattern";
 // PTO-day-with-shift now shows the red conflict flag.
+// v4.4 (June 25, 2026): De-hardcoded the NLV floor date (was "Jun 16" — stale;
+// the seed anchors it to the CURRENT week's Tuesday). Location filter/cell tags
+// now show the distinguishing branch (e.g. "Henderson"), not the tenant name.
 
-export const PROMPTER_VERSION = "v4.3";
+export const PROMPTER_VERSION = "v4.4";
 
 export interface Beat {
   /** d=direction, s=script, pv=pivot, pause, p=Ask-AI prompt, n=note, cond=condition */
@@ -61,20 +64,20 @@ export const STEPS: PrompterStep[] = [
     act: "PRE-DEMO",
     actColor: "#4A6A8A",
     title: "Setup Checklist",
-    subtitle: "10 min before — never do this on screen",
+    subtitle: "Set up before the call — never do this on screen",
     time: "Before call",
     items: [
-      "Create 3 Chrome profiles: Admin, Frank, Patricia (top-right corner → profile icon → Add profile)",
-      "Admin profile: log in as jamison@jamisonwest.com → Admin Console → find Mesa Vista row → click Edit (not the row)",
-      "Admin profile: Restore demo data → Yes (~294 hours finalized)",
-      "Admin profile: Demo clock → Pin to 14:30 (persists through reset — set once)",
-      "Frank profile: log in → Admin Console → Mesa Vista → Edit → emulate Frank DiMaggio",
-      "Frank profile: open /app/board (Tab A), /app/schedule (Tab B), /app/log Henderson (Tab C)",
-      "Admin profile, 2nd tab: /app/admin/emails — stay in admin mode, do not emulate",
-      "Patricia profile: log in → Admin Console → Mesa Vista → Edit → emulate Patricia Nguyen → /app/me",
-      "Confirm green Admin Console banner is gone on Frank + Patricia tabs",
-      "Confirm demo data shows it all: Henderson Thu 2–4 PM ceiling, NLV Tue 9–10 AM floor, a blacked-out PTO day on the schedule, and a tinted holiday column",
-      "Note: two test tenants in Admin Console (Test Pharmacy 1, Pharmacy Owner) — don't click into them if screen-sharing",
+      "BASE SETUP (do this regardless of which option below):",
+      "Log in as platform admin (jamison@jamisonwest.com). You do NOT need to emulate anyone for most of the demo — administering Mesa Vista already shows the board, schedule, compliance, requests, reports AND the email log.",
+      "Admin Console → Mesa Vista row → Edit → Restore demo data → Yes (~294 hours finalized).",
+      "Admin Console → Mesa Vista → Demo clock → Pin to 14:30 (persists through reset — set once).",
+      "Administer Mesa Vista, then open 3 tabs: /app/board (Tab A), /app/schedule → Henderson (Tab B), /app/log → Henderson (Tab C). Add /app/admin/emails when you reach the Email Log beat (step 11).",
+      "Sanity check the seed: Henderson Thu 2–4 PM ceiling, NLV Tue 9–10 AM floor, a blacked-out PTO day, a tinted holiday column, and the location dropdown now reads Henderson / Spring Valley / North Las Vegas (not 'Mesa Vista' ×3).",
+      "MY SCHEDULE beat (step 12) shows a staff person's personal view — /app/me is empty as plain admin, so pick ONE way to handle it:",
+      "OPTION A — Easiest (one login, no profiles): when you reach step 12, Admin Console → Mesa Vista → Edit → emulate Patricia Nguyen → /app/me. Show it, then Exit and return to administering Mesa Vista for the rest. Slightly less smooth on camera, but nothing to pre-set.",
+      "OPTION B — Smoothest (one extra profile): before the call, add a 2nd Chrome profile, log in, emulate Patricia Nguyen, and park it on /app/me. During the demo you just flip to that tab — no switching mid-flow.",
+      "Optional polish: emulating also hides the green 'platform admin' banner. For a clean prospect look you can run the manager tabs while emulating Frank DiMaggio too (Option-B style, a 3rd profile). For an internal or recorded run, administering as admin is perfectly fine — the banner is harmless.",
+      "Note: two test tenants in Admin Console (Test Pharmacy 1, Pharmacy Owner) — don't click into them while screen-sharing.",
     ],
   },
   {
@@ -304,7 +307,7 @@ export const STEPS: PrompterStep[] = [
     tab: "TAB C",
     tabNote: "Frank · /app/log → North Las Vegas → Tuesday",
     beats: [
-      { t: "d", v: "Switch location dropdown to North Las Vegas. Select Tuesday (Jun 16)." },
+      { t: "d", v: "Switch location dropdown to North Las Vegas. Select THIS week's Tuesday (the seeded floor deficiency, 9–10 AM)." },
       {
         t: "s",
         v: "\"Now look at North Las Vegas, Tuesday 9 to 10 AM. [Read the label] 'DEFICIENT · UNDER FLOOR — UNDERSTAFFED.' One pharmacist. Zero techs on the floor. Rachel Odom called out and nobody covered the slot.\n\nUnder Nevada's proposed R072-25 rule, a solo pharmacist requires at least one tech for support. RxShift is already tracking it. When the rule passes, this becomes a required fix with a documented record. Right now it's a proactive flag.\n\nOne tool. Two kinds of compliance. Over ceiling. Under floor. Both in the record.\"",

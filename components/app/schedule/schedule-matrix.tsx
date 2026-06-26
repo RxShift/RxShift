@@ -453,7 +453,7 @@ export default function ScheduleMatrix({
   }, [staff, constraints, schedulingRules, workTypeById]);
 
   const locationNameById = useMemo(
-    () => new Map(locations.map((l) => [l.id, shortLocationName(l.name)])),
+    () => locationShortLabels(locations),
     [locations]
   );
 
@@ -585,7 +585,7 @@ export default function ScheduleMatrix({
               <option value="">All locations</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {shortLocationName(l.name)}
+                  {locationNameById.get(l.id) ?? l.name}
                 </option>
               ))}
             </select>
@@ -989,8 +989,32 @@ export default function ScheduleMatrix({
   );
 }
 
-/** "SMRX — Southwest Medical Pharmacy" → "SMRX" for a compact cell tag. */
-export function shortLocationName(name: string): string {
-  const dash = name.split(/[—–-]/)[0]?.trim();
-  return dash && dash.length <= 12 ? dash : name.slice(0, 12);
+/**
+ * Compact, *distinguishing* labels for a set of locations, keyed by id.
+ *
+ * Locations are usually named "<prefix> — <suffix>", but which side names the
+ * branch depends on the tenant's convention:
+ *   • "Mesa Vista — Henderson"           → the suffix is the branch → "Henderson"
+ *   • "SMRX — Southwest Medical Pharmacy" → the prefix is the code   → "SMRX"
+ * So we drop whichever side is shared across ALL of the tenant's locations and
+ * keep what actually tells them apart. Single-location tenants keep their name.
+ * (Splits only on a *spaced* dash, so "Winston-Salem" stays intact.)
+ */
+export function locationShortLabels(
+  locations: { id: string; name: string }[]
+): Map<string, string> {
+  const split = (name: string) => {
+    const m = name.match(/^(.*?)\s+[—–-]\s+(.*)$/);
+    return m
+      ? { head: m[1].trim(), tail: m[2].trim() }
+      : { head: name.trim(), tail: "" };
+  };
+  const rows = locations.map((l) => ({ id: l.id, ...split(l.name), name: l.name }));
+  const headsShared =
+    rows.length > 1 &&
+    new Set(rows.map((r) => r.head)).size === 1 &&
+    rows.every((r) => r.tail);
+  return new Map(
+    rows.map((r) => [r.id, headsShared ? r.tail : r.head || r.name])
+  );
 }

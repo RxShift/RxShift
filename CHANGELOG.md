@@ -7,6 +7,33 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-06-25 — Fix: location filter/cell tags showed the tenant name, not the branch
+
+Found while prepping the Brandy demo recording. The schedule builder's **location filter
+dropdown and the grid cell location tags showed "Mesa Vista" three times** instead of the
+branch (Henderson / Spring Valley / North Las Vegas).
+
+**Root cause:** `shortLocationName()` (`schedule-matrix.tsx`) split a name on the dash and kept
+the **first** segment — written for a "CODE — Full Name" pattern (Optum's "SMRX — …" → "SMRX"),
+but Mesa Vista names are "Tenant — Branch", so it stripped the wrong half and every location
+collapsed to the shared "Mesa Vista" prefix.
+
+**Shipped (no schema):**
+- Replaced `shortLocationName(name)` with **set-aware `locationShortLabels(locations)`**: it drops
+  whichever side (prefix or suffix) is shared across ALL the tenant's locations and keeps what
+  distinguishes them. Splits only on a *spaced* dash so "Winston-Salem" stays intact.
+- Verified against live data: Mesa Vista → Henderson / North Las Vegas / Spring Valley; Optum →
+  SMMS / SMRX (codes preserved); single-location tenants keep their name.
+- Call sites updated in `schedule-matrix.tsx` (filter + cell tags) and `schedule-view.tsx`. `tsc` clean.
+- **Demo prompter v4.4**: de-hardcoded the NLV floor date (beat 10 said "Jun 16" — stale; the seed
+  anchors it to the CURRENT week's Tuesday). Streamlined the setup checklist: the 30-min demo now
+  runs almost entirely as platform-admin administering Mesa Vista (no profiles); the only
+  identity-dependent beat is "My Schedule" (step 12), with two documented options — Option A (emulate
+  Patricia briefly, one login) or Option B (a parked Patricia profile). 3-profile setup is now the
+  optional "polished prospect" path, not the default.
+
+**Open:** deploy to production (both remotes + deploy hook) so it's live before the full 30-min demo.
+
 ## 2026-06-24 — QA fix: replace native browser dialogs with in-app Modals
 
 From CoWork QA Round 3 (`docs/qa/2026-06-23-staff-scheduling-logic-qa.md`). Two "renderer freeze"
