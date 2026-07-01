@@ -7,6 +7,28 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-07-01 — Follow-up: multi-day PTO, help articles, QA outcome
+
+Post-deploy follow-up after CoWork QA of the Susie pass.
+
+**CoWork QA (`docs/qa/2026-07-01-susie-pass-qa.md`): all four items PASS.** One flag — the Dashboard
+"Deficient slots" tile didn't move during a live call-out. **Resolved as by-design:** that tile is the
+*published-schedule* deficiency count (`validateBundle` over the current period), deliberately separate from
+the Live Board's real-time state; a transient call-out is a live-floor event, so it correctly moves the board,
+not the schedule-plan metric. No code change (see the QA report's appended resolution).
+
+**Shipped:**
+- **Multi-day PTO entry.** The shift editor's PTO block gains a "through this date" field: leave it on the day
+  for a single day, or pick a later date to mark a **continuous block off in one step** (Susie's ask — a week's
+  vacation no longer means entering seven days one at a time). New `setPtoRange` action (replaces the single-day
+  `setPtoDay`; only the modal used it) deletes shifts across the range and upserts one `pto_day` per day. Not
+  bound to the view window — PTO is a person-level record independent of periods. No schema change.
+- **Help articles (migration 0041, applied).** Updated `callouts` (real + reversible, manager-on-behalf),
+  `live-board-statuses` (managers set anyone's status), `settings` (time format), and `fast-scheduling`
+  (multi-day PTO + unpublish + copy-through).
+
+**Verified:** `tsc` clean, 101 vitest tests pass, `next build` clean.
+
 ## 2026-07-01 — Susie's pass: military time, unpublish, real call-outs, manager status
 
 Four items from Susie's review. Two were net-new; two were already built and got surfaced/hardened.

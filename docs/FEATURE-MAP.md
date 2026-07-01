@@ -22,6 +22,8 @@ Local dev: `http://localhost:3200/app/...`.
 - **Requests → Callouts** (Everyone/MANAGE): a logged call-out now drops the person from the live ratio board +
   Compliance Record for that day and flags their shift "Called out" on Build Schedule; a manager **or the person**
   can **Reverse** it.
+- **Build Schedule → shift editor → PTO "through this date"** (CONFIG): mark a continuous PTO block off in one
+  step (single day if left on the day). Not bound to the view window.
 
 **New June 23, 2026 — staff scheduling logic (CONFIG/MANAGE):**
 - **Staff record slide-over** (`/app/staff` Edit, and clicking a name on **Build Schedule**) — notes,

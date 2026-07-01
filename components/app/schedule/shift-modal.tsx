@@ -15,7 +15,7 @@ import {
   deleteShift,
   upsertShift,
 } from "@/lib/actions/schedule";
-import { clearPtoDay, setPtoDay } from "@/lib/actions/pto";
+import { clearPtoDay, setPtoRange } from "@/lib/actions/pto";
 import type {
   Department,
   Location,
@@ -112,6 +112,10 @@ export default function ShiftModal({
   // pto_day. Checking it on a shift cell converts the day to PTO on save.
   const [isPto, setIsPto] = useState(!!existingPto);
   const [ptoReason, setPtoReason] = useState(existingPto?.reason ?? "");
+  // Multi-day PTO: mark a continuous block off in one save (default = just this
+  // day). Unlike shift carry-forward this isn't bound to the view window — PTO is
+  // a person-level record independent of periods, so a long vacation still works.
+  const [ptoThrough, setPtoThrough] = useState(date);
   // Carry-forward: copy this shift to following days through a chosen date.
   const copyFrom = addDaysStr(date, 1);
   const canCopyForward = !!shift && !isPto && !!viewEnd && copyFrom <= viewEnd;
@@ -129,11 +133,13 @@ export default function ShiftModal({
       setError("A reason is required for PTO at this pharmacy.");
       return;
     }
+    const end = ptoThrough && ptoThrough >= date ? ptoThrough : date;
     setBusy(true);
     setError(null);
-    const result = await setPtoDay({
+    const result = await setPtoRange({
       staff_id: staff.id,
-      date,
+      start_date: date,
+      end_date: end,
       reason: ptoReason.trim() || null,
     });
     if (result.ok) {
@@ -295,16 +301,36 @@ export default function ShiftModal({
         </label>
 
         {isPto ? (
-          <div>
-            <Label htmlFor="pto-reason">
-              Reason{ptoReasonRequired ? "" : " (optional)"}
-            </Label>
-            <Input
-              id="pto-reason"
-              value={ptoReason}
-              onChange={(e) => setPtoReason(e.target.value)}
-              placeholder="e.g. vacation, sick, personal"
-            />
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="pto-reason">
+                Reason{ptoReasonRequired ? "" : " (optional)"}
+              </Label>
+              <Input
+                id="pto-reason"
+                value={ptoReason}
+                onChange={(e) => setPtoReason(e.target.value)}
+                placeholder="e.g. vacation, sick, personal"
+              />
+            </div>
+            {!existingPto && (
+              <div>
+                <Label htmlFor="pto-through">Through this date (optional)</Label>
+                <Input
+                  id="pto-through"
+                  type="date"
+                  value={ptoThrough}
+                  min={date}
+                  onChange={(e) => setPtoThrough(e.target.value || date)}
+                  className="w-40"
+                />
+                <HelpText>
+                  Leave as {date} for a single day, or pick a later date to mark a
+                  continuous block off in one step (e.g. a week&rsquo;s vacation).
+                  Any shifts in the range are removed.
+                </HelpText>
+              </div>
+            )}
             <HelpText>
               PTO is a person-level record — it shows blacked out on the schedule
               and isn&rsquo;t tied to a published period. The reason stays here; it

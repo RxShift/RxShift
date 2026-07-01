@@ -11,6 +11,8 @@
 > to lunch, etc.). (4) **Call-outs** — a call-out now actually drops the person from the live ratio board +
 > Compliance Record and flags their shift **"Called out"** on Build Schedule; a manager **or the person** reverses
 > it from **Requests → Callouts** ("Reverse — I'm back"). Managers can also log a call-out on someone's behalf.
+> (5) **Multi-day PTO** — on the shift editor, the **PTO / time off** block has a "through this date" field to
+> black out a continuous block (e.g. a week's vacation) in one save, instead of one day at a time.
 
 > **New June 23, 2026 — staff scheduling logic.** Build Schedule: click a staff **name** to open their full
 > record (notes, constraints, **scheduling rules**, and this week's rule proposals); the **"Apply rules"** button
