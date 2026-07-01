@@ -13,7 +13,8 @@ import Modal from "@/components/ui/modal";
 import { Label, Textarea, HelpText } from "@/components/ui/form";
 import { complianceRecordToCsv } from "@/lib/engine/compliance";
 import { appendComplianceNote } from "@/lib/actions/compliance-notes";
-import type { ComplianceRecordRow } from "@/lib/types";
+import { formatHourRange } from "@/lib/time-format";
+import type { ComplianceRecordRow, TimeFormat } from "@/lib/types";
 
 export interface RecordHour {
   id: string;
@@ -41,11 +42,13 @@ export default function ComplianceRecordView({
   selectedDate,
   records,
   tenantName,
+  timeFormat,
 }: {
   dates: string[];
   selectedDate: string;
   records: RecordLocation[];
   tenantName: string;
+  timeFormat: TimeFormat;
 }) {
   const router = useRouter();
   const [noteFor, setNoteFor] = useState<RecordHour | null>(null);
@@ -84,8 +87,7 @@ export default function ComplianceRecordView({
     setBusy(false);
   }
 
-  const hr = (h: number) =>
-    `${String(h).padStart(2, "0")}:00–${String(h + 1).padStart(2, "0")}:00`;
+  const hr = (h: number) => formatHourRange(h, timeFormat);
 
   return (
     <div className="max-w-[1100px] space-y-6 print:max-w-none">

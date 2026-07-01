@@ -37,6 +37,7 @@ export default async function DisplayPage({
       tenantName={tenant.name}
       locations={locations}
       selectedLocationId={locationId}
+      timeFormat={tenant.time_format}
     >
       {cards.length === 0 ? (
         <div className="rounded-[10px] border-[1.5px] border-dashed border-line bg-surface px-6 py-16 text-center font-body text-sm text-steel">

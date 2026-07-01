@@ -14,6 +14,7 @@ import type {
 export default async function RequestsPage() {
   const session = await getSession();
   const appUser = session!.appUser!;
+  const tenant = session!.tenant!;
   const manager = canManage(appUser);
   const supabase = await createClient();
 
@@ -60,6 +61,8 @@ export default async function RequestsPage() {
           swaps={(swaps ?? []) as SwapRequest[]}
           staff={(staff ?? []) as Staff[]}
           upcomingShifts={(upcomingShifts ?? []) as Shift[]}
+          timeFormat={tenant.time_format}
+          timezone={tenant.timezone}
         />
       </div>
     </>

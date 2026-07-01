@@ -1,7 +1,7 @@
 @AGENTS.md
 
 # RxShift — Project Context
-# Last updated: June 23, 2026
+# Last updated: July 1, 2026
 # Entity: JWC LLC (Jamison West Consulting)
 
 ---
@@ -704,6 +704,25 @@ Captures Lucy's scheduling logic (`docs/Lucy SMMS Schedule.docx`). Migrations **
   through `cadenceWindow` (schedule page), `viewWindow` (view-schedule), `ensurePeriodForDate`
   (`schedule.ts`, + every caller), and `resolveAiBundle` (`ai.ts`). Any NEW period-boundary code must pass it.
   Changing it after periods exist only affects newly-created periods (documented in `docs/decisions.md`).
+
+## Susie's pass — time format, unpublish, real call-outs, manager status (July 1, 2026)
+
+Migrations **0039 + 0040** (apply to the RxShift Supabase). Full detail in `CHANGELOG.md` / `docs/decisions.md`.
+
+- **Time of day is one formatter.** `lib/time-format.ts` (`formatTime` / `formatTimeCompact` / `formatTimeRange` /
+  `formatHourRange` / `formatTimestamp`) is the ONLY place time-of-day is rendered — use it, don't re-inline a
+  slice/`toLocaleString`. It takes `tenant.time_format` (`'12h'` default | `'24h'`), threaded from the server page
+  as a prop (no React context, per house style). `formatTimestamp(iso, tenant.timezone, tenant.time_format)` renders
+  audit/compliance timestamps in the tenant tz. New tenant setting: Settings → Organization "Time format".
+- **Unpublish** (`unpublishPeriod` / `unpublishWindow` in `lib/actions/schedule.ts`, manager-only) mirrors publish —
+  flips a period + its shifts back to `draft` (staff visibility is gated on `shift.status`). Button + confirm on
+  Build Schedule when the window has a published period. Publish-time compliance snapshots are kept.
+- **Call-outs are an absence overlay.** `callout.callout_date` + `reversed_at`/`reversed_by`. While a call-out is
+  active (not reversed), `lib/board-data.ts` and `lib/compliance-record.ts` drop the person from the ratio count for
+  that date, and the Build grid flags the shift "Called out". `reverseCallout` (manager OR the person) restores them.
+  `logCallout` already supported manager-on-behalf. Don't re-add "callout = just a note".
+- **Manager status changes** live only on the Live Board Status board (`setLiveStatus(staffId,…)`, manager-gated) —
+  intentionally not duplicated onto My Schedule.
 
 ## Pending TODOs (as of June 13, 2026)
 

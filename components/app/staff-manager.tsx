@@ -12,7 +12,7 @@ import { Table, Td, Th, Tr } from "@/components/ui/table";
 import Avatar from "@/components/app/avatar";
 import StaffFieldsForm from "@/components/app/staff/staff-fields-form";
 import StaffRecordPanel from "@/components/app/staff/staff-record-panel";
-import type { AppRole, AppUser, Location, RatioType, Staff } from "@/lib/types";
+import type { AppRole, AppUser, Location, RatioType, Staff, TimeFormat } from "@/lib/types";
 
 const RATIO_LABELS: Record<RatioType, string> = {
   pharmacist: "Pharmacist",
@@ -41,12 +41,14 @@ export default function StaffManager({
   appUsers,
   canEditRoles,
   avatarUrls,
+  timeFormat = "12h",
 }: {
   staff: Staff[];
   locations: Location[];
   appUsers: AppUser[];
   canEditRoles: boolean;
   avatarUrls: Record<string, string>;
+  timeFormat?: TimeFormat;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | null>(null);
@@ -204,6 +206,7 @@ export default function StaffManager({
           <StaffRecordPanel
             staffId={editing.id}
             avatarUrl={avatarUrls[editing.id]}
+            timeFormat={timeFormat}
             onChanged={() => router.refresh()}
           />
         )}

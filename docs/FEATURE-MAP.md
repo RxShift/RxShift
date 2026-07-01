@@ -2,7 +2,7 @@
 
 > Keep this current whenever a route is added/changed or a feature ships (it pairs with
 > `DEMO-GUIDE.md`). Source of truth for *what exists* is the code + `CLAUDE.md`; this is the
-> at-a-glance index. Last updated June 23, 2026.
+> at-a-glance index. Last updated July 1, 2026.
 
 **Roles:** `owner_admin`, `scheduler`, `supervisor`, `read_only`, `staff`.
 - **MANAGE** = owner_admin + scheduler + supervisor + read_only (the management nav).
@@ -11,6 +11,17 @@
 
 **Two domains:** marketing at `rxshift.io`; the app at `app.rxshift.io` (host rewrite → `/app/*`).
 Local dev: `http://localhost:3200/app/...`.
+
+**New July 1, 2026 — Susie's pass:**
+- **Settings → Organization → Time format** (CONFIG): 12-hour AM/PM (default) or 24-hour military, applied
+  app-wide (schedule, My Schedule, reports, wall board, audit timestamps).
+- **Build Schedule → Unpublish** (CONFIG): a button + confirm that returns a published window to draft so staff
+  stop seeing it — the reverse of Publish. Shown when the window has a published period.
+- **Live Board → Status board** (MANAGE): managers change any on-shift person's status (already existed — now in
+  the demo/docs).
+- **Requests → Callouts** (Everyone/MANAGE): a logged call-out now drops the person from the live ratio board +
+  Compliance Record for that day and flags their shift "Called out" on Build Schedule; a manager **or the person**
+  can **Reverse** it.
 
 **New June 23, 2026 — staff scheduling logic (CONFIG/MANAGE):**
 - **Staff record slide-over** (`/app/staff` Edit, and clicking a name on **Build Schedule**) — notes,

@@ -14,7 +14,7 @@ import {
   type ValidationOut,
 } from "@/lib/schedule-data";
 import { evaluateZone } from "@/lib/engine/ratio";
-import { eachDate } from "@/lib/dates";
+import { eachDate, nowInTimeZone, demoClockMinutes } from "@/lib/dates";
 import type { ConstraintFlag } from "@/lib/engine/types";
 import type { SwapRequest } from "@/lib/types";
 import {
@@ -504,6 +504,26 @@ export async function logCallout(input: unknown): Promise<ActionResult> {
     const gap = data.shift_id ? await calloutGap(ctx, data.shift_id) : null;
 
     const supabase = await createClient();
+
+    // The date the absence applies to: the linked shift's date, else today in
+    // the tenant's timezone. The live board + the compliance finalizer read this
+    // to drop the person from the ratio count while the call-out is active.
+    let calloutDate: string | null = gap?.date ? String(gap.date) : null;
+    if (!calloutDate && data.shift_id) {
+      const { data: sh } = await supabase
+        .from("shift")
+        .select("date")
+        .eq("id", data.shift_id)
+        .maybeSingle();
+      calloutDate = sh?.date ?? null;
+    }
+    if (!calloutDate) {
+      calloutDate = nowInTimeZone(
+        ctx.tenant.timezone,
+        demoClockMinutes(ctx.tenant.demo_clock)
+      ).date;
+    }
+
     const { data: row, error } = await supabase
       .from("callout")
       .insert({
@@ -512,6 +532,7 @@ export async function logCallout(input: unknown): Promise<ActionResult> {
         shift_id: data.shift_id ?? null,
         reason: data.reason ?? null,
         resulting_gap: gap,
+        callout_date: calloutDate,
       })
       .select("id")
       .single();
@@ -532,6 +553,64 @@ export async function logCallout(input: unknown): Promise<ActionResult> {
 
     await logActivity(ctx, "create", "callout", row.id, { staff_id: staffId });
     revalidatePath("/app/requests");
+    // The person is now absent for callout_date — refresh the board + schedule
+    // views so the ratio count drops and the deficiency (if any) surfaces.
+    revalidateScheduleViews();
+    return undefined;
+  });
+}
+
+/**
+ * Reverse a call-out ("actually, I'm back at work"). Permitted for a manager OR
+ * the person who called out. Sets reversed_at/reversed_by so the person is
+ * restored to coverage (the board + compliance stop treating them as absent).
+ */
+export async function reverseCallout(calloutId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireMember();
+    const supabase = await createClient();
+
+    const { data: callout } = await supabase
+      .from("callout")
+      .select("*")
+      .eq("id", calloutId)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (!callout) throw new ActionError("Callout not found.");
+    if (callout.reversed_at)
+      throw new ActionError("This callout was already reversed.");
+
+    const isManager = ["owner_admin", "scheduler", "supervisor"].includes(
+      ctx.appUser.role
+    );
+    const isOwnCallout =
+      !!ctx.appUser.staff_id && callout.staff_id === ctx.appUser.staff_id;
+    if (!isManager && !isOwnCallout)
+      throw new ActionError("Only a manager or the person can reverse a callout.");
+
+    const { error } = await supabase
+      .from("callout")
+      .update({
+        reversed_at: new Date().toISOString(),
+        reversed_by: ctx.actingUserId,
+      })
+      .eq("id", calloutId)
+      .eq("tenant_id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+
+    const name = await staffName(callout.staff_id);
+    for (const email of await approverEmails(ctx)) {
+      await sendNotificationEmail(ctx.tenant, email, `Callout reversed: ${name}`, [
+        `${name}'s callout was reversed — they're back on the schedule.`,
+        "The live ratio board and Compliance Record now count them again.",
+      ]);
+    }
+
+    await logActivity(ctx, "reverse", "callout", calloutId, {
+      staff_id: callout.staff_id,
+    });
+    revalidatePath("/app/requests");
+    revalidateScheduleViews();
     return undefined;
   });
 }

@@ -137,6 +137,7 @@ export default async function ComplianceRecordPage({
           selectedDate={selectedDate}
           records={records}
           tenantName={tenant.name}
+          timeFormat={tenant.time_format}
         />
       </div>
     </>

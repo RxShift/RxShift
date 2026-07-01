@@ -21,6 +21,7 @@ import type {
   Shift,
   ShiftSegment,
   Staff,
+  TimeFormat,
   TimeOffRequest,
   WorkType,
 } from "@/lib/types";
@@ -43,6 +44,7 @@ export default function ScheduleView({
   holidaysByDate,
   avatarUrls,
   locationFilter,
+  timeFormat = "12h",
 }: {
   today: string;
   viewStart: string;
@@ -57,6 +59,7 @@ export default function ScheduleView({
   holidaysByDate: Record<string, string>;
   avatarUrls: Record<string, string>;
   locationFilter: string | null;
+  timeFormat?: TimeFormat;
 }) {
   const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set());
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set());
@@ -262,6 +265,7 @@ export default function ScheduleView({
           deficientShiftIds={EMPTY}
           constraintShiftIds={EMPTY}
           workTypeById={workTypeById}
+          timeFormat={timeFormat}
           holidaysByDate={holidayMap}
           locationNameById={locationNameById}
           avatarUrlById={avatarUrls}

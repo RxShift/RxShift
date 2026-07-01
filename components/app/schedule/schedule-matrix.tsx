@@ -14,7 +14,11 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/form";
 import { addDaysStr, eachDate } from "@/lib/dates";
-import { copyForwardWindow, publishWindow } from "@/lib/actions/schedule";
+import {
+  copyForwardWindow,
+  publishWindow,
+  unpublishWindow,
+} from "@/lib/actions/schedule";
 import { BUILD_MODE_EVENT, isBuildMode, setBuildMode } from "@/lib/build-mode";
 import ShiftModal from "./shift-modal";
 import AiCommandBar from "./ai-command-bar";
@@ -65,6 +69,7 @@ export default function ScheduleMatrix({
   avatarUrls,
   constraints,
   schedulingRules,
+  calloutShiftIds,
   /** When set, show only this location (rows with a shift there); null = all. */
   locationFilter,
   /** Anchor + the cadence-period label, so the strip can build nav + show it. */
@@ -93,6 +98,8 @@ export default function ScheduleMatrix({
   /** Active constraints + scheduling rules for the tooltip on each staff name. */
   constraints: ConstraintRule[];
   schedulingRules: StaffSchedulingRule[];
+  /** Shift ids with an active (non-reversed) call-out — shown "Called out". */
+  calloutShiftIds: Set<string>;
   locationFilter: string | null;
   anchor: string;
   periodLabel: string;
@@ -108,6 +115,7 @@ export default function ScheduleMatrix({
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [confirmCopy, setConfirmCopy] = useState(false);
   const [toolError, setToolError] = useState<string | null>(null);
@@ -167,6 +175,20 @@ export default function ScheduleMatrix({
     } else {
       setToolError(result.error);
       setPublishOpen(true); // surface the reason prompt
+    }
+  }
+
+  async function runUnpublish() {
+    setBusy(true);
+    setToolError(null);
+    const result = await unpublishWindow(viewStart, viewEnd, locationFilter);
+    setBusy(false);
+    if (result.ok) {
+      setUnpublishOpen(false);
+      router.refresh();
+    } else {
+      setToolError(result.error);
+      alert(result.error);
     }
   }
 
@@ -250,46 +272,52 @@ export default function ScheduleMatrix({
 
   // Honest status pill derived from the per-day map — a partly published window
   // shows "N/M days published", never a misleading single "Published ✓".
-  const { hasDraft, statusLabel, statusShort, statusTone } = useMemo(() => {
-    let published = 0;
-    let draft = 0;
-    let none = 0;
-    for (const d of dates) {
-      const s = dateStatus.get(d);
-      if (s === "published") published++;
-      else if (s === "draft") draft++;
-      else none++;
-    }
-    const total = dates.length;
-    const hasDraft = draft > 0;
-    if (published + draft === 0)
+  const { hasDraft, hasPublished, statusLabel, statusShort, statusTone } =
+    useMemo(() => {
+      let published = 0;
+      let draft = 0;
+      let none = 0;
+      for (const d of dates) {
+        const s = dateStatus.get(d);
+        if (s === "published") published++;
+        else if (s === "draft") draft++;
+        else none++;
+      }
+      const total = dates.length;
+      const hasDraft = draft > 0;
+      const hasPublished = published > 0;
+      if (published + draft === 0)
+        return {
+          hasDraft,
+          hasPublished,
+          statusLabel: "Nothing scheduled here yet",
+          statusShort: "Empty",
+          statusTone: "neutral" as const,
+        };
+      if (published === total)
+        return {
+          hasDraft,
+          hasPublished,
+          statusLabel: "Published — visible to staff",
+          statusShort: "Published ✓",
+          statusTone: "published" as const,
+        };
+      if (draft > 0 && published === 0 && none === 0)
+        return {
+          hasDraft,
+          hasPublished,
+          statusLabel: "Draft — not visible to staff yet",
+          statusShort: "Draft",
+          statusTone: "draft" as const,
+        };
       return {
         hasDraft,
-        statusLabel: "Nothing scheduled here yet",
-        statusShort: "Empty",
-        statusTone: "neutral" as const,
-      };
-    if (published === total)
-      return {
-        hasDraft,
-        statusLabel: "Published — visible to staff",
-        statusShort: "Published ✓",
-        statusTone: "published" as const,
-      };
-    if (draft > 0 && published === 0 && none === 0)
-      return {
-        hasDraft,
-        statusLabel: "Draft — not visible to staff yet",
-        statusShort: "Draft",
+        hasPublished,
+        statusLabel: `${published}/${total} days published`,
+        statusShort: `${published}/${total} published`,
         statusTone: "draft" as const,
       };
-    return {
-      hasDraft,
-      statusLabel: `${published}/${total} days published`,
-      statusShort: `${published}/${total} published`,
-      statusTone: "draft" as const,
-    };
-  }, [dates, dateStatus]);
+    }, [dates, dateStatus]);
 
   const statusCls =
     statusTone === "published"
@@ -433,7 +461,9 @@ export default function ScheduleMatrix({
       if (rls.length)
         lines.push(
           "Rules: " +
-            rls.map((r) => describeRule(r, { workTypeName: wtName })).join("; ")
+            rls
+              .map((r) => describeRule(r, { workTypeName: wtName }, tenant.time_format))
+              .join("; ")
         );
       const cons = (consByStaff.get(s.id) ?? []).slice(0, 3);
       if (cons.length)
@@ -651,6 +681,16 @@ export default function ScheduleMatrix({
                     ? "Published ✓"
                     : "Publish"}
             </Button>
+            {hasPublished && (
+              <Button
+                variant="secondary"
+                onClick={() => setUnpublishOpen(true)}
+                disabled={busy}
+                title="Return this schedule to draft — staff stop seeing it"
+              >
+                Unpublish
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={() => setBuildMode(false)}
@@ -706,6 +746,16 @@ export default function ScheduleMatrix({
                     ? "Published ✓"
                     : "Publish"}
             </Button>
+            {hasPublished && (
+              <Button
+                variant="secondary"
+                onClick={() => setUnpublishOpen(true)}
+                disabled={busy}
+                title="Return this schedule to draft — staff stop seeing it"
+              >
+                Unpublish
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -797,7 +847,9 @@ export default function ScheduleMatrix({
           timeOffByCell={timeOffByCell}
           deficientShiftIds={deficientShiftIds}
           constraintShiftIds={constraintShiftIds}
+          calloutShiftIds={calloutShiftIds}
           workTypeById={workTypeById}
+          timeFormat={tenant.time_format}
           dateStatus={dateStatus}
           holidaysByDate={holidayMap}
           locationNameById={locationNameById}
@@ -929,6 +981,30 @@ export default function ScheduleMatrix({
       </Modal>
 
       <Modal
+        open={unpublishOpen}
+        onClose={() => setUnpublishOpen(false)}
+        title="Unpublish this schedule?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setUnpublishOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={runUnpublish} disabled={busy}>
+              {busy ? "Unpublishing…" : "Unpublish"}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This returns {viewStart === viewEnd ? "this day" : "this window"} to
+          draft for {locationFilter ? "this location" : "every location"}, so
+          staff immediately stop seeing it in View Schedule and My Schedule. The
+          shifts are kept — you can edit and re-publish. Use this to reverse a
+          publish made by mistake.
+        </p>
+      </Modal>
+
+      <Modal
         open={confirmCopy}
         onClose={() => setConfirmCopy(false)}
         title={`${copyLabel}?`}
@@ -957,6 +1033,7 @@ export default function ScheduleMatrix({
         windowEnd={viewEnd}
         windowLabel={periodLabel}
         locationFilter={locationFilter}
+        timeFormat={tenant.time_format}
         onApplied={() => router.refresh()}
       />
 
@@ -976,6 +1053,7 @@ export default function ScheduleMatrix({
           <StaffRecordPanel
             staffId={staffPanelId}
             avatarUrl={avatarUrls[staffPanelId]}
+            timeFormat={tenant.time_format}
             proposalWindow={{
               start: viewStart,
               end: viewEnd,

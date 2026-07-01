@@ -3,6 +3,39 @@
 Durable product/scope decisions. Newest first. Code and CLAUDE.md are the
 source of truth for *what exists*; this file records *why*.
 
+## July 1, 2026 — Susie's pass: time format, unpublish, real call-outs
+
+**Context:** Susie reviewed the app and flagged four items. Decisions made during the build:
+
+**Decision — military time is a tenant-wide setting, default 12-hour.** One `tenant.time_format` applies to
+every surface (the shared wall board would be ambiguous with a per-user preference). Default `'12h'` (US retail
+norm) also unifies a pre-existing inconsistency: the main schedule grid rendered 24h while rules + My Schedule
+rendered 12h. Military is now the opt-in. All time-of-day rendering goes through one `lib/time-format.ts` so it
+can't drift again. Audit/compliance *timestamps* were also moved off the browser locale onto the tenant timezone
++ chosen hour format (they read the same for every viewer now). The CSV export keeps 24h `HH:00` hour labels — a
+data-file convention, not a UI element.
+
+**Decision — unpublish keeps the publish-time compliance snapshot.** Unpublishing returns a period + its shifts
+to draft (staff visibility is gated on `shift.status`, so it hides instantly). It does NOT delete the
+`compliance_snapshot` written at publish — that's an append-only audit artifact; hiding a schedule shouldn't
+erase that it was briefly published. RBAC mirrors publish (managers only). No migration — the enum + columns
+already existed.
+
+**Decision — call-outs are "real" (an absence overlay), reversible, and settle on the daily cron.** A call-out
+now removes the person from the live ratio board and the as-worked Compliance Record for `callout_date` (before,
+it was a logged note that left them counting — masking the gap the product exists to surface). The shift is kept
+(flagged "Called out") so a manager can backfill and so a reverse restores coverage — we did NOT delete the shift
+like PTO does. A manager OR the person can reverse ("I'm back"). Because the finalize cron runs daily (after the
+day is over), a same-day call-out that's reversed is no longer active at finalize time, so a mistake never writes
+a false deficiency; on a future hourly cadence (Vercel Pro) an already-finalized hour would stand, consistent
+with the record's immutability. v1 treats a call-out as a whole-day absence anchored on `callout_date` (the live
+board matches by date; the schedule marker matches by the logged shift id) — partial-day precision is a
+follow-up if needed.
+
+**Decision — manager status changes stay on the Live Board only.** The capability already existed
+(`setLiveStatus(staffId,…)` + the manager-gated Status board). We surfaced/verified it rather than adding a
+second entry point on My Schedule, to avoid two ways to do the same thing.
+
 ## June 23, 2026 — Staff scheduling logic: advisory rules, week-start, coverage-as-text
 
 **Context:** Susie/Lucy working session produced Lucy's scheduling-logic doc. Three scope choices Jamison

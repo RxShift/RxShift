@@ -175,6 +175,21 @@ export default async function SchedulePage({
     .eq("is_active", true);
   const schedulingRules = (ruleRows ?? []) as StaffSchedulingRule[];
 
+  // Active (non-reversed) call-outs in the window → mark those shifts "Called
+  // out" on the grid so a manager sees who needs backfilling. Matched by the
+  // shift the call-out was logged against.
+  const { data: calloutRows } = await supabase
+    .from("callout")
+    .select("shift_id")
+    .is("reversed_at", null)
+    .gte("callout_date", start)
+    .lte("callout_date", end);
+  const calloutShiftIds = new Set(
+    ((calloutRows ?? []) as { shift_id: string | null }[])
+      .map((c) => c.shift_id)
+      .filter((id): id is string => !!id)
+  );
+
   // Steppers move one cadence PERIOD at a time (the day just outside the window
   // lands in the neighbouring period).
   const prevAnchor = addDaysStr(start, -1);
@@ -267,6 +282,7 @@ export default async function SchedulePage({
           avatarUrls={avatarUrls}
           constraints={allBundle.constraints}
           schedulingRules={schedulingRules}
+          calloutShiftIds={calloutShiftIds}
           anchor={anchor}
           periodLabel={label}
           aiPeriodId={aiPeriod?.id ?? null}

@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import Badge from "@/components/ui/badge";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
+import { formatTimestamp } from "@/lib/time-format";
 import type { OverrideLog } from "@/lib/types";
 
 const TARGET_LABEL: Record<string, string> = {
@@ -13,6 +15,8 @@ const TARGET_LABEL: Record<string, string> = {
 };
 
 export default async function OverrideLogPage() {
+  const session = await getSession();
+  const tenant = session!.tenant!;
   const supabase = await createClient();
   const [{ data }, { data: users }, { data: staff }] = await Promise.all([
     supabase
@@ -73,7 +77,7 @@ export default async function OverrideLogPage() {
                 {overrides.map((o) => (
                   <Tr key={o.id}>
                     <Td className="whitespace-nowrap">
-                      {new Date(o.created_at).toLocaleString()}
+                      {formatTimestamp(o.created_at, tenant.timezone, tenant.time_format)}
                     </Td>
                     <Td>{actorName.get(o.actor_user_id) ?? "User"}</Td>
                     <Td>{TARGET_LABEL[o.target_type] ?? o.target_type}</Td>

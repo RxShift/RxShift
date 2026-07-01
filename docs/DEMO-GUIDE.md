@@ -2,7 +2,15 @@
 
 > The single, accurate source for running a demo. Built because the old demo script drifted from reality
 > (it claimed live statuses live on the Dashboard — they don't; they're on the **Live Board** and
-> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated June 23, 2026.
+> **My Schedule**). Keep this in sync with the app; pair it with `FEATURE-MAP.md`. Last updated July 1, 2026.
+
+> **New July 1, 2026 — Susie's pass.** (1) **Time format** — Settings → Organization now toggles 12-hour vs
+> 24-hour/military app-wide. (2) **Unpublish** — Build Schedule has an **Unpublish** button (with a confirm) to
+> reverse a schedule published by mistake; staff immediately stop seeing that window. (3) **Manager status
+> changes** — on the **Live Board** Status board a manager can change any on-shift person's status (send someone
+> to lunch, etc.). (4) **Call-outs** — a call-out now actually drops the person from the live ratio board +
+> Compliance Record and flags their shift **"Called out"** on Build Schedule; a manager **or the person** reverses
+> it from **Requests → Callouts** ("Reverse — I'm back"). Managers can also log a call-out on someone's behalf.
 
 > **New June 23, 2026 — staff scheduling logic.** Build Schedule: click a staff **name** to open their full
 > record (notes, constraints, **scheduling rules**, and this week's rule proposals); the **"Apply rules"** button

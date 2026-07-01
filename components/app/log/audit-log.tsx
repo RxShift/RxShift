@@ -7,6 +7,8 @@ import Modal from "@/components/ui/modal";
 import { Label, Textarea, HelpText } from "@/components/ui/form";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { appendActivityNote } from "@/lib/actions/audit";
+import { formatTimestamp } from "@/lib/time-format";
+import type { TimeFormat } from "@/lib/types";
 
 export interface AuditEntry {
   id: string;
@@ -25,7 +27,15 @@ function summarize(e: AuditEntry): string {
   return `${e.action} ${e.entity_type.replace(/_/g, " ")}`;
 }
 
-export default function AuditLog({ entries }: { entries: AuditEntry[] }) {
+export default function AuditLog({
+  entries,
+  timeFormat,
+  timezone,
+}: {
+  entries: AuditEntry[];
+  timeFormat: TimeFormat;
+  timezone: string;
+}) {
   const router = useRouter();
   const [noteFor, setNoteFor] = useState<AuditEntry | null>(null);
   const [note, setNote] = useState("");
@@ -65,7 +75,7 @@ export default function AuditLog({ entries }: { entries: AuditEntry[] }) {
           {entries.map((e) => (
             <Tr key={e.id}>
               <Td className="whitespace-nowrap align-top text-steel">
-                {new Date(e.created_at).toLocaleString()}
+                {formatTimestamp(e.created_at, timezone, timeFormat)}
               </Td>
               <Td className="align-top font-medium">{e.actor}</Td>
               <Td className="align-top">
@@ -131,7 +141,7 @@ export default function AuditLog({ entries }: { entries: AuditEntry[] }) {
         {noteFor && (
           <div className="space-y-3">
             <p className="font-body text-sm text-steel">
-              {new Date(noteFor.created_at).toLocaleString()} ·{" "}
+              {formatTimestamp(noteFor.created_at, timezone, timeFormat)} ·{" "}
               <span className="text-navy">{summarize(noteFor)}</span> by{" "}
               {noteFor.actor}
             </p>

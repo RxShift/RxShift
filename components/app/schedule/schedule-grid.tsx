@@ -23,7 +23,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { fmtDay } from "@/lib/dates";
 import Avatar from "@/components/app/avatar";
 import ShiftBlock from "./shift-block";
-import type { Shift, ShiftSegment, Staff, WorkType } from "@/lib/types";
+import type { Shift, ShiftSegment, Staff, TimeFormat, WorkType } from "@/lib/types";
 
 interface ShiftWithSegments extends Shift {
   segments: ShiftSegment[];
@@ -52,7 +52,9 @@ export default function ScheduleGrid({
   timeOffByCell,
   deficientShiftIds,
   constraintShiftIds,
+  calloutShiftIds,
   workTypeById,
+  timeFormat = "12h",
   dateStatus,
   holidaysByDate,
   locationNameById,
@@ -70,7 +72,12 @@ export default function ScheduleGrid({
   timeOffByCell: Set<string>;
   deficientShiftIds: Set<string>;
   constraintShiftIds: Set<string>;
+  /** Shift ids with an active call-out — rendered with a "Called out" marker.
+   *  Optional (View Schedule omits it). */
+  calloutShiftIds?: Set<string>;
   workTypeById: Map<string, WorkType>;
+  /** Tenant time-of-day format for shift times in cells. Defaults to 12h. */
+  timeFormat?: TimeFormat;
   /** Optional per-date publish state — when set, columns are tinted/labeled. */
   dateStatus?: Map<string, DateStatus>;
   /** Date → holiday name. Tints + labels the column; never blocks staffing. */
@@ -304,8 +311,10 @@ export default function ScheduleGrid({
                                 <ShiftBlock
                                   segments={sh.segments}
                                   workTypeById={workTypeById}
+                                  timeFormat={timeFormat}
                                   deficient={deficientShiftIds.has(sh.id)}
                                   constrained={constraintShiftIds.has(sh.id)}
+                                  calledOut={calloutShiftIds?.has(sh.id) ?? false}
                                 />
                               </div>
                             ))}

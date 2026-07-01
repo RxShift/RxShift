@@ -20,15 +20,8 @@ import {
 } from "@/lib/dates";
 import { timeToMinutes } from "@/lib/engine/ratio";
 import { resolveStatuses } from "@/lib/live-status-config";
+import { formatTimeCompact } from "@/lib/time-format";
 import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
-
-/** Compact 12-hour label: 08:00 → 8a, 17:30 → 5:30p (fits a calendar cell) */
-function compactTime(t: string): string {
-  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
-  const ap = h >= 12 ? "p" : "a";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${h12}${ap}` : `${h12}:${String(m).padStart(2, "0")}${ap}`;
-}
 import type {
   LiveStatus,
   LiveStatusConfig,
@@ -47,6 +40,10 @@ export default async function MePage() {
   const tenant = session!.tenant!;
   const appUser = session!.appUser!;
   const supabase = await createClient();
+
+  // Compact time-of-day for calendar cells, in the tenant's chosen format
+  // (12h → "8a" / "5:30p"; 24h → "8" / "17:30").
+  const compactTime = (t: string) => formatTimeCompact(t, tenant.time_format);
 
   if (!appUser.staff_id) {
     return (

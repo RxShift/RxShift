@@ -510,6 +510,83 @@ export async function publishWindow(
   });
 }
 
+/**
+ * Reverse a publish: return a period (and all its shifts) to draft so staff no
+ * longer see it. The mirror of publishPeriod, for when a schedule was published
+ * by mistake. The compliance snapshot written at publish is KEPT (append-only
+ * audit) — unpublishing hides the schedule, it doesn't erase that it was briefly
+ * published. Staff visibility is gated on shift.status === 'published' (My
+ * Schedule query + View Schedule filter), so flipping back to draft hides it
+ * immediately.
+ */
+export async function unpublishPeriod(periodId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+
+    const { data: period } = await supabase
+      .from("schedule_period")
+      .select("id, status")
+      .eq("id", periodId)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (!period) throw new ActionError("Period not found.");
+    if (period.status !== "published")
+      throw new ActionError("This schedule isn't published.");
+
+    const { error } = await supabase
+      .from("schedule_period")
+      .update({ status: "draft", published_at: null, published_by: null })
+      .eq("id", periodId)
+      .eq("tenant_id", ctx.tenantId);
+    if (error) throw new ActionError(error.message);
+
+    await supabase
+      .from("shift")
+      .update({ status: "draft" })
+      .eq("schedule_period_id", periodId);
+
+    await logActivity(ctx, "unpublish", "schedule_period", periodId);
+    revalidateScheduleViews();
+    return undefined;
+  });
+}
+
+/** Unpublish every published period overlapping a window — all locations, or one.
+ *  The mirror of publishWindow (the All-Locations toolbar reverse). */
+export async function unpublishWindow(
+  viewStart: string,
+  viewEnd: string,
+  locationId: string | null
+): Promise<ActionResult<{ unpublished: number }>> {
+  return runAction(async () => {
+    const ctx = await requireManager();
+    const supabase = await createClient();
+
+    let q = supabase
+      .from("schedule_period")
+      .select("id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("status", "published")
+      .lte("start_date", viewEnd)
+      .gte("end_date", viewStart);
+    if (locationId) q = q.eq("location_id", locationId);
+    const { data: published } = await q;
+    if (!published || published.length === 0)
+      throw new ActionError(
+        "Nothing to unpublish — there's no published schedule in this window."
+      );
+
+    let unpublished = 0;
+    for (const p of published) {
+      const result = await unpublishPeriod(p.id as string);
+      if (!result.ok) throw new ActionError(result.error);
+      unpublished += 1;
+    }
+    return { unpublished };
+  });
+}
+
 /** Copy the previous window's shifts into the current one (per location). */
 export async function copyForwardWindow(
   viewStart: string,

@@ -34,6 +34,7 @@ export default async function StaffPage() {
           appUsers={(appUsers ?? []) as AppUser[]}
           canEditRoles={["owner_admin"].includes(session!.appUser!.role)}
           avatarUrls={avatarUrls}
+          timeFormat={session!.tenant!.time_format}
         />
       </div>
     </>

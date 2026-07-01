@@ -141,6 +141,8 @@ export default async function CoverageForecastPage({
           overrides={overrides}
           tenantName={tenant.name}
           periodLabel={fmtRange(bundle.period.start_date, bundle.period.end_date)}
+          timeFormat={tenant.time_format}
+          timezone={tenant.timezone}
         />
       </div>
     </>

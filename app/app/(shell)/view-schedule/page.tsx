@@ -228,6 +228,7 @@ export default async function ViewSchedulePage({
           holidaysByDate={holidaysByDate}
           avatarUrls={avatarUrls}
           locationFilter={locationFilter}
+          timeFormat={tenant.time_format}
         />
       </div>
     </>

@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth";
 import { xlsxResponse, xlsxMultiSheet } from "@/lib/reports";
 import { loadPeriodBundle, loadAllLocationsBundle, validateRangeBundle } from "@/lib/schedule-data";
 import { fmtDay } from "@/lib/dates";
-import type { ComplianceRecordRow, Location, Staff } from "@/lib/types";
+import { formatTime, formatHourRange } from "@/lib/time-format";
+import type { ComplianceRecordRow, Location, Staff, TimeFormat } from "@/lib/types";
 
 /** "HH:MM" → minutes since midnight. */
 function hm(t: string): number {
@@ -25,9 +26,8 @@ const EMPLOYMENT: Record<string, string> = {
   contractor_1099: "1099 contractor",
 };
 
-function hourLabel(hour: number): string {
-  const h = (n: number) => `${String(n).padStart(2, "0")}:00`;
-  return `${h(hour)}–${h(hour + 1)}`;
+function hourLabel(hour: number, fmt: TimeFormat): string {
+  return formatHourRange(hour, fmt);
 }
 
 export async function GET(
@@ -46,6 +46,7 @@ export async function GET(
   }
 
   const supabase = await createClient();
+  const fmt: TimeFormat = session.tenant.time_format;
   const sp = request.nextUrl.searchParams;
   const from = sp.get("from") ?? "";
   const to = sp.get("to") ?? "";
@@ -109,7 +110,7 @@ export async function GET(
           Times: s.segments
             .map(
               (g) =>
-                `${String(g.start_time).slice(0, 5)}–${String(g.end_time).slice(0, 5)}`
+                `${formatTime(g.start_time, fmt)}–${formatTime(g.end_time, fmt)}`
             )
             .join(", "),
           "Unpaid break (min)": s.break_minutes ?? 0,
@@ -175,7 +176,7 @@ export async function GET(
       const r = rec.detail;
       out.push({
         Date: r.date,
-        Hour: hourLabel(r.hour),
+        Hour: hourLabel(r.hour, fmt),
         Location: r.location_name,
         "Pharmacist(s)": r.pharmacists_on_duty.join(", "),
         "Technician(s) counting": (r.technicians_counting as string[])
@@ -290,8 +291,8 @@ export async function GET(
         Staff: person?.full_name ?? sh.staff_id,
         Role: person?.ratio_type.replace("_", " ") ?? "",
         Location: locById.get(sh.location_id)?.name ?? "",
-        Start: earliest,
-        End: latest,
+        Start: formatTime(earliest, fmt),
+        End: formatTime(latest, fmt),
         "Hours": Number(paidHours.toFixed(2)),
         "Work type(s)": wts,
         "Break (min)": sh.break_minutes ?? 0,

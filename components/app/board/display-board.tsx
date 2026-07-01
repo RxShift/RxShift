@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import FullscreenButton from "@/components/app/board/fullscreen-button";
+import type { TimeFormat } from "@/lib/types";
 
 // Read-only wall-display chrome: a slim top bar (tenant + location switcher +
 // "updated" stamp + fullscreen) over the board cards. NO status controls — this
@@ -12,11 +13,13 @@ export default function DisplayBoard({
   tenantName,
   locations,
   selectedLocationId,
+  timeFormat = "12h",
   children,
 }: {
   tenantName: string;
   locations: { id: string; name: string }[];
   selectedLocationId: string | null;
+  timeFormat?: TimeFormat;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -28,6 +31,7 @@ export default function DisplayBoard({
         new Intl.DateTimeFormat(undefined, {
           hour: "numeric",
           minute: "2-digit",
+          hour12: timeFormat === "12h",
         }).format(new Date())
       );
     stamp();
@@ -37,7 +41,7 @@ export default function DisplayBoard({
       clearInterval(refresh);
       clearInterval(clock);
     };
-  }, [router]);
+  }, [router, timeFormat]);
 
   return (
     <div className="min-h-screen bg-page">

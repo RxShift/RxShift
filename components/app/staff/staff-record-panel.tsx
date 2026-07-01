@@ -32,6 +32,7 @@ import {
 import type {
   ConstraintRule,
   StaffSchedulingRule,
+  TimeFormat,
 } from "@/lib/types";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -46,12 +47,15 @@ export default function StaffRecordPanel({
   staffId,
   proposalWindow,
   avatarUrl,
+  timeFormat = "12h",
   onChanged,
 }: {
   staffId: string;
   /** When set (opened from the builder), shows rule proposals for this window. */
   proposalWindow?: { start: string; end: string; label?: string } | null;
   avatarUrl?: string;
+  /** Tenant time-of-day format for rule descriptions/proposals. Defaults to 12h. */
+  timeFormat?: TimeFormat;
   /** Called after any successful write, so the parent can refresh its view. */
   onChanged?: () => void;
 }) {
@@ -121,6 +125,7 @@ export default function StaffRecordPanel({
           staffId={staffId}
           staffName={staff.full_name}
           window={proposalWindow}
+          timeFormat={timeFormat}
           onApplied={afterChange}
         />
       )}
@@ -162,7 +167,7 @@ export default function StaffRecordPanel({
                   <p
                     className={`font-body text-[13px] ${r.is_active ? "text-navy" : "text-steel line-through"}`}
                   >
-                    {describeRule(r, { workTypeName, locationName })}
+                    {describeRule(r, { workTypeName, locationName }, timeFormat)}
                   </p>
                   <p className="mt-0.5 font-body text-[11px] text-steel">
                     {RULE_TYPE_LABELS[r.rule_type]}
@@ -202,7 +207,7 @@ export default function StaffRecordPanel({
                       setPendingDelete({
                         kind: "rule",
                         id: r.id,
-                        label: describeRule(r, { workTypeName, locationName }),
+                        label: describeRule(r, { workTypeName, locationName }, timeFormat),
                       })
                     }
                     className="font-body text-xs font-medium text-deficiency underline-offset-2 hover:underline"

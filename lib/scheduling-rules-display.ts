@@ -20,7 +20,9 @@ import type {
   SchedulingRuleFrequency,
   SchedulingRuleType,
   StaffSchedulingRule,
+  TimeFormat,
 } from "@/lib/types";
+import { formatTimeCompact } from "@/lib/time-format";
 
 export const RULE_TYPE_LABELS: Record<SchedulingRuleType, string> = {
   recurring_shift: "Regular shift",
@@ -61,13 +63,11 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-/** "07:30" → "7:30am"; "16:00" → "4pm". Empty/invalid → "". */
-export function fmtTime(t?: string | null): string {
-  if (!t || !/^\d{1,2}:\d{2}/.test(t)) return "";
-  const [h, m] = t.slice(0, 5).split(":").map(Number);
-  const ap = h < 12 || h === 24 ? "am" : "pm";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m ? `${h12}:${String(m).padStart(2, "0")}${ap}` : `${h12}${ap}`;
+/** Compact time for rule text. Delegates to the central formatter so the tenant's
+ *  12h/24h setting is honored. Defaults to 12h for the pure resolver's advisory
+ *  labels (no tenant in scope there); UI callers pass tenant.time_format. */
+export function fmtTime(t?: string | null, fmt: TimeFormat = "12h"): string {
+  return formatTimeCompact(t, fmt);
 }
 
 export function ordinal(n: number): string {
@@ -102,20 +102,23 @@ export function fmtDays(days: number[]): string {
   return parts.join(", ");
 }
 
-function timeRange(p: Record<string, unknown>): string {
-  const s = fmtTime(p.start_time as string);
-  const e = fmtTime(p.end_time as string);
+function timeRange(p: Record<string, unknown>, fmt: TimeFormat): string {
+  const s = fmtTime(p.start_time as string, fmt);
+  const e = fmtTime(p.end_time as string, fmt);
   if (s && e) return `${s}–${e}`;
   return s || e || "";
 }
 
-/** A short, human sentence describing one rule. workType/location resolve ids → names. */
+/** A short, human sentence describing one rule. workType/location resolve ids → names.
+ *  `fmt` sets the time style (defaults to 12h for the pure resolver's advisory labels;
+ *  UI callers pass the tenant's time_format). */
 export function describeRule(
   rule: StaffSchedulingRule,
   opts: {
     workTypeName?: (id: string) => string | undefined;
     locationName?: (id: string) => string | undefined;
-  } = {}
+  } = {},
+  fmt: TimeFormat = "12h"
 ): string {
   const p = (rule.params ?? {}) as Record<string, unknown>;
   const wt = rule.work_type_id
@@ -125,7 +128,7 @@ export function describeRule(
     ? (opts.locationName?.(rule.location_id) ?? "location")
     : null;
   const days = fmtDays(asNums(p.days));
-  const tr = timeRange(p);
+  const tr = timeRange(p, fmt);
   const freq = rule.frequency ? FREQUENCY_LABELS[rule.frequency] : "";
 
   switch (rule.rule_type) {
@@ -176,7 +179,7 @@ export function describeRule(
       return `Sometimes covers ${loc ?? "another area"}`;
     case "per_diem_availability": {
       const q = Number(p.quota_per_period) || 0;
-      const end = fmtTime(p.latest_end_time as string);
+      const end = fmtTime(p.latest_end_time as string, fmt);
       return `Per diem${q ? `: ~${q} days/month` : ""}${end ? `, can work until ${end}` : ""}`;
     }
     case "preferred_not_assigned":

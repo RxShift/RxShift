@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import PageHeader, { EmptyState } from "@/components/ui/page-header";
 import AuditLog, { type AuditEntry } from "@/components/app/log/audit-log";
 import type { ActivityLog, ActivityLogNote } from "@/lib/types";
 
 export default async function AuditLogPage() {
+  const session = await getSession();
+  const tenant = session!.tenant!;
   const supabase = await createClient();
 
   // activity_log select is manager-only by RLS, so a non-manager simply sees
@@ -97,7 +100,11 @@ export default async function AuditLogPage() {
           {rows.length === 0 ? (
             <EmptyState message="No activity recorded yet." />
           ) : (
-            <AuditLog entries={rows} />
+            <AuditLog
+              entries={rows}
+              timeFormat={tenant.time_format}
+              timezone={tenant.timezone}
+            />
           )}
         </div>
       </div>

@@ -12,6 +12,7 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { fmtDay } from "@/lib/dates";
 import { fmtTime } from "@/lib/scheduling-rules-display";
+import type { TimeFormat } from "@/lib/types";
 import {
   applyRuleProposals,
   dismissRuleWarning,
@@ -27,6 +28,7 @@ export default function RulesApplyModal({
   windowEnd,
   windowLabel,
   locationFilter,
+  timeFormat = "12h",
   onApplied,
 }: {
   open: boolean;
@@ -35,6 +37,7 @@ export default function RulesApplyModal({
   windowEnd: string;
   windowLabel: string;
   locationFilter: string | null;
+  timeFormat?: TimeFormat;
   onApplied: () => void;
 }) {
   const [proposals, setProposals] = useState<ProposalDTO[] | null>(null);
@@ -165,7 +168,7 @@ export default function RulesApplyModal({
                       <div className="min-w-0">
                         <p className="font-body text-[13px] text-navy">
                           {day.dow} {day.label}: {p.work_type_name ?? "Shift"},{" "}
-                          {fmtTime(p.start_time)}–{fmtTime(p.end_time)}
+                          {fmtTime(p.start_time, timeFormat)}–{fmtTime(p.end_time, timeFormat)}
                           {p.location_name ? ` · ${p.location_name}` : ""}
                         </p>
                         {!p.location_id && (

@@ -38,6 +38,7 @@ export default async function SchedulePrintPage({
   if (!role || !["owner_admin", "scheduler", "supervisor", "read_only"].includes(role)) {
     redirect("/app/me");
   }
+  const timeFormat = session!.tenant!.time_format;
 
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   const from = params.from && dateRe.test(params.from) ? params.from : "";
@@ -89,7 +90,7 @@ export default async function SchedulePrintPage({
       ].join(", ");
       return (
         <div key={sh.id} className="leading-tight">
-          {fmtTime(earliest)}–{fmtTime(latest)}
+          {fmtTime(earliest, timeFormat)}–{fmtTime(latest, timeFormat)}
           {wts ? <span className="block text-[9px] text-steel">{wts}</span> : null}
         </div>
       );

@@ -42,7 +42,11 @@ function StatusRow({
       <span className="truncate font-body text-[13px] font-medium text-navy">
         {s.name}
       </span>
-      {s.offShift ? (
+      {s.calledOut ? (
+        <span className="shrink-0 font-brand text-xs font-bold text-deficiency">
+          Called out
+        </span>
+      ) : s.offShift ? (
         <span className="shrink-0 font-brand text-xs font-bold text-steel/70">
           Off shift
         </span>

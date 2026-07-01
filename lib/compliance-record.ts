@@ -169,6 +169,7 @@ export async function finalizeComplianceForTenant(
     { data: cfgRows },
     { data: shiftRows },
     { data: liveRows },
+    { data: calloutRows },
   ] = await Promise.all([
     service.from("ratio_rule").select("*").eq("tenant_id", tenant.id),
     service.from("staff").select("id, full_name, ratio_type, staff_type, certified, excluded_from_ratio").eq("tenant_id", tenant.id),
@@ -187,7 +188,23 @@ export async function finalizeComplianceForTenant(
       .select("*")
       .eq("tenant_id", tenant.id)
       .lte("effective_from", `${addDaysStr(to, 1)}T00:00:00Z`),
+    // Active (non-reversed) call-outs in range → the person was absent that day.
+    // The daily cron finalizes after the day is over, so a same-day mistake that
+    // gets reversed nets out (no longer active) before the record is written.
+    service
+      .from("callout")
+      .select("staff_id, callout_date")
+      .eq("tenant_id", tenant.id)
+      .is("reversed_at", null)
+      .gte("callout_date", from)
+      .lte("callout_date", to),
   ]);
+
+  const calledOut = new Set(
+    ((calloutRows ?? []) as { staff_id: string; callout_date: string | null }[])
+      .filter((c) => c.callout_date)
+      .map((c) => `${c.staff_id}|${c.callout_date}`)
+  );
 
   const rule = ((ruleRows ?? []) as RatioRule[]).find((r) => r.tenant_id !== null);
   if (!rule) return { tenantId: tenant.id, recorded: 0, hoursConsidered: 0 };
@@ -236,6 +253,9 @@ export async function finalizeComplianceForTenant(
   for (const sh of (shiftRows ?? []) as ShiftRow[]) {
     const person = staffById.get(sh.staff_id);
     if (!person) continue;
+    // A called-out person wasn't there — drop their shift from the as-worked
+    // reconstruction so the record reflects the true (possibly deficient) gap.
+    if (calledOut.has(`${sh.staff_id}|${sh.date}`)) continue;
     const windows = nonCountingWindows(
       liveByStaff.get(sh.staff_id) ?? [],
       sh.date,

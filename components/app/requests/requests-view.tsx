@@ -17,9 +17,11 @@ import {
   previewTimeOffImpact,
   proposeSwap,
   respondToSwap,
+  reverseCallout,
   submitTimeOff,
   type RequestImpact,
 } from "@/lib/actions/requests";
+import { formatTimestamp } from "@/lib/time-format";
 import type {
   Callout,
   RequestStatus,
@@ -27,6 +29,7 @@ import type {
   Staff,
   SwapRequest,
   SwapStatus,
+  TimeFormat,
   TimeOffRequest,
 } from "@/lib/types";
 
@@ -53,6 +56,8 @@ export default function RequestsView({
   swaps,
   staff,
   upcomingShifts,
+  timeFormat,
+  timezone,
 }: {
   isManager: boolean;
   myStaffId: string | null;
@@ -61,6 +66,8 @@ export default function RequestsView({
   swaps: SwapRequest[];
   staff: Staff[];
   upcomingShifts: Shift[];
+  timeFormat: TimeFormat;
+  timezone: string;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("timeoff");
@@ -124,6 +131,15 @@ export default function RequestsView({
       setError(res.error ?? "Something went wrong.");
     }
     setBusy(false);
+  }
+
+  async function handleReverseCallout(id: string) {
+    setBusy(true);
+    setError(null);
+    const res = await reverseCallout(id);
+    setBusy(false);
+    if (res.ok) router.refresh();
+    else alert(res.error ?? "Something went wrong.");
   }
 
   // Recompute the PTO submit note when both dates are present.
@@ -351,7 +367,7 @@ export default function RequestsView({
       {/* Callouts */}
       {tab === "callouts" &&
         (callouts.length === 0 ? (
-          <EmptyState message="No callouts logged. When someone can't make a shift, log it here — the resulting ratio gap is computed and documented automatically." />
+          <EmptyState message="No callouts logged. When someone can't make a shift, log it here — the person drops off the live ratio board for that day, and the resulting gap is documented automatically." />
         ) : (
           <Table>
             <thead>
@@ -360,6 +376,7 @@ export default function RequestsView({
                 <Th>Logged</Th>
                 <Th>Reason</Th>
                 <Th>Ratio impact</Th>
+                <Th className="w-40"> </Th>
               </tr>
             </thead>
             <tbody>
@@ -368,13 +385,18 @@ export default function RequestsView({
                   deficient_slots_added?: number;
                   date?: string;
                 } | null;
+                const reversed = !!c.reversed_at;
+                const canReverse =
+                  !reversed && (isManager || c.staff_id === myStaffId);
                 return (
-                  <Tr key={c.id}>
+                  <Tr key={c.id} className={reversed ? "opacity-60" : ""}>
                     <Td className="font-medium">{name(c.staff_id)}</Td>
-                    <Td>{new Date(c.logged_at).toLocaleString()}</Td>
+                    <Td>{formatTimestamp(c.logged_at, timezone, timeFormat)}</Td>
                     <Td>{c.reason ?? "—"}</Td>
                     <Td>
-                      {gap ? (
+                      {reversed ? (
+                        <Badge tone="neutral">Reversed — back at work</Badge>
+                      ) : gap ? (
                         Number(gap.deficient_slots_added) > 0 ? (
                           <Badge tone="deficiency">
                             +{gap.deficient_slots_added} deficient slots {gap.date}
@@ -382,6 +404,22 @@ export default function RequestsView({
                         ) : (
                           <Badge tone="compliant">No new deficiency</Badge>
                         )
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td>
+                      {canReverse ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleReverseCallout(c.id)}
+                          className="font-body text-xs font-semibold text-navy underline-offset-2 hover:underline disabled:opacity-40"
+                        >
+                          Reverse (I&rsquo;m back)
+                        </button>
+                      ) : reversed ? (
+                        <span className="font-body text-xs text-steel">Reversed</span>
                       ) : (
                         "—"
                       )}

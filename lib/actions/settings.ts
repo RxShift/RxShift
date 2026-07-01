@@ -30,6 +30,8 @@ const tenantSchema = z.object({
   pto_reason_required: z.coerce.boolean().default(false),
   // First day of the week: 0=Sun … 6=Sat. Drives grid columns + period alignment.
   week_start_day: z.coerce.number().int().min(0).max(6).default(1),
+  // Time-of-day display format across the app. "12h" (default) = AM/PM; "24h" = military.
+  time_format: z.enum(["12h", "24h"]).default("12h"),
 });
 
 export async function updateTenant(input: unknown): Promise<ActionResult> {

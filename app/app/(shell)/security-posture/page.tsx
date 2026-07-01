@@ -1,7 +1,7 @@
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-const LAST_REVIEWED = "2026-06-23";
+const LAST_REVIEWED = "2026-07-01";
 
 const SECTIONS: { heading: string; items: string[] }[] = [
   {
@@ -29,6 +29,7 @@ const SECTIONS: { heading: string; items: string[] }[] = [
       "An account may have additional admin-registered sign-in addresses (e.g., a work email for the work desktop); every sign-in still proves control of the inbox via a one-time link.",
       "Roles: Owner/Admin, Scheduler (department-scopable), Approver/Supervisor, Read-only, Staff. Server actions re-check the role on every write. Schedulers and supervisors can edit pharmacy configuration (locations, ratio rules, work types); going live, deleting the workspace, assigning roles, and offboarding remain Owner/Admin-only.",
       "Staff see their own schedule and requests; managers see their tenant; nobody sees another tenant.",
+      "Managers (Owner/Admin, Scheduler, Supervisor) can act on behalf of staff for real-time floor operations — setting another person's live status, logging a call-out, and reversing a call-out — each server-checked and recorded in the audit log with the manager as the actor. A staff member can reverse their own call-out; row-level security scopes that update to their own record only.",
     ],
   },
   {

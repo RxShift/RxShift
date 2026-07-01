@@ -27,6 +27,7 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
       nevada_r072_25: data.get("nevada_r072_25") === "on",
       pto_reason_required: data.get("pto_reason_required") === "on",
       week_start_day: data.get("week_start_day"),
+      time_format: data.get("time_format"),
     });
     setMessage(result.ok ? "Saved." : result.error);
     setSaving(false);
@@ -91,6 +92,21 @@ export default function OrgSettingsForm({ tenant }: { tenant: Tenant }) {
             Sets the schedule grid column order, weekly/biweekly period boundaries,
             and reporting week grouping. Best chosen once at setup — changing it
             later only affects periods you build from then on.
+          </HelpText>
+        </div>
+        <div>
+          <Label htmlFor="time_format">Time format</Label>
+          <Select
+            id="time_format"
+            name="time_format"
+            defaultValue={tenant.time_format ?? "12h"}
+          >
+            <option value="12h">12-hour (9:00 AM – 5:00 PM)</option>
+            <option value="24h">24-hour / military (09:00 – 17:00)</option>
+          </Select>
+          <HelpText>
+            How the time of day is shown everywhere — the schedule, My Schedule,
+            reports, and the wall board. Applies to the whole pharmacy.
           </HelpText>
         </div>
         <div>

@@ -9,7 +9,8 @@ import {
   complianceRecordToCsv,
   SUSTAINED_DEFICIENCY_DAYS,
 } from "@/lib/engine/compliance";
-import type { ComplianceRecordRow } from "@/lib/types";
+import { formatHourRange, formatTimestamp } from "@/lib/time-format";
+import type { ComplianceRecordRow, TimeFormat } from "@/lib/types";
 import type { ConstraintFlag } from "@/lib/engine/types";
 
 /** Distinguish the two kinds of ratio deficiency for the reader. */
@@ -29,6 +30,8 @@ export default function ComplianceView({
   overrides,
   tenantName,
   periodLabel,
+  timeFormat,
+  timezone,
 }: {
   periods: { id: string; label: string }[];
   periodId: string;
@@ -49,6 +52,8 @@ export default function ComplianceView({
   }[];
   tenantName: string;
   periodLabel: string;
+  timeFormat: TimeFormat;
+  timezone: string;
 }) {
   const router = useRouter();
   const allRows = records.flatMap((r) => r.rows);
@@ -148,7 +153,7 @@ export default function ComplianceView({
                   {o.warning_type}
                 </Badge>{" "}
                 <span className="text-steel">
-                  {new Date(o.when).toLocaleString()} · {o.actor}:
+                  {formatTimestamp(o.when, timezone, timeFormat)} · {o.actor}:
                 </span>{" "}
                 {o.reason}
               </li>
@@ -238,8 +243,7 @@ export default function ComplianceView({
                         {r.date}
                       </td>
                       <td className="border-t border-line px-3 py-2 font-brand text-[11px] font-semibold text-steel">
-                        {String(r.hour).padStart(2, "0")}:00–
-                        {String(r.hour + 1).padStart(2, "0")}:00
+                        {formatHourRange(r.hour, timeFormat)}
                       </td>
                       <td className="border-t border-line px-3 py-2 font-body text-[13px] font-medium text-navy">
                         {r.pharmacists_on_duty.join(", ") || "—"}

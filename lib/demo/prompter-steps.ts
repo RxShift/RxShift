@@ -15,8 +15,14 @@
 // v4.4 (June 25, 2026): De-hardcoded the NLV floor date (was "Jun 16" — stale;
 // the seed anchors it to the CURRENT week's Tuesday). Location filter/cell tags
 // now show the distinguishing branch (e.g. "Henderson"), not the tenant name.
+// v4.5 (July 1, 2026): Susie's pass — four new capabilities available to show:
+// (1) Settings → Organization → Time format (12h/24h app-wide); (2) Build
+// Schedule → Unpublish (reverse a mistaken publish); (3) Live Board Status board
+// → a manager changes any on-shift person's status; (4) Requests → Callouts → a
+// call-out drops the person from the live ratio board + Compliance Record and is
+// reversible by a manager or the person ("Reverse — I'm back").
 
-export const PROMPTER_VERSION = "v4.4";
+export const PROMPTER_VERSION = "v4.5";
 
 export interface Beat {
   /** d=direction, s=script, pv=pivot, pause, p=Ask-AI prompt, n=note, cond=condition */

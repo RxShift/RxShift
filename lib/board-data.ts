@@ -61,6 +61,8 @@ export interface StatusListItem {
   name: string;
   live: string;
   offShift: boolean;
+  /** True when an active call-out removes this person from today's coverage. */
+  calledOut: boolean;
   /** The location of the person's current shift, or null if off shift. */
   locationId: string | null;
   locationName: string | null;
@@ -95,12 +97,26 @@ export async function buildBoardView(
     .gte("end_date", today);
   const todaysPeriods = (periods ?? []) as SchedulePeriod[];
 
-  const [{ data: liveStatuses }, { data: staff }, { data: statusCfg }] =
-    await Promise.all([
-      supabase.from("live_status").select("*").is("effective_to", null),
-      supabase.from("staff").select("*").eq("active", true).order("full_name"),
-      supabase.from("live_status_config").select("*"),
-    ]);
+  const [
+    { data: liveStatuses },
+    { data: staff },
+    { data: statusCfg },
+    { data: calloutRows },
+  ] = await Promise.all([
+    supabase.from("live_status").select("*").is("effective_to", null),
+    supabase.from("staff").select("*").eq("active", true).order("full_name"),
+    supabase.from("live_status_config").select("*"),
+    // Active call-outs for today remove the person from coverage: they don't
+    // count toward the ratio and show as "Called out" (not a bare "Off shift").
+    supabase
+      .from("callout")
+      .select("staff_id")
+      .eq("callout_date", today)
+      .is("reversed_at", null),
+  ]);
+  const calledOutStaffIds = new Set(
+    ((calloutRows ?? []) as { staff_id: string }[]).map((r) => r.staff_id)
+  );
 
   // Only honor a status set TODAY (tenant tz) — yesterday's "Lunch" shouldn't
   // linger (live_status rows stay open with effective_to null).
@@ -135,7 +151,10 @@ export async function buildBoardView(
       bundle.shifts.filter((s) => s.status === "published").map((s) => s.id)
     );
     const segments = toEngineSegments(bundle).filter(
-      (s) => s.date === today && publishedIds.has(s.shift_id)
+      (s) =>
+        s.date === today &&
+        publishedIds.has(s.shift_id) &&
+        !calledOutStaffIds.has(s.staff.id)
     );
 
     const wtColorById = new Map(bundle.workTypes.map((w) => [w.id, w.color]));
@@ -268,6 +287,7 @@ export async function buildBoardView(
       name: s.full_name,
       live: liveByStaff.get(s.id) ?? "present_counting",
       offShift: !onShiftStaffIds.has(s.id),
+      calledOut: calledOutStaffIds.has(s.id),
       locationId: loc?.locationId ?? null,
       locationName: loc?.locationName ?? null,
     };

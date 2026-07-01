@@ -10,6 +10,7 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { fmtDay } from "@/lib/dates";
 import { fmtTime } from "@/lib/scheduling-rules-display";
+import type { TimeFormat } from "@/lib/types";
 import {
   applyRuleProposals,
   dismissRuleWarning,
@@ -22,11 +23,13 @@ export default function RuleProposalsSection({
   staffId,
   staffName,
   window: win,
+  timeFormat = "12h",
   onApplied,
 }: {
   staffId: string;
   staffName: string;
   window: { start: string; end: string; label?: string };
+  timeFormat?: TimeFormat;
   onApplied?: () => void;
 }) {
   const [proposals, setProposals] = useState<ProposalDTO[] | null>(null);
@@ -131,8 +134,8 @@ export default function RuleProposalsSection({
                       <p className="font-body text-[13px] font-medium text-navy">
                         {day.dow} {day.label}
                         {": "}
-                        {p.work_type_name ?? "Shift"}, {fmtTime(p.start_time)}–
-                        {fmtTime(p.end_time)}
+                        {p.work_type_name ?? "Shift"}, {fmtTime(p.start_time, timeFormat)}–
+                        {fmtTime(p.end_time, timeFormat)}
                       </p>
                       <p className="truncate font-body text-[11px] text-steel">
                         {p.label}

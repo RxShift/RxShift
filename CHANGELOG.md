@@ -7,6 +7,43 @@ infrastructure. Full context lives in `CLAUDE.md`; infrastructure details in
 
 ---
 
+## 2026-07-01 — Susie's pass: military time, unpublish, real call-outs, manager status
+
+Four items from Susie's review. Two were net-new; two were already built and got surfaced/hardened.
+
+**Schema (migrations 0039 + 0040 — apply to the RxShift Supabase):**
+- `tenant.time_format` (`'12h'` default, `'24h'` = military).
+- `callout.callout_date` / `callout.reversed_at` / `callout.reversed_by` + backfill; new
+  `callout_staff_update` RLS policy (a staff member can reverse their OWN call-out; scoped to their staff_id).
+
+**Shipped:**
+- **1 — Military-time toggle (tenant-wide, default 12h).** New Settings → Organization "Time format" select.
+  A single formatter (`lib/time-format.ts`: `formatTime` / `formatTimeCompact` / `formatTimeRange` /
+  `formatHourRange` / `formatTimestamp`) replaces the three inconsistent inline helpers and the browser-locale
+  `toLocaleString()` timestamps. Threaded through the schedule grid (Build + View), My Schedule (desktop +
+  mobile), scheduling rules + proposals, the Compliance Record + Coverage Forecast hour labels, the audit /
+  override logs (now shown in the tenant timezone), the xlsx + print reports, and the wall-display clock.
+  Default 12h unifies the app (the main grid used to show 24h). 12 new vitest tests.
+- **2 — Unpublish a published schedule.** `unpublishPeriod` / `unpublishWindow` (mirror publish, manager-only)
+  flip a period + its shifts back to draft so staff immediately stop seeing it (visibility is gated on
+  `shift.status === 'published'`). New **Unpublish** button + confirm modal on Build Schedule, shown when the
+  window has a published period. The publish-time compliance snapshot is kept (append-only audit). No migration.
+- **3 — Managers change anyone's status (already built — surfaced).** Confirmed the Live Board Status board's
+  manager-gated per-person dropdowns + `setLiveStatus(staffId,…)` work end-to-end; documented the manager beat.
+  No duplicate UI added.
+- **4 — Call-outs are now real + reversible.** Logging a call-out (managers can already log for someone else)
+  now stamps `callout_date` and **drops the person from the live ratio board and the as-worked Compliance
+  Record for that day** — the deficiency actually surfaces. The shift is flagged **"Called out"** on Build
+  Schedule so a manager can backfill. A manager **or the person** can **Reverse** it ("I'm back") from Requests →
+  Callouts. Same-day reversals settle before the daily finalize cron, so a mistake never writes a false
+  deficiency.
+
+**Verified:** `tsc` clean; **101 vitest tests pass** (89 + 12 new). Browser/demo QA against Mesa Vista pending
+(needs the migrations applied + a CoWork run).
+
+**Open:** apply migrations 0039 + 0040 to the RxShift Supabase; browser-verify the four items on Mesa Vista;
+deploy (both remotes + Vercel CLI); refresh Help articles for items 3 & 4.
+
 ## 2026-06-25 — Fix: location filter/cell tags showed the tenant name, not the branch
 
 Found while prepping the Brandy demo recording. The schedule builder's **location filter

@@ -42,6 +42,8 @@ export type ConstraintRuleType =
   | "max_consecutive_days";
 export type WarningType = "ratio" | "cap" | "constraint" | "rule";
 export type TenantStatus = "setup" | "trial" | "live";
+/** How times-of-day are displayed across the app. "12h" = 9:00 AM; "24h" = 09:00 (military). */
+export type TimeFormat = "12h" | "24h";
 
 export interface Tenant {
   id: string;
@@ -81,6 +83,9 @@ export interface Tenant {
   /** First day of the week: 0=Sun … 6=Sat. Default 1 (Monday) preserves the prior
    *  hardcoded behavior. Drives grid column order, period alignment, reporting weeks. */
   week_start_day: number;
+  /** Time-of-day display format across the whole app. Default "12h" (AM/PM); "24h" is
+   *  the opt-in military format. Tenant-wide so the shared wall board is unambiguous. */
+  time_format: TimeFormat;
   // ── Billing scaffold (manual today; Stripe/Chargebee implement the same fields)
   billing_status: "none" | "trial" | "active" | "past_due" | "canceled";
   billing_provider: "manual" | "stripe" | "chargebee" | null;
@@ -364,6 +369,13 @@ export interface Callout {
   reason: string | null;
   logged_at: string;
   resulting_gap: Record<string, unknown> | null;
+  /** The date the absence applies to. Drives the live board + compliance record
+   *  (the person is dropped from the ratio count for this date while active). */
+  callout_date: string | null;
+  /** Set when the call-out is reversed ("actually, I'm back"). While null the
+   *  call-out is ACTIVE and removes the person from coverage that date. */
+  reversed_at: string | null;
+  reversed_by: string | null;
 }
 
 export interface SwapRequest {

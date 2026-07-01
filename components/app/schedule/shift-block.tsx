@@ -11,34 +11,40 @@
 // Shared by the schedule builder grid and the all-locations overview.
 
 import { NEUTRAL_SHIFT_BG, readableTextColor } from "@/lib/work-type-colors";
-import type { ShiftSegment, WorkType } from "@/lib/types";
-
-function fmtT(t: string): string {
-  return String(t).slice(0, 5);
-}
+import { formatTime } from "@/lib/time-format";
+import type { ShiftSegment, TimeFormat, WorkType } from "@/lib/types";
 
 export default function ShiftBlock({
   segments,
   workTypeById,
+  timeFormat = "12h",
   deficient = false,
   constrained = false,
+  calledOut = false,
   showWorkTypeName = true,
 }: {
   segments: ShiftSegment[];
   workTypeById: Map<string, WorkType>;
+  timeFormat?: TimeFormat;
   deficient?: boolean;
   constrained?: boolean;
+  /** An active call-out: the person isn't coming — dim the block + flag it so a
+   *  manager can backfill. */
+  calledOut?: boolean;
   showWorkTypeName?: boolean;
 }) {
+  const fmtT = (t: string) => formatTime(t, timeFormat);
   return (
     <div className="relative">
       <div
         className={`overflow-hidden rounded-[5px] ${
-          deficient
-            ? "ring-2 ring-deficiency"
-            : constrained
-              ? "ring-2 ring-alert"
-              : ""
+          calledOut
+            ? "opacity-50 ring-2 ring-deficiency"
+            : deficient
+              ? "ring-2 ring-deficiency"
+              : constrained
+                ? "ring-2 ring-alert"
+                : ""
         }`}
       >
         {segments.map((seg) => {
@@ -53,7 +59,9 @@ export default function ShiftBlock({
               className="px-1.5 py-1 text-left font-body text-[10.5px] font-semibold leading-tight"
               style={{ backgroundColor: bg, color: fg }}
             >
-              <div className="whitespace-nowrap">
+              <div
+                className={`whitespace-nowrap ${calledOut ? "line-through" : ""}`}
+              >
                 {fmtT(seg.start_time)}–{fmtT(seg.end_time)}
               </div>
               {showWorkTypeName && wt && (
@@ -66,8 +74,15 @@ export default function ShiftBlock({
         })}
       </div>
 
+      {/* An active call-out overlay label — the person isn't coming. */}
+      {calledOut && (
+        <span className="absolute inset-x-0 bottom-0 bg-deficiency/90 px-1 text-center font-brand text-[8px] font-bold uppercase tracking-[0.4px] leading-tight text-white">
+          Called out
+        </span>
+      )}
+
       {/* Fill-independent compliance badge — outlined so it pops on any color */}
-      {deficient && (
+      {deficient && !calledOut && (
         <span
           aria-label="deficient ratio slot"
           title="In a deficient ratio slot"
